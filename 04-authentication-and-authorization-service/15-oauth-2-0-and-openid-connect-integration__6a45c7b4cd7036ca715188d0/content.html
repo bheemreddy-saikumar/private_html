@@ -1,0 +1,475 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>OAuth 2.0 and OpenID Connect integration</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">OAuth 2.0 and OpenID Connect integration</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">OAuth 2.0 and OpenID Connect integration</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Delegating Identity to External Providers</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Now that we&#x27;ve protected our internal token lifecycle against replay attacks using refresh token rotation, we can move</p></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Delegated Identity</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-idp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker><marker id="arrow-token" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path></marker></defs><line x1="185" y1="230" x2="465" y2="375" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></line><circle cx="325" cy="302" r="18" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></circle><line x1="313" y1="290" x2="337" y2="314" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></line><text x="325" y="348" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">No Passwords</text><path d="M 185 185 Q 310 115 464 133" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-idp)"></path><text x="310" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">1. Login</text><circle cx="140" cy="200" r="44" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></circle><circle cx="140" cy="190" r="16" fill="#64748b"></circle><path d="M 116 226 a 24 16 0 0 1 48 0" fill="#64748b"></path><text x="140" y="275" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">User</text><path d="M 480 105 A 110 22 0 0 0 700 105 V 175 A 110 22 0 0 1 480 175 Z" fill="#4f46e5"></path><ellipse cx="590" cy="105" rx="110" ry="22" fill="#6366f1"></ellipse><text x="590" y="152" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">External IdP</text><line x1="590" y1="202" x2="590" y2="332" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-token)"></line><text x="615" y="272" text-anchor="start" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">2. Tokens</text><rect x="470" y="340" width="240" height="90" rx="14" fill="#ffffff" stroke="#64748b" stroke-width="2.5"></rect><text x="590" y="394" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">App Backend</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Identity vs. Access</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="stack-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="80" y="50" width="660" height="160" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="3"></rect>
+  <text x="120" y="115" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">OpenID Connect</text>
+  <text x="120" y="155" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">Authentication</text>
+
+  
+  <rect x="460" y="70" width="230" height="120" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="575" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#d97706">ID Token</text>
+  <line x1="495" y1="150" x2="655" y2="150" stroke="#fcd34d" stroke-width="3" stroke-linecap="round"></line>
+  <line x1="495" y1="166" x2="595" y2="166" stroke="#fde68a" stroke-width="3" stroke-linecap="round"></line>
+
+  
+  <line x1="210" y1="266" x2="210" y2="218" stroke="#4f46e5" stroke-width="3" marker-end="url(#stack-arrow)"></line>
+  <text x="230" y="246" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">built on</text>
+
+  
+  <rect x="80" y="270" width="660" height="170" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="3"></rect>
+  <text x="120" y="340" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">OAuth 2.0</text>
+  <text x="120" y="380" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">Authorization</text>
+
+  
+  <rect x="460" y="325" width="230" height="60" rx="30" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="575" y="363" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#059669">Access Token</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-3"><div data-el-id="s1-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Identity vs Access</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  
+  <rect x="60" y="70" width="320" height="380" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="220" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#475569">OAuth 2.0</text>
+  
+  <rect x="135" y="155" width="170" height="38" rx="19" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="220" y="181" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Authorization</text>
+  
+  
+  <rect x="105" y="260" width="230" height="56" rx="28" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"></rect>
+  <circle cx="140" cy="288" r="8" fill="none" stroke="#64748b" stroke-width="2.5"></circle>
+  <line x1="148" y1="288" x2="160" y2="288" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"></line>
+  <text x="235" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#475569">Access Token</text>
+
+  
+  <rect x="440" y="70" width="320" height="380" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="600" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">OpenID Connect</text>
+  
+  <rect x="505" y="155" width="190" height="38" rx="19" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="600" y="181" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Authentication</text>
+  
+  
+  <rect x="485" y="235" width="230" height="135" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"></rect>
+  <path d="M 485 247 A 12 12 0 0 1 497 235 L 703 235 A 12 12 0 0 1 715 247 L 715 280 L 485 280 Z" fill="#fef3c7"></path>
+  <text x="600" y="267" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">ID Token</text>
+  <line x1="485" y1="280" x2="715" y2="280" stroke="#fde68a" stroke-width="1.5"></line>
+  
+  
+  <circle cx="525" cy="322" r="14" fill="#fde68a"></circle>
+  <circle cx="525" cy="318" r="5" fill="#b45309"></circle>
+  <path d="M 517 329 A 8 6 0 0 1 533 329" fill="#b45309"></path>
+  <text x="555" y="329" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">user identity</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;delegating identity to external providers</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Authorization Code Flow</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">So, OpenID Connect proves who the user is.</p></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Phase 1: Authorization Code</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  
+  <rect x="60" y="45" width="160" height="56" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2"></rect>
+  <text x="140" y="80" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Backend</text>
+
+  <rect x="320" y="45" width="160" height="56" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="400" y="80" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">User</text>
+
+  <rect x="595" y="45" width="160" height="56" rx="14" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="675" y="80" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">IdP (Google)</text>
+
+  
+  <line x1="140" y1="101" x2="140" y2="455" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="6 6"></line>
+  <line x1="400" y1="101" x2="400" y2="455" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="6 6"></line>
+  <line x1="675" y1="101" x2="675" y2="455" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="6 6"></line>
+
+  
+  <rect x="258" y="138" width="300" height="38" rx="19" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="408" y="164" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">1. Redirect <tspan fill="#64748b" font-weight="500">(state, nonce)</tspan></text>
+  <line x1="140" y1="185" x2="652" y2="185" stroke="#64748b" stroke-width="2.5"></line>
+  <polygon points="665,185 650,179 650,191" fill="#64748b"></polygon>
+
+  
+  <rect x="443" y="238" width="190" height="38" rx="19" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="538" y="264" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">2. User Consent</text>
+  <line x1="400" y1="285" x2="652" y2="285" stroke="#64748b" stroke-width="2.5"></line>
+  <polygon points="665,285 650,279 650,291" fill="#64748b"></polygon>
+
+  
+  <rect x="258" y="338" width="300" height="42" rx="21" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="408" y="367" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">3. Authorization Code</text>
+  <line x1="675" y1="390" x2="163" y2="390" stroke="#4f46e5" stroke-width="3"></line>
+  <polygon points="150,390 165,384 165,396" fill="#4f46e5"></polygon>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Direct Token Exchange</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="270" y="40" width="280" height="110" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="295" cy="62" r="4" fill="#cbd5e1"></circle>
+  <circle cx="308" cy="62" r="4" fill="#cbd5e1"></circle>
+  <circle cx="321" cy="62" r="4" fill="#cbd5e1"></circle>
+  <text x="410" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#64748b">Browser</text>
+  
+  <rect x="290" y="96" width="240" height="38" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"></rect>
+  <text x="410" y="122" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">no tokens stored</text>
+
+  
+  <rect x="75" y="215" width="160" height="190" rx="16" fill="#ffffff" stroke="#64748b" stroke-width="3"></rect>
+  <line x1="95" y1="245" x2="135" y2="245" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"></line>
+  <text x="155" y="315" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Backend</text>
+
+  
+  <path d="M 585 235 L 585 385 A 80 22 0 0 0 745 385 L 745 235 Z" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></path>
+  <ellipse cx="665" cy="235" rx="80" ry="22" fill="#c7d2fe" stroke="#4f46e5" stroke-width="3"></ellipse>
+  <text x="665" y="310" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">IdP</text>
+  <text x="665" y="345" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Token Endpoint</text>
+
+  
+  <line x1="235" y1="265" x2="580" y2="265" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-indigo)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.5s" repeatCount="indefinite"></animate>
+  </line>
+  <rect x="290" y="242" width="220" height="46" rx="23" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="400" y="272" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">code + secret</text>
+
+  
+  <line x1="585" y1="365" x2="245" y2="365" stroke="#10b981" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green)">
+    <animate attributeName="stroke-dashoffset" from="0" to="28" dur="1.5s" repeatCount="indefinite"></animate>
+  </line>
+  
+  <rect x="260" y="342" width="130" height="46" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="325" y="372" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">id_token</text>
+
+  
+  <rect x="405" y="342" width="165" height="46" rx="23" fill="#d1fae5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="487" y="372" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#047857">access_token</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;the authorization code flow</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Python Integration and User Mapping</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Integrating this flow in Python is made much simpler by libraries like Authlib.</p></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Authlib OIDC Discovery</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s3-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">from authlib.integrations.starlette_client import OAuth</span>
+<span class="cl" data-line="2"></span>
+<span class="cl" data-line="3">oauth = OAuth()</span>
+<span class="cl" data-line="4">oauth.register(</span>
+<span class="cl" data-line="5">    name='google',</span>
+<span class="cl" data-line="6">    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',</span>
+<span class="cl" data-line="7">    client_id='YOUR_CLIENT_ID',</span>
+<span class="cl" data-line="8">    client_secret='YOUR_CLIENT_SECRET',</span>
+<span class="cl" data-line="9">    client_kwargs={'scope': 'openid email profile'}</span>
+<span class="cl" data-line="10">)</span>
+<span class="cl" data-line="11"></span>
+<span class="cl" data-line="12"># In the callback route</span>
+<span class="cl" data-line="13">token = await oauth.google.authorize_access_token(request)</span>
+<span class="cl" data-line="14">user_info = token.get('userinfo')</span>
+<span class="cl" data-line="15"># Internal logic: map user_info['email'] to a local user record</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Shadow User Pattern</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="90" width="280" height="340" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="60" y="90" width="280" height="60" rx="16" fill="#fef3c7"></rect>
+  <text x="85" y="128" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#b45309">ID Token</text>
+
+  <text x="85" y="195" font-family="monospace" font-size="20" fill="#64748b">iss: "google"</text>
+
+  
+  <rect x="75" y="222" width="250" height="46" rx="8" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="88" y="252" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">sub: "g_9401"</text>
+
+  
+  <line x1="325" y1="245" x2="472" y2="245" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line>
+  <text x="403" y="232" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">sub claim</text>
+
+  
+  <rect x="480" y="90" width="280" height="340" rx="16" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect>
+  <rect x="480" y="90" width="280" height="60" rx="16" fill="#f1f5f9"></rect>
+  <text x="505" y="128" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Local Record</text>
+
+  <text x="505" y="195" font-family="monospace" font-size="20" fill="#64748b">provider: "google"</text>
+
+  
+  <rect x="495" y="222" width="250" height="46" rx="8" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="508" y="252" font-family="monospace" font-size="20" font-weight="700" fill="#4f46e5">sub: "g_9401"</text>
+
+  
+  <rect x="495" y="295" width="250" height="46" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-dasharray="6 4" stroke-width="1.5"></rect>
+  <text x="508" y="325" font-family="monospace" font-size="20" font-weight="600" fill="#ef4444">password: none</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div data-el-id="s3-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Account Linking</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <g transform="translate(60, 110)">
+    <rect x="0" y="0" width="240" height="280" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="3"></rect>
+    <rect x="0" y="0" width="240" height="46" rx="16" fill="#fef3c7"></rect>
+    <rect x="0" y="30" width="240" height="16" fill="#fef3c7"></rect>
+    <text x="120" y="32" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">ID Token</text>
+
+    
+    <rect x="20" y="70" width="200" height="48" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <text x="32" y="100" font-family="Inter, sans-serif" font-size="20" fill="#64748b">iss: github</text>
+
+    <rect x="20" y="132" width="200" height="48" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <text x="32" y="162" font-family="Inter, sans-serif" font-size="20" fill="#64748b">sub: 94812</text>
+
+    <rect x="20" y="194" width="200" height="52" rx="8" fill="#eff6ff" stroke="#4f46e5" stroke-width="2.5"></rect>
+    <text x="32" y="227" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">user@co.com</text>
+  </g>
+
+  
+  <g transform="translate(300, 220)">
+    <line x1="10" y1="110" x2="160" y2="110" stroke="#4f46e5" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow)"></line>
+    <rect x="36" y="86" width="100" height="36" rx="18" fill="#4f46e5"></rect>
+    <text x="86" y="110" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">match</text>
+  </g>
+
+  
+  <g transform="translate(480, 90)">
+    
+    <rect x="16" y="16" width="280" height="310" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+    <rect x="8" y="8" width="280" height="310" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <rect x="0" y="0" width="280" height="310" rx="16" fill="#ffffff" stroke="#0f172a" stroke-width="3"></rect>
+
+    
+    <rect x="0" y="0" width="280" height="48" rx="16" fill="#0f172a"></rect>
+    <rect x="0" y="32" width="280" height="16" fill="#0f172a"></rect>
+    <text x="140" y="33" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Shadow User</text>
+
+    
+    <text x="24" y="84" font-family="Inter, sans-serif" font-size="20" fill="#64748b">id: usr_042</text>
+    <text x="24" y="126" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">user@co.com</text>
+
+    
+    <line x1="24" y1="152" x2="256" y2="152" stroke="#e2e8f0" stroke-width="2"></line>
+    <text x="24" y="184" font-family="Inter, sans-serif" font-size="20" fill="#64748b">linked providers:</text>
+
+    <rect x="24" y="202" width="105" height="36" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <text x="76" y="226" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">google</text>
+
+    
+    <rect x="142" y="202" width="114" height="36" rx="8" fill="#dcfce7" stroke="#10b981" stroke-width="2.5"></rect>
+    <text x="199" y="226" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#15803d">+ github</text>
+
+    
+    <rect x="24" y="258" width="232" height="34" rx="17" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"></rect>
+    <text x="140" y="281" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">no stored password</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;python integration and user mapping</span><span>concept brief</span></div></div></section><section id="section-4" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s4-title"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 4</p><h2 data-el-id="s4-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Session Management and Security</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Following authentication, we need to manage our application&#x27;s session independently and harden our integration against common security threats.</p></div><div class="scene" data-scene-for="s4-block-1"><div data-el-id="s4-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Local Session</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"></path>
+    </marker>
+    <marker id="arrow-primary" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="40" y="90" width="180" height="340" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="130" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">IdP</text>
+  <path d="M 90 205 v 45 a 40 14 0 0 0 80 0 v -45" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></path>
+  <ellipse cx="130" cy="205" rx="40" ry="14" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></ellipse>
+  <circle cx="130" cy="305" r="22" fill="#10b981"></circle>
+  <path d="M 120 305 l 7 7 l 14 -14" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="130" y="358" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Complete</text>
+
+  
+  <line x1="220" y1="260" x2="274" y2="260" stroke="#94a3b8" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="280" y="90" width="180" height="340" rx="18" fill="#ffffff" stroke="#64748b" stroke-width="2"></rect>
+  <text x="370" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">App Backend</text>
+  <path d="M 330 195 h 55 l 25 25 v 70 h -80 z" fill="#f1f5f9" stroke="#64748b" stroke-width="2"></path>
+  <path d="M 385 195 v 25 h 25" fill="none" stroke="#64748b" stroke-width="2"></path>
+  <line x1="345" y1="245" x2="385" y2="245" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"></line>
+  <line x1="345" y1="265" x2="395" y2="265" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"></line>
+
+  
+  <line x1="460" y1="260" x2="504" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></line>
+
+  
+  <rect x="510" y="90" width="270" height="340" rx="18" fill="#f8fafc" stroke="#10b981" stroke-width="2"></rect>
+  <text x="645" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Local Session</text>
+
+  
+  <rect x="535" y="175" width="220" height="54" rx="27" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="645" y="209" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#065f46">Access Token</text>
+
+  
+  <rect x="535" y="250" width="220" height="54" rx="27" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="645" y="284" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#312e81">Refresh Token</text>
+
+  
+  <rect x="535" y="325" width="220" height="50" rx="25" fill="#ffffff" stroke="#4f46e5" stroke-width="2" stroke-dasharray="10 6">
+    <animate attributeName="stroke-dashoffset" from="32" to="0" dur="2.5s" repeatCount="indefinite"></animate>
+  </rect>
+  <text x="645" y="357" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Token Rotation</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s4-block-2" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Validate at the perimeter; avoid storing external tokens.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="70" width="310" height="370" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="205" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Local Storage</text>
+
+  <rect x="95" y="170" width="220" height="150" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  
+  <rect x="115" y="220" width="180" height="46" rx="23" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="205" y="250" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">IdP Token</text>
+  <line x1="125" y1="225" x2="285" y2="261" stroke="#ef4444" stroke-width="3" stroke-linecap="round"></line>
+
+  <text x="205" y="375" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ef4444">Avoid Storing</text>
+
+  
+  <rect x="400" y="70" width="370" height="370" rx="16" fill="#f8fafc" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="585" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">API Gateway</text>
+
+  
+  <rect x="430" y="170" width="135" height="160" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="497" y="235" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Perimeter</text>
+  <text x="497" y="265" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Validation</text>
+
+  
+  <path d="M 565 210 L 625 210" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></path>
+  <path d="M 565 290 L 625 290" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></path>
+
+  
+  <rect x="635" y="180" width="115" height="60" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="692" y="217" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Service A</text>
+
+  <rect x="635" y="260" width="115" height="60" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="692" y="297" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Service B</text>
+
+  <text x="585" y="375" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Centralized Check</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-3"><div class="max-w-4xl mx-auto w-full"><div data-el-id="s4-block-3" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">For security hardening, implement PKCE, or Proof Key for Code Exchange, which adds a cryptographic secret to prevent code injection.</p></div></div></div></div><div class="scene" data-scene-for="s4-block-4"><div class="max-w-4xl mx-auto w-full"><div data-el-id="s4-block-4" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">So, to recap: OAuth 2.0 handles authorization, OpenID Connect handles authentication, and the Authorization Code Flow is your secure backend</p></div></div></div></div><div class="scene-footer"><span>4 &nbsp;session management and security</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">Delegating Identity to External Providers</p><p class="text-slate-500 text-sm mt-0.5">Now that we&#x27;ve protected our internal token lifecycle against replay attacks using refresh token rotation, we can move</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">The Authorization Code Flow</p><p class="text-slate-500 text-sm mt-0.5">So, OpenID Connect proves who the user is.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Python Integration and User Mapping</p><p class="text-slate-500 text-sm mt-0.5">Integrating this flow in Python is made much simpler by libraries like Authlib.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span><div><p class="font-bold text-slate-900 leading-tight">Session Management and Security</p><p class="text-slate-500 text-sm mt-0.5">Following authentication, we need to manage our application&#x27;s session independently and harden our integration against common security threats.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

@@ -1,0 +1,101 @@
+{
+  "skill_id": "6a4408b1e15b997d713c4b8d",
+  "skill_name": "Reports Service",
+  "topic_id": "6a478e5a5c384d0fc60edd79",
+  "topic_name": "Reports Service Overview",
+  "topic_track": "project",
+  "content_version": 9,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a478e5a5c384d0fc60edd79/g7/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a478e5a5c384d0fc60edd79/g9/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 9,
+  "voiceover_data": {
+    "topic_name": "Reports Service Overview",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-purpose-of-the-reports-service",
+        "section_number": 1,
+        "title": "The Purpose of the Reports Service",
+        "narration": "Now that we have seen how plans, memberships, and class schedules handle daily gym transactions, we need a way to look at the business as a whole without slowing down those live bookings. The Reports Service is a dedicated service that gathers and summarizes data for dashboards. It only reads data; it never stores or modifies any records itself. Running this heavy analytical work in its own service means a slow report ties up the reporting workers, not the workers that handle member check-ins and bookings. We isolate reporting because summaries often combine data from many parts of the database, such as payments, memberships, and attendance. Handling these large queries in their own service keeps that work out of the services that manage profiles and payments. One caveat: every G M S service shares one MySQL database, so a heavy report still adds load to that database. The key idea is that a dedicated service isolates the application work of reporting, even though the data itself stays in one place.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we have seen how plans, memberships, and class schedules handle daily gym transactions, we need a way to look at the business as a whole without slowing down those live bookings."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "The Reports Service is a dedicated service that gathers and summarizes data for dashboards. It only reads data; it never stores or modifies any records itself. Running this heavy analytical work in its own service means a slow report ties up the reporting workers, not the workers that handle member check-ins and bookings."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "We isolate reporting because summaries often combine data from many parts of the database, such as payments, memberships, and attendance. Handling these large queries in their own service keeps that work out of the services that manage profiles and payments. One caveat: every G M S service shares one MySQL database, so a heavy report still adds load to that database. The key idea is that a dedicated service isolates the application work of reporting, even though the data itself stays in one place."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-core-reporting-functions",
+        "section_number": 2,
+        "title": "Core Reporting Functions",
+        "narration": "Beyond keeping performance stable, this dedicated service provides the logic needed to turn raw data into actionable business insights. The service handles three families of reports. Sales reports cover new contacts and new membership sales. Operations reports track attendance, at-risk members, member churn, and challenge conversions. Financial reports summarize revenue, such as month-to-date, last month, and forecasted revenue, along with outstanding balances and future contract value. Every report is filtered to one location and a date range, and the results come back in the same status, message, and data envelope that every G M S service uses. The key idea is that the service transforms raw transactional data into meaningful business oversight for each gym.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Beyond keeping performance stable, this dedicated service provides the logic needed to turn raw data into actionable business insights."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "The service handles three families of reports. Sales reports cover new contacts and new membership sales. Operations reports track attendance, at-risk members, member churn, and challenge conversions. Financial reports summarize revenue, such as month-to-date, last month, and forecasted revenue, along with outstanding balances and future contract value."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Every report is filtered to one location and a date range, and the results come back in the same status, message, and data envelope that every G M S service uses. The key idea is that the service transforms raw transactional data into meaningful business oversight for each gym."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-service-boundaries-and-design",
+        "section_number": 3,
+        "title": "Service Boundaries and Design",
+        "narration": "Understanding this service boundary clarifies what it manages and where its responsibilities end. The boundary is simple. The Reports Service owns reading and summarizing; it does not create members, sell plans, or take payments. Every request names one location, and the caller must have access to that location before any report runs. Some reports, such as revenue and churn, are limited further to Owners and Managers. The key idea is that clear service boundaries prevent scope creep and keep the system modular.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Understanding this service boundary clarifies what it manages and where its responsibilities end."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The boundary is simple. The Reports Service owns reading and summarizing; it does not create members, sell plans, or take payments. Every request names one location, and the caller must have access to that location before any report runs. Some reports, such as revenue and churn, are limited further to Owners and Managers. The key idea is that clear service boundaries prevent scope creep and keep the system modular."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-how-the-service-is-organized",
+        "section_number": 4,
+        "title": "How the Service is Organized",
+        "narration": "Finally, let us look at the structure of this service and how it relies on the shared foundations of the G M S system. The service itself is small. A thin endpoint receives the request, a request schema validates its inputs, and a service layer picks the right report. The heavy sequel queries live in the shared library that all G M S services use, along with the shared access check and the standard response envelope. The key idea is that the service structure is designed to leverage our existing shared libraries for consistent and reliable operation.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let us look at the structure of this service and how it relies on the shared foundations of the G M S system."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "The service itself is small. A thin endpoint receives the request, a request schema validates its inputs, and a service layer picks the right report. The heavy sequel queries live in the shared library that all G M S services use, along with the shared access check and the standard response envelope. The key idea is that the service structure is designed to leverage our existing shared libraries for consistent and reliable operation."
+          }
+        ]
+      }
+    ]
+  }
+}

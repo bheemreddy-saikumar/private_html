@@ -1,0 +1,432 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Designing Asynchronous Systems</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Designing Asynchronous Systems</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Designing Asynchronous Systems</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Synchronous Bottleneck</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Synchronous requests buckle when forced to wait.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="150" width="180" height="220" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="140" y="235" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Client</text>
+  <text x="140" y="285" text-anchor="middle" font-family="monospace" font-size="20" fill="#64748b">POST /billing</text>
+
+  
+  <line x1="230" y1="260" x2="272" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-blue)"></line>
+
+  
+  <rect x="280" y="150" width="250" height="220" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="405" y="200" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Web API</text>
+  <rect x="305" y="230" width="200" height="56" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="405" y="266" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">5,000 Charges</text>
+  <text x="405" y="330" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Locked Thread</text>
+
+  
+  <line x1="530" y1="260" x2="572" y2="260" stroke="#ef4444" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-red)"></line>
+
+  
+  <rect x="580" y="150" width="190" height="220" rx="16" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  
+  <circle cx="675" cy="220" r="32" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.4">
+    <animate attributeName="r" values="26;36;26" dur="2s" repeatCount="indefinite"></animate>
+    <animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite"></animate>
+  </circle>
+
+  <polygon points="675,196 699,220 675,244 651,220" fill="#fee2e2" stroke="#ef4444" stroke-width="2.5"></polygon>
+  <line x1="660" y1="205" x2="690" y2="235" stroke="#ef4444" stroke-width="2.5"></line>
+
+  <text x="675" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ef4444">504 Timeout</text>
+  <text x="675" y="330" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Lock Failed</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Synchronous Bottleneck</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Caller blocked until all work completes</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Cascading timeouts and locked databases</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6ac1edf8a339ff723513e9a2/g9/images/s1-block-1-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-2" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Reply immediately, process reliably in the background.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6ac1edf8a339ff723513e9a2/g9/images/s1-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;the synchronous bottleneck</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Async Triangle</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Decouple request triggers from background execution.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="s2t-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path></marker>
+  </defs>
+  <line x1="370" y1="160" x2="236" y2="328" stroke="#4f46e5" stroke-width="3" marker-end="url(#s2t-arrow)"></line>
+  <line x1="290" y1="405" x2="553" y2="405" stroke="#10b981" stroke-width="3" marker-end="url(#s2t-arrow)"></line>
+  <line x1="630" y1="330" x2="630" y2="166" stroke="#10b981" stroke-width="3" marker-end="url(#s2t-arrow)"></line>
+  <line x1="510" y1="100" x2="552" y2="100" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 6" marker-end="url(#s2t-arrow)"></line>
+  <path d="M 560 60 V 140 A 70 16 0 0 0 700 140 V 60" fill="#f8fafc" stroke="#64748b" stroke-width="3"></path>
+  <ellipse cx="630" cy="60" rx="70" ry="16" fill="#e2e8f0" stroke="#64748b" stroke-width="3"></ellipse>
+  <text x="630" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Database</text>
+  <circle r="8" fill="#4f46e5"><animateMotion path="M 370 160 L 236 328" dur="2s" repeatCount="indefinite"></animateMotion></circle>
+  <rect x="310" y="40" width="200" height="120" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="410" y="95" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Producer</text>
+  <text x="410" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#4f46e5">Web API</text>
+  <rect x="90" y="340" width="200" height="130" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="3"></rect>
+  <text x="190" y="398" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Broker</text>
+  <text x="190" y="433" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#d97706">Redis Queue</text>
+  <polygon points="630,330 695,367.5 695,442.5 630,480 565,442.5 565,367.5" fill="#ffffff" stroke="#10b981" stroke-width="3"></polygon>
+  <text x="630" y="402" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Worker</text>
+  <text x="630" y="432" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="500" fill="#059669">Background</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">The Async Triangle</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="s2b-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"></path></marker>
+    <marker id="s2b-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker>
+    <marker id="s2b-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path></marker>
+  </defs>
+  <rect x="50" y="60" width="150" height="70" rx="35" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"></rect>
+  <text x="125" y="103" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Client</text>
+  <line x1="200" y1="80" x2="302" y2="80" stroke="#94a3b8" stroke-width="3" marker-end="url(#s2b-gray)"></line>
+  <text x="251" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#64748b">POST</text>
+  <line x1="310" y1="112" x2="208" y2="112" stroke="#10b981" stroke-width="3" marker-end="url(#s2b-green)"></line>
+  <text x="255" y="140" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#10b981">202 Accepted</text>
+
+  <line x1="360" y1="150" x2="236" y2="280" stroke="#4f46e5" stroke-width="3" marker-end="url(#s2b-indigo)"></line>
+  <text x="285" y="205" text-anchor="end" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#4f46e5">enqueue</text>
+  <circle r="7" fill="#4f46e5"><animateMotion path="M 360 150 L 236 280" dur="2.4s" repeatCount="indefinite"></animateMotion></circle>
+  <line x1="300" y1="365" x2="510" y2="365" stroke="#10b981" stroke-width="3" marker-end="url(#s2b-green)"></line>
+  <text x="405" y="352" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#10b981">pull</text>
+  <circle r="7" fill="#10b981"><animateMotion path="M 300 365 L 510 365" dur="2.4s" repeatCount="indefinite"></animateMotion></circle>
+  <line x1="680" y1="290" x2="680" y2="164" stroke="#10b981" stroke-width="3" marker-end="url(#s2b-green)"></line>
+  <text x="692" y="232" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#10b981">write result</text>
+  <line x1="510" y1="95" x2="602" y2="95" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 6" marker-end="url(#s2b-gray)"></line>
+  <text x="556" y="82" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#64748b">poll status</text>
+  <path d="M 610 55 V 135 A 70 16 0 0 0 750 135 V 55" fill="#f8fafc" stroke="#64748b" stroke-width="3"></path>
+  <ellipse cx="680" cy="55" rx="70" ry="16" fill="#e2e8f0" stroke="#64748b" stroke-width="3"></ellipse>
+  <text x="680" y="107" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Database</text>
+
+  <rect x="310" y="40" width="200" height="110" rx="18" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <rect x="345" y="24" width="130" height="32" rx="16" fill="#4f46e5"></rect>
+  <text x="410" y="46" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#ffffff">PRODUCER</text>
+  <text x="410" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Web API</text>
+
+  <rect x="60" y="290" width="240" height="150" rx="18" fill="#ffffff" stroke="#f59e0b" stroke-width="3"></rect>
+  <rect x="115" y="274" width="130" height="32" rx="16" fill="#f59e0b"></rect>
+  <text x="180" y="296" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#ffffff">BROKER</text>
+  <text x="180" y="340" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Redis Queue</text>
+  <rect x="85" y="370" width="60" height="34" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="155" y="370" width="60" height="34" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="225" y="370" width="60" height="34" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+
+  <rect x="520" y="290" width="240" height="150" rx="18" fill="#ffffff" stroke="#10b981" stroke-width="3"></rect>
+  <rect x="575" y="274" width="130" height="32" rx="16" fill="#10b981"></rect>
+  <text x="640" y="296" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#ffffff">WORKER</text>
+  <text x="640" y="340" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Background</text>
+  <polygon points="640,360 666,375 666,405 640,420 614,405 614,375" fill="#d1fae5" stroke="#10b981" stroke-width="3"></polygon>
+
+  <text x="410" y="495" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Fire-and-forget decouples client from execution</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Architectural Separation</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-text"><span class="cl" data-line="1">PRODUCER                 BROKER (Redis)            WORKER (batch-worker)</span>
+<span class="cl" data-line="2"> (Members Service)           [Port 6379]               (Celery Process)</span>
+<span class="cl" data-line="3">     │                       │                         │</span>
+<span class="cl" data-line="4">     │── "process_no_show,   │                         │</span>
+<span class="cl" data-line="5">     │    args: [user_123]" ▶ [msg][msg][msg]          │</span>
+<span class="cl" data-line="6">     │                       │            └───────────▶│ Pulls task, </span>
+<span class="cl" data-line="7">     │◀── Returns 202        │                         │ calls Payrix API,</span>
+<span class="cl" data-line="8">     │    "Accepted"         │                         │ logs result.</span></code></pre></div></div></div></div><div class="scene-footer"><span>2 &nbsp;the async triangle</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Managing Trade-offs</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Asynchronous scale requires managing state delay and duplicate execution risks.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <rect x="55" y="50" width="340" height="420" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="225" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Eventual Consistency</text>
+  
+  <line x1="115" y1="230" x2="335" y2="230" stroke="#cbd5e1" stroke-width="4" stroke-dasharray="8 6"></line>
+  
+  <circle cx="130" cy="230" r="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></circle>
+  <circle cx="130" cy="230" r="8" fill="#4f46e5"></circle>
+  <text x="130" y="285" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">0s</text>
+
+  <circle cx="320" cy="230" r="24" fill="#f0fdf4" stroke="#10b981" stroke-width="3"></circle>
+  <path d="M312 230 l6 6 l10 -12" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="320" y="285" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">+3s</text>
+
+  <circle cx="130" cy="230" r="10" fill="#4f46e5">
+    <animate attributeName="cx" values="130;320;130" dur="3s" repeatCount="indefinite"></animate>
+  </circle>
+
+  <rect x="145" y="380" width="160" height="42" rx="21" fill="#f1f5f9"></rect>
+  <text x="225" y="407" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">sync lag</text>
+
+  <rect x="425" y="50" width="340" height="420" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="595" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">At-Least-Once Delivery</text>
+
+  <rect x="480" y="180" width="180" height="52" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="570" y="213" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">charge #104</text>
+
+  <rect x="510" y="248" width="180" height="52" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 4"></rect>
+  <text x="600" y="281" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">charge #104</text>
+
+  <circle cx="690" cy="248" r="16" fill="#ef4444"></circle>
+  <text x="690" y="255" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">!</text>
+
+  <rect x="495" y="380" width="200" height="42" rx="21" fill="#fef2f2"></rect>
+  <text x="595" y="407" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">duplicate risk</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Eventual consistency</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="110" width="270" height="300" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="90" y="165" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Initial Response</text>
+  <rect x="90" y="205" width="160" height="50" rx="25" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="170" y="238" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#b45309">Queued</text>
+  <text x="90" y="340" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">t = 0s</text>
+
+  
+  <text x="410" y="165" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Worker delay</text>
+  <line x1="330" y1="230" x2="368" y2="230" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6 6"></line>
+
+  
+  <polygon points="452,230 431,266 389,266 368,230 389,194 431,194" fill="#ecfdf5" stroke="#10b981" stroke-width="3"></polygon>
+  
+  <rect x="388" y="219" width="44" height="22" rx="6" fill="#c7d2fe" stroke="#4f46e5" stroke-width="1.5"></rect>
+
+  
+  <line x1="452" y1="230" x2="482" y2="230" stroke="#10b981" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="490" y="110" width="270" height="300" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="520" y="165" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">After Worker</text>
+  <rect x="520" y="205" width="160" height="50" rx="25" fill="#dcfce7" stroke="#10b981" stroke-width="2"></rect>
+  <text x="600" y="238" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Paid</text>
+  <text x="520" y="340" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">t = 3s</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Idempotency Guard</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#94a3b8"></path>
+    </marker>
+    <marker id="arrow-good" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+    <marker id="arrow-bad" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  <rect x="60" y="40" width="330" height="440" rx="20" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="225" y="95" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">1st Attempt</text>
+
+  <rect x="95" y="130" width="260" height="56" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="225" y="165" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#4f46e5">credit_noshows</text>
+
+  <line x1="225" y1="186" x2="225" y2="224" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  <rect x="95" y="230" width="260" height="64" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="225" y="270" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Flag: False</text>
+
+  <line x1="225" y1="294" x2="225" y2="332" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow-good)"></line>
+
+  <rect x="95" y="340" width="260" height="80" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2.5"></rect>
+  <text x="225" y="388" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#059669">Process credit</text>
+
+  <rect x="430" y="40" width="330" height="440" rx="20" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="595" y="95" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">Retry</text>
+
+  <rect x="465" y="130" width="260" height="56" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="595" y="165" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#4f46e5">credit_noshows</text>
+
+  <line x1="595" y1="186" x2="595" y2="224" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  <rect x="465" y="230" width="260" height="64" rx="12" fill="#fef2f2" stroke="#fca5a5" stroke-width="2"></rect>
+  <text x="595" y="270" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#dc2626">Flag: True</text>
+
+  <line x1="595" y1="294" x2="595" y2="332" stroke="#ef4444" stroke-width="2.5" marker-end="url(#arrow-bad)"></line>
+
+  <rect x="465" y="340" width="260" height="80" rx="14" fill="#fef2f2" stroke="#ef4444" stroke-width="2.5"></rect>
+  <text x="595" y="388" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#dc2626">Skip</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;managing trade-offs</span><span>concept brief</span></div></div></section><section id="section-4" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s4-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 4</p><h2 data-el-id="s4-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Preventing Silent Failure</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Workers will crash: keep tasks recoverable in the queue.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="110" width="260" height="300" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="60" y="110" width="260" height="50" rx="16" fill="#fef3c7"></rect>
+  <rect x="60" y="144" width="260" height="16" fill="#fef3c7"></rect>
+  <text x="190" y="142" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Redis Queue</text>
+
+  
+  <rect x="85" y="180" width="210" height="70" rx="12" fill="#c7d2fe" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="190" y="212" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Billing Task</text>
+  <text x="190" y="236" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#4f46e5">preserved</text>
+
+  <rect x="85" y="266" width="210" height="50" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="190" y="298" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Credit Task</text>
+
+  
+  <rect x="490" y="90" width="270" height="140" rx="16" fill="#ffffff" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="520" y="136" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ef4444">Worker 1</text>
+  <line x1="520" y1="165" x2="680" y2="165" stroke="#ef4444" stroke-width="3"></line>
+  <text x="520" y="200" font-family="Inter, sans-serif" font-size="20" fill="#ef4444">crashed</text>
+
+  
+  <path d="M 320 215 L 410 215 L 410 160 L 480 160" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 6"></path>
+  <circle cx="410" cy="187" r="14" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></circle>
+  <line x1="403" y1="180" x2="417" y2="194" stroke="#ef4444" stroke-width="2"></line>
+  <line x1="417" y1="180" x2="403" y2="194" stroke="#ef4444" stroke-width="2"></line>
+
+  
+  <rect x="490" y="280" width="270" height="140" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect>
+  <text x="520" y="326" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#10b981">Worker 2</text>
+  <text x="520" y="375" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">picks up task</text>
+
+  
+  <path d="M 320 230 L 410 230 L 410 350 L 478 350" fill="none" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"></path>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s4-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Late Acknowledgement</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Confirms only after task finishes</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#64748b"></path>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="110" width="190" height="300" rx="16" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="155" y="160" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Broker</text>
+
+  
+  <rect x="85" y="195" width="140" height="42" rx="8" fill="#c7d2fe" stroke="#4f46e5" stroke-width="1.5"></rect>
+  <rect x="85" y="255" width="140" height="42" rx="8" fill="#c7d2fe" stroke="#4f46e5" stroke-width="1.5"></rect>
+  <rect x="85" y="315" width="140" height="42" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+
+  
+  <rect x="570" y="110" width="190" height="300" rx="16" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="665" y="160" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Worker</text>
+
+  
+  <rect x="590" y="200" width="150" height="52" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect>
+  <text x="665" y="233" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#047857">Execute</text>
+
+  
+  <circle cx="665" cy="320" r="32" fill="#10b981"></circle>
+  <path d="M 650 320 L 660 330 L 682 310" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  
+  <path d="M 250 216 L 560 216" stroke="#64748b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-gray)"></path>
+  <rect x="350" y="194" width="120" height="38" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="410" y="220" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Pull task</text>
+
+  
+  <path d="M 570 340 L 260 340" stroke="#10b981" stroke-width="3.5" marker-end="url(#arrow-green)"></path>
+  <rect x="340" y="318" width="140" height="44" rx="22" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="410" y="347" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#047857">Late ACK</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-2"><div data-el-id="s4-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Resilient Task Recovery</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#cbd5e1"></path></marker></defs><rect x="60" y="110" width="260" height="300" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect><rect x="80" y="130" width="180" height="40" rx="8" fill="#fef3c7"></rect><text x="170" y="157" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">Broker Queue</text><rect x="85" y="235" width="210" height="60" rx="12" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"></rect><text x="190" y="272" text-anchor="middle" font-family="Inter, sans-serif" font-size="21" font-weight="700" fill="#4338ca">Billing Task</text><path d="M 320 240 C 380 240 390 155 452 155" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-muted)"></path><circle cx="386" cy="197" r="16" fill="#ffffff" stroke="#ef4444" stroke-width="2"></circle><line x1="378" y1="189" x2="394" y2="205" stroke="#ef4444" stroke-width="2.5"></line><line x1="394" y1="189" x2="378" y2="205" stroke="#ef4444" stroke-width="2.5"></line><rect x="460" y="90" width="300" height="130" rx="16" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect><circle cx="505" cy="155" r="20" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></circle><line x1="497" y1="147" x2="513" y2="163" stroke="#ef4444" stroke-width="2.5"></line><line x1="513" y1="147" x2="497" y2="163" stroke="#ef4444" stroke-width="2.5"></line><text x="545" y="145" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Worker 1</text><text x="545" y="180" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Crashed</text><path d="M 320 280 C 380 280 390 365 452 365" fill="none" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"></path><circle r="6" fill="#10b981"><animateMotion path="M 320 280 C 380 280 390 365 452 365" dur="2.2s" repeatCount="indefinite"></animateMotion></circle><rect x="460" y="300" width="300" height="130" rx="16" fill="#f0fdf4" stroke="#10b981" stroke-width="2"></rect><circle cx="505" cy="365" r="20" fill="#d1fae5" stroke="#10b981" stroke-width="2"></circle><polyline points="497,365 503,371 514,358" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round"></polyline><text x="545" y="355" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Worker 2</text><text x="545" y="390" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Claims task</text></svg></div></div></div></div></div><div class="scene-footer"><span>4 &nbsp;preventing silent failure</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">The Synchronous Bottleneck</p><p class="text-slate-500 text-sm mt-0.5">Synchronous requests buckle when forced to wait.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">The Async Triangle</p><p class="text-slate-500 text-sm mt-0.5">Decouple request triggers from background execution.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Managing Trade-offs</p><p class="text-slate-500 text-sm mt-0.5">Asynchronous scale requires managing state delay and duplicate execution risks.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span><div><p class="font-bold text-slate-900 leading-tight">Preventing Silent Failure</p><p class="text-slate-500 text-sm mt-0.5">Workers will crash: keep tasks recoverable in the queue.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

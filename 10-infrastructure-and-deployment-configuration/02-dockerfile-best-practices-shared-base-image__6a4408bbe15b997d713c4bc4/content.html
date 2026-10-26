@@ -1,0 +1,277 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dockerfile Best Practices: Shared Base Image</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Dockerfile Best Practices: Shared Base Image</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Dockerfile Best Practices: Shared Base Image</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Conceptual Model: gms-base</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">One base image drives consistent builds across all seven services.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/grounding/6a3943cd66b0c98dba6ee5d1/topic_assets/6a4408bbe15b997d713c4bc4/images/6abdc47e416db7c9e090f572/6abdc47e416db7c9e090f573.png" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Golden Base Image</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path></marker></defs><text x="410" y="52" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">7 GMS Microservices</text><rect x="55" y="85" width="210" height="110" rx="10" fill="#ffffff" stroke="#c7d2fe" stroke-width="2.5"></rect><rect x="67" y="97" width="186" height="38" rx="6" fill="#eef2ff"></rect><text x="160" y="123" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">auth-admin</text><text x="160" y="166" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">service code</text><rect x="305" y="85" width="210" height="110" rx="10" fill="#ffffff" stroke="#c7d2fe" stroke-width="2.5"></rect><rect x="317" y="97" width="186" height="38" rx="6" fill="#eef2ff"></rect><text x="410" y="123" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">members</text><text x="410" y="166" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">service code</text><rect x="555" y="85" width="210" height="110" rx="10" fill="#ffffff" stroke="#c7d2fe" stroke-width="2.5"></rect><rect x="567" y="97" width="186" height="38" rx="6" fill="#eef2ff"></rect><text x="660" y="123" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">workers (+4)</text><text x="660" y="166" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">service code</text><line x1="160" y1="300" x2="160" y2="204" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"><animate attributeName="stroke-dashoffset" from="14" to="0" dur="2s" repeatCount="indefinite"></animate></line><line x1="410" y1="300" x2="410" y2="204" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"><animate attributeName="stroke-dashoffset" from="14" to="0" dur="2s" repeatCount="indefinite"></animate></line><line x1="660" y1="300" x2="660" y2="204" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"><animate attributeName="stroke-dashoffset" from="14" to="0" dur="2s" repeatCount="indefinite"></animate></line><rect x="340" y="235" width="140" height="34" rx="17" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="410" y="259" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">FROM base</text><rect x="55" y="300" width="710" height="175" rx="14" fill="#4f46e5"></rect><text x="85" y="348" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#ffffff">gms-base</text><rect x="85" y="375" width="195" height="70" rx="8" fill="#3730a3"></rect><text x="182" y="418" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">Python 3.11</text><rect x="300" y="375" width="200" height="70" rx="8" fill="#3730a3"></rect><text x="400" y="418" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">System Libs</text><rect x="520" y="375" width="215" height="70" rx="35" fill="#f59e0b"></rect><text x="627" y="418" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">gms-shared</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Docker Layer Caching</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-up" viewBox="0 0 10 10" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 6 L 5 0 L 10 6 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="110" y="70" width="270" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="245" y="132" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">auth-service</text>
+
+  
+  <rect x="440" y="70" width="270" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="575" y="132" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">members-service</text>
+
+  
+  <line x1="245" y1="270" x2="245" y2="190" stroke="#10b981" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-up)"></line>
+  <line x1="575" y1="270" x2="575" y2="190" stroke="#10b981" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-up)"></line>
+
+  
+  <rect x="110" y="270" width="600" height="170" rx="16" fill="#f0fdf4" stroke="#10b981" stroke-width="3"></rect>
+
+  
+  <rect x="150" y="308" width="124" height="40" rx="20" fill="#10b981"></rect>
+  <text x="212" y="335" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">CACHED</text>
+
+  
+  <text x="296" y="337" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">gms-base</text>
+
+  
+  <line x1="150" y1="372" x2="670" y2="372" stroke="#bbf7d0" stroke-width="1.5"></line>
+
+  
+  <text x="410" y="414" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#166534">0s rebuild in CI/CD</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;the conceptual model: gms-base</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Implementation and Integration</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Build shared logic into the base; microservices stay thin and consistent.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="80" y="90" width="200" height="84" rx="8" fill="#eef2ff" stroke="#818cf8" stroke-width="2"></rect>
+  <text x="180" y="141" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">auth-admin</text>
+
+  <rect x="310" y="90" width="200" height="84" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="410" y="141" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">billing-service</text>
+
+  <rect x="540" y="90" width="200" height="84" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="640" y="141" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">fleet-service</text>
+
+  
+  <line x1="180" y1="288" x2="180" y2="186" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+  <line x1="410" y1="288" x2="410" y2="186" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+  <line x1="640" y1="288" x2="640" y2="186" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="290" y="215" width="240" height="42" rx="8" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="410" y="242" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#4f46e5">FROM gms-base</text>
+
+  
+  <rect x="80" y="290" width="660" height="150" rx="12" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="115" y="338" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">gms-base</text>
+
+  
+  <rect x="115" y="362" width="240" height="52" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="235" y="394" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">system runtime</text>
+
+  <rect x="380" y="362" width="330" height="52" rx="26" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="545" y="394" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">gms-shared core</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">gms-base Dockerfile</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-dockerfile"><span class="cl" data-line="1"># gms-base.Dockerfile</span>
+<span class="cl" data-line="2">FROM python:3.11-slim-bullseye</span>
+<span class="cl" data-line="3"></span>
+<span class="cl" data-line="4">WORKDIR /app</span>
+<span class="cl" data-line="5"></span>
+<span class="cl" data-line="6"># Install system-level dependencies common to all services</span>
+<span class="cl" data-line="7">RUN apt-get update &amp;&amp; apt-get install -y \</span>
+<span class="cl" data-line="8">    build-essential \</span>
+<span class="cl" data-line="9">    default-libmysqlclient-dev \</span>
+<span class="cl" data-line="10">    pkg-config \</span>
+<span class="cl" data-line="11">    &amp;&amp; rm -rf /var/lib/apt/lists/*</span>
+<span class="cl" data-line="12"></span>
+<span class="cl" data-line="13"># Install shared internal library (gmsshared)</span>
+<span class="cl" data-line="14">COPY ./gmsshared /app/gmsshared</span>
+<span class="cl" data-line="15">RUN pip install --no-cache-dir ./gmsshared</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Thin Service Dockerfile</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-dockerfile"><span class="cl" data-line="1"># auth-admin-service/Dockerfile</span>
+<span class="cl" data-line="2">FROM gms-base:latest</span>
+<span class="cl" data-line="3"></span>
+<span class="cl" data-line="4"># Copy only service-specific requirements</span>
+<span class="cl" data-line="5">COPY ./auth-admin-service/requirements.txt .</span>
+<span class="cl" data-line="6">RUN pip install --no-cache-dir -r requirements.txt</span>
+<span class="cl" data-line="7"></span>
+<span class="cl" data-line="8">COPY ./auth-admin-service /app/auth-admin-service</span>
+<span class="cl" data-line="9"></span>
+<span class="cl" data-line="10"># Execution context</span>
+<span class="cl" data-line="11">ENV PYTHONPATH=/app</span>
+<span class="cl" data-line="12">CMD ["uvicorn", "auth-admin-service.src.main:app", "--host", "0.0.0.0", "--port", "8000"]</span></code></pre></div></div></div></div><div class="scene-footer"><span>2 &nbsp;implementation and integration</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Trade-offs and Versioning</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Central infrastructure shares both the benefits and the blast radius.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="310" y="36" width="200" height="54" rx="10" fill="#4f46e5"></rect>
+  <text x="410" y="71" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">gms-base</text>
+
+  
+  <path d="M 360 90 C 360 130, 230 130, 230 166" fill="none" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"></path>
+  <path d="M 460 90 C 460 130, 590 130, 590 166" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-red)"></path>
+
+  
+  <rect x="70" y="175" width="320" height="300" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect>
+  <rect x="130" y="198" width="200" height="40" rx="20" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></rect>
+  <text x="230" y="225" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#065f46">Atomic Fixes</text>
+
+  
+  <rect x="105" y="260" width="250" height="36" rx="6" fill="#f8fafc" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <circle cx="127" cy="278" r="7" fill="#10b981"></circle>
+  <line x1="147" y1="278" x2="330" y2="278" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"></line>
+
+  <rect x="105" y="310" width="250" height="36" rx="6" fill="#f8fafc" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <circle cx="127" cy="328" r="7" fill="#10b981"></circle>
+  <line x1="147" y1="328" x2="330" y2="328" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"></line>
+
+  <rect x="105" y="360" width="250" height="36" rx="6" fill="#f8fafc" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <circle cx="127" cy="378" r="7" fill="#10b981"></circle>
+  <line x1="147" y1="378" x2="330" y2="378" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"></line>
+
+  <text x="230" y="445" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#10b981">1 patch updates all</text>
+
+  
+  <rect x="430" y="175" width="320" height="300" rx="16" fill="#ffffff" stroke="#ef4444" stroke-width="2"></rect>
+  <rect x="490" y="198" width="200" height="40" rx="20" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"></rect>
+  <text x="590" y="225" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#991b1b">Coupled Risk</text>
+
+  
+  <rect x="465" y="260" width="250" height="36" rx="6" fill="#f8fafc" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <circle cx="487" cy="278" r="7" fill="#ef4444"></circle>
+  <line x1="507" y1="278" x2="690" y2="278" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"></line>
+
+  <rect x="465" y="310" width="250" height="36" rx="6" fill="#f8fafc" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <circle cx="487" cy="328" r="7" fill="#ef4444"></circle>
+  <line x1="507" y1="328" x2="690" y2="328" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"></line>
+
+  <rect x="465" y="360" width="250" height="36" rx="6" fill="#f8fafc" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <circle cx="487" cy="378" r="7" fill="#ef4444"></circle>
+  <line x1="507" y1="378" x2="690" y2="378" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"></line>
+
+  <text x="590" y="445" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#ef4444">1 break affects all</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Base Image Pinning</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-bad" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path></marker><marker id="arrow-good" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path></marker></defs><rect x="60" y="60" width="320" height="400" rx="16" fill="#f8fafc" stroke="#fca5a5" stroke-width="2"></rect><rect x="90" y="95" width="260" height="52" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect><text x="220" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#b91c1c">gms-base:latest</text><circle cx="220" cy="205" r="32" fill="#ffffff" stroke="#ef4444" stroke-width="2"></circle><line x1="206" y1="191" x2="234" y2="219" stroke="#ef4444" stroke-width="3.5" stroke-linecap="round"></line><line x1="206" y1="219" x2="234" y2="191" stroke="#ef4444" stroke-width="3.5" stroke-linecap="round"></line><line x1="220" y1="247" x2="220" y2="307" stroke="#ef4444" stroke-width="2.5" marker-end="url(#arrow-bad)" stroke-dasharray="6 4"></line><rect x="95" y="315" width="250" height="54" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="220" y="349" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#475569">GMS Services</text><rect x="95" y="390" width="250" height="42" rx="21" fill="#fee2e2"></rect><text x="220" y="417" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">Breaking Risk</text><rect x="440" y="60" width="320" height="400" rx="16" fill="#f8fafc" stroke="#86efac" stroke-width="2"></rect><rect x="470" y="95" width="260" height="52" rx="10" fill="#d1fae5" stroke="#10b981" stroke-width="2"></rect><text x="600" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">gms-base:1.2.4</text><circle cx="600" cy="205" r="32" fill="#ffffff" stroke="#10b981" stroke-width="2"></circle><path d="M587 205 L596 214 L614 196" fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><line x1="600" y1="247" x2="600" y2="307" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow-good)"></line><rect x="475" y="315" width="250" height="54" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="600" y="349" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#475569">GMS Services</text><rect x="475" y="390" width="250" height="42" rx="21" fill="#d1fae5"></rect><text x="600" y="417" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#047857">Audit-Ready</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Pinned Base Versioning</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arr-muted" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"></path></marker><marker id="arr-primary" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path></marker></defs><rect x="70" y="80" width="320" height="120" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3"></rect><rect x="110" y="122" width="240" height="44" rx="22" fill="#e2e8f0"></rect><text x="230" y="151" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#475569">gms-base:1.2.3</text><rect x="430" y="80" width="320" height="120" rx="14" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></rect><rect x="470" y="122" width="240" height="44" rx="22" fill="#4f46e5"></rect><text x="590" y="151" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">gms-base:1.2.4</text><line x1="230" y1="324" x2="230" y2="206" stroke="#94a3b8" stroke-width="3" marker-end="url(#arr-muted)"></line><rect x="155" y="246" width="150" height="38" rx="19" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><text x="230" y="272" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Shielded</text><line x1="590" y1="324" x2="590" y2="206" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-primary)"></line><rect x="515" y="246" width="150" height="38" rx="19" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect><text x="590" y="272" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">Canary</text><rect x="70" y="324" width="320" height="100" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><text x="230" y="384" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">6 Services</text><rect x="430" y="324" width="320" height="100" rx="12" fill="#f5f3ff" stroke="#818cf8" stroke-width="2"></rect><text x="590" y="384" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">auth-admin</text></svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;trade-offs and versioning</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">The Conceptual Model: gms-base</p><p class="text-slate-500 text-sm mt-0.5">One base image drives consistent builds across all seven services.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Implementation and Integration</p><p class="text-slate-500 text-sm mt-0.5">Build shared logic into the base; microservices stay thin and consistent.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Trade-offs and Versioning</p><p class="text-slate-500 text-sm mt-0.5">Central infrastructure shares both the benefits and the blast radius.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

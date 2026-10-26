@@ -1,0 +1,301 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Rationale for a Dedicated Reports Service</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Rationale for a Dedicated Reports Service</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Rationale for a Dedicated Reports Service</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Transactional vs. Analytical Split</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Isolate heavy analytical queries from live operational transactions.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path>
+    </marker>
+    <marker id="arrow-primary" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  <rect x="70" y="50" width="310" height="340" rx="16" fill="#f8fafc" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="135" y="80" width="180" height="46" rx="23" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="225" y="111" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#b45309">OLTP</text>
+
+  <g transform="translate(115, 160)">
+    <rect x="0" y="0" width="220" height="34" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <rect x="0" y="44" width="220" height="34" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+    <rect x="0" y="88" width="220" height="34" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <path d="M -30 61 L -8 61" stroke="#f59e0b" stroke-width="3" marker-end="url(#arrow)"></path>
+    <circle cx="28" cy="61" r="5" fill="#f59e0b"></circle>
+    <line x1="48" y1="61" x2="190" y2="61" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"></line>
+  </g>
+  <text x="225" y="345" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Single-row actions</text>
+
+  <line x1="410" y1="70" x2="410" y2="370" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></line>
+
+  <rect x="440" y="50" width="310" height="340" rx="16" fill="#f8fafc" stroke="#ef4444" stroke-width="2"></rect>
+  <path d="M 525 90 C 525 82 595 82 595 82 C 595 82 665 82 665 90 L 665 116 C 665 124 595 124 595 124 C 595 124 525 124 525 116 Z" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></path>
+  <ellipse cx="595" cy="90" rx="70" ry="10" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"></ellipse>
+  <text x="595" y="113" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#dc2626">OLAP</text>
+
+  <g transform="translate(485, 160)">
+    <rect x="0" y="0" width="220" height="122" rx="8" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect>
+    <line x1="20" y1="30" x2="200" y2="30" stroke="#ef4444" stroke-width="3" stroke-linecap="round"></line>
+    <line x1="20" y1="60" x2="180" y2="60" stroke="#ef4444" stroke-width="3" stroke-linecap="round"></line>
+    <line x1="20" y1="90" x2="195" y2="90" stroke="#ef4444" stroke-width="3" stroke-linecap="round"></line>
+    <line x1="0" y1="20" x2="220" y2="20" stroke="#dc2626" stroke-width="2" opacity="0.8">
+      <animate attributeName="y1" values="10;110;10" dur="3s" repeatCount="indefinite"></animate>
+      <animate attributeName="y2" values="10;110;10" dur="3s" repeatCount="indefinite"></animate>
+    </line>
+  </g>
+  <text x="595" y="345" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Multi-table scans</text>
+
+  <rect x="180" y="430" width="460" height="54" rx="27" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="410" y="464" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">Dedicated Reports Service</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">OLTP: The Hot Path</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Fast single-row operations</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">High frequency, low latency</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a448828940475d76870cf30/g7/images/s1-block-1-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Workload Isolation</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr-amber" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M1 1 L7 4 L1 7 Z" fill="#f59e0b"></path>
+    </marker>
+    <marker id="arr-indigo" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M1 1 L7 4 L1 7 Z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="60" width="320" height="230" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"></rect>
+  <text x="220" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">OLTP Workers</text>
+  
+  
+  <rect x="140" y="142" width="160" height="44" rx="22" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <circle cx="170" cy="164" r="8" fill="#10b981"></circle>
+  <line x1="190" y1="164" x2="270" y2="164" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"></line>
+  
+  <text x="220" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">Fast check-ins</text>
+
+  
+  <rect x="440" y="60" width="320" height="230" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="600" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Reports Service</text>
+  
+  
+  <rect x="520" y="138" width="160" height="12" rx="4" fill="#c7d2fe"></rect>
+  <rect x="520" y="156" width="160" height="12" rx="4" fill="#c7d2fe"></rect>
+  <rect x="520" y="174" width="160" height="12" rx="4" fill="#c7d2fe"></rect>
+  <rect x="506" y="130" width="188" height="64" rx="6" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 4"></rect>
+  
+  <text x="600" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#ef4444">Heavy aggregation</text>
+
+  
+  <path d="M 220 290 L 330 380" fill="none" stroke="#f59e0b" stroke-width="3" marker-end="url(#arr-amber)"></path>
+  <path d="M 600 290 L 490 380" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-indigo)"></path>
+
+  
+  <rect x="270" y="380" width="280" height="84" rx="16" fill="#ecfdf5" stroke="#10b981" stroke-width="2.5"></rect>
+  <ellipse cx="410" cy="402" rx="70" ry="10" fill="#a7f3d0"></ellipse>
+  <text x="410" y="440" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Shared DB</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;transactional vs. analytical split</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Solving the Dependency Knot</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">A dedicated reporting service decouples domain services.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#ef4444"></path></marker><marker id="arrow-primary" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><line x1="410" y1="50" x2="410" y2="470" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></line><text x="205" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#ef4444">Coupled</text><text x="615" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#10b981">Decoupled</text><rect x="65" y="240" width="120" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="125" y="279" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Members</text><rect x="245" y="240" width="120" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="305" y="279" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Classes</text><path d="M 185 258 C 215 240, 215 240, 237 254" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-red)"></path><path d="M 245 286 C 215 304, 215 304, 193 290" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-red)"></path><rect x="550" y="146" width="134" height="56" rx="10" fill="#c7d2fe"></rect><rect x="544" y="140" width="134" height="56" rx="10" fill="#4f46e5"></rect><text x="611" y="175" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#ffffff">Reports</text><rect x="475" y="340" width="120" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="535" y="379" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Members</text><rect x="655" y="340" width="120" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="715" y="379" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Classes</text><path d="M 545 338 L 585 204" fill="none" stroke="#4f46e5" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-primary)"></path><path d="M 705 338 L 645 204" fill="none" stroke="#4f46e5" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-primary)"></path></svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s2-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Cross-Domain Coupling</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Avoid reaching across service boundaries</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Dedicated service isolates aggregation</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a448828940475d76870cf30/g7/images/s2-block-1-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Decoupled Reporting</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><rect x="270" y="70" width="280" height="90" rx="14" fill="#c7d2fe"></rect><rect x="260" y="80" width="280" height="90" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect><text x="400" y="134" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Reports Service</text><rect x="90" y="320" width="240" height="90" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><text x="210" y="374" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Member Service</text><rect x="490" y="320" width="240" height="90" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><text x="610" y="374" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Class Service</text><path d="M 210 320 C 210 240, 310 220, 332 174" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></path><circle r="5" fill="#4f46e5"><animateMotion path="M 210 320 C 210 240, 310 220, 332 174" dur="2.4s" repeatCount="indefinite"></animateMotion></circle><path d="M 610 320 C 610 240, 490 220, 468 174" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></path><circle r="5" fill="#4f46e5"><animateMotion path="M 610 320 C 610 240, 490 220, 468 174" dur="2.4s" repeatCount="indefinite"></animateMotion></circle><line x1="330" y1="365" x2="490" y2="365" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 6"></line><circle cx="410" cy="365" r="20" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></circle><line x1="398" y1="353" x2="422" y2="377" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></line><line x1="422" y1="353" x2="398" y2="377" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></line><text x="410" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">no cross-calls</text></svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;solving the dependency knot</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Focused Optimization and Scaling</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Optimize reporting freely without impacting transactional services</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  
+  <line x1="370" y1="80" x2="370" y2="440" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="10 8"></line>
+  
+  
+  <g>
+    <rect x="80" y="200" width="230" height="80" rx="40" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"></rect>
+    <text x="195" y="249" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Core OLTP</text>
+    
+    <circle cx="140" cy="324" r="14" fill="#d1fae5"></circle>
+    <path d="M134 324 l4 4 l8 -8" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+    <text x="166" y="331" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Protected</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="490" y="170" width="250" height="150" rx="14" fill="#e0e7ff" stroke="#c7d2fe" stroke-width="2"></rect>
+    <rect x="470" y="190" width="250" height="150" rx="14" fill="#c7d2fe" stroke="#818cf8" stroke-width="2"></rect>
+    <rect x="450" y="210" width="250" height="150" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+    
+    
+    <path d="M 720 185 L 755 150 M 735 150 L 755 150 L 755 170" stroke="#4f46e5" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+    
+    
+    <text x="575" y="270" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Reports Service</text>
+    <text x="575" y="312" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Scales independently</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Tuning Trade-off</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Independent queries</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Shared index write cost</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"></path>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  
+  <line x1="410" y1="50" x2="410" y2="190" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="8 6"></line>
+
+  
+  <rect x="70" y="70" width="280" height="96" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="210" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#f59e0b">Bookings</text>
+
+  
+  <rect x="480" y="60" width="270" height="96" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="470" y="70" width="270" height="96" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="605" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Reports</text>
+
+  
+  <rect x="70" y="250" width="670" height="210" rx="20" fill="#ffffff" stroke="#10b981" stroke-width="3"></rect>
+  <text x="405" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#10b981">Shared Database</text>
+
+  
+  <line x1="210" y1="166" x2="210" y2="330" stroke="#f59e0b" stroke-width="3" marker-end="url(#arrow-amber)"></line>
+
+  
+  <rect x="430" y="325" width="270" height="96" rx="14" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="565" y="365" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ef4444">Report Index</text>
+  <text x="565" y="398" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#ef4444">overhead</text>
+
+  
+  <line x1="605" y1="325" x2="605" y2="176" stroke="#4f46e5" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-indigo)"></line>
+
+  
+  <path d="M 210 350 L 320 373 L 420 373" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-bad)"></path>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-2" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Independent Scaling</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Scale reporting pods alone</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Core services remain untouched</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a448828940475d76870cf30/g7/images/s3-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;focused optimization and scaling</span><span>concept brief</span></div></div></section><section id="section-4" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s4-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 4</p><h2 data-el-id="s4-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Architectural Trade-offs</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Balancing service isolation against operational overhead.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <line x1="410" y1="190" x2="410" y2="440" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round"></line>
+  <rect x="320" y="440" width="180" height="16" rx="8" fill="#0f172a"></rect>
+
+  <line x1="220" y1="190" x2="600" y2="190" stroke="#0f172a" stroke-width="6" stroke-linecap="round"></line>
+  <circle cx="410" cy="190" r="12" fill="#4f46e5"></circle>
+
+  
+  <line x1="220" y1="190" x2="140" y2="290" stroke="#94a3b8" stroke-width="2"></line>
+  <line x1="220" y1="190" x2="300" y2="290" stroke="#94a3b8" stroke-width="2"></line>
+  <rect x="110" y="290" width="220" height="100" rx="14" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2"></rect>
+  <text x="220" y="332" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Benefits</text>
+  <text x="220" y="366" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Decoupled logic</text>
+
+  
+  <line x1="600" y1="190" x2="520" y2="290" stroke="#94a3b8" stroke-width="2"></line>
+  <line x1="600" y1="190" x2="680" y2="290" stroke="#94a3b8" stroke-width="2"></line>
+  <rect x="490" y="290" width="220" height="100" rx="14" fill="#f8fafc" stroke="#fecaca" stroke-width="2"></rect>
+  <text x="600" y="332" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#ef4444">Costs</text>
+  <text x="600" y="366" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Added overhead</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-1"><div data-el-id="s4-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Architectural Trade-off</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-primary" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><rect x="85" y="52" width="280" height="18" rx="8" fill="#c7d2fe"></rect><rect x="70" y="70" width="310" height="150" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect><text x="225" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Reports Service</text><rect x="135" y="152" width="180" height="42" rx="21" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect><text x="225" y="180" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">+1 Container</text><rect x="440" y="70" width="310" height="150" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="8 6"></rect><text x="595" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="600" fill="#94a3b8">Read Replica</text><rect x="505" y="152" width="180" height="42" rx="21" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"></rect><text x="595" y="180" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Not needed</text><path d="M 225 220 L 225 275 Q 225 315 285 330 L 335 340" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></path><text x="210" y="280" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">live queries</text><path d="M 595 220 L 595 275 Q 595 315 535 330 L 485 340" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></path><circle cx="595" cy="275" r="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></circle><line x1="587" y1="267" x2="603" y2="283" stroke="#ef4444" stroke-width="2"></line><rect x="260" y="340" width="300" height="130" rx="20" fill="#ffffff" stroke="#10b981" stroke-width="3"></rect><ellipse cx="410" cy="362" rx="90" ry="12" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></ellipse><text x="410" y="415" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">Live Database</text><text x="410" y="448" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#10b981">no sync copy</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s4-block-2" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Trade complexity today for scalable clarity tomorrow.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-primary" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><rect x="85" y="52" width="280" height="18" rx="8" fill="#c7d2fe"></rect><rect x="70" y="70" width="310" height="150" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect><text x="225" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Reports Service</text><rect x="135" y="152" width="180" height="42" rx="21" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect><text x="225" y="180" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">+1 Container</text><rect x="440" y="70" width="310" height="150" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="8 6"></rect><text x="595" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="600" fill="#94a3b8">Read Replica</text><rect x="505" y="152" width="180" height="42" rx="21" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"></rect><text x="595" y="180" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Not needed</text><path d="M 225 220 L 225 275 Q 225 315 285 330 L 335 340" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></path><text x="210" y="280" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">live queries</text><path d="M 595 220 L 595 275 Q 595 315 535 330 L 485 340" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></path><circle cx="595" cy="275" r="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></circle><line x1="587" y1="267" x2="603" y2="283" stroke="#ef4444" stroke-width="2"></line><rect x="260" y="340" width="300" height="130" rx="20" fill="#ffffff" stroke="#10b981" stroke-width="3"></rect><ellipse cx="410" cy="362" rx="90" ry="12" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></ellipse><text x="410" y="415" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">Live Database</text><text x="410" y="448" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#10b981">no sync copy</text></svg></div></div></div></div></div><div class="scene-footer"><span>4 &nbsp;architectural trade-offs</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">Transactional vs. Analytical Split</p><p class="text-slate-500 text-sm mt-0.5">Isolate heavy analytical queries from live operational transactions.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Solving the Dependency Knot</p><p class="text-slate-500 text-sm mt-0.5">A dedicated reporting service decouples domain services.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Focused Optimization and Scaling</p><p class="text-slate-500 text-sm mt-0.5">Optimize reporting freely without impacting transactional services</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span><div><p class="font-bold text-slate-900 leading-tight">Architectural Trade-offs</p><p class="text-slate-500 text-sm mt-0.5">Balancing service isolation against operational overhead.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

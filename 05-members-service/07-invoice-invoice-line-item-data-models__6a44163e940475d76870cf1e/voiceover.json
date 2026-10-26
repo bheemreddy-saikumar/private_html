@@ -1,0 +1,118 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8b",
+  "skill_name": "Members Service",
+  "topic_id": "6a44163e940475d76870cf1e",
+  "topic_name": "Invoice & Invoice Line Item Data Models",
+  "topic_track": "project",
+  "content_version": 12,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a44163e940475d76870cf1e/g6/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a44163e940475d76870cf1e/g12/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 12,
+  "voiceover_data": {
+    "topic_name": "Invoice & Invoice Line Item Data Models",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-invoice-and-invoice-item-architecture",
+        "section_number": 1,
+        "title": "Invoice and Invoice Item Architecture",
+        "narration": "Now that we've mapped out member lifecycle transitions, let's delve into the financial models that underpin these states: the Invoice and Invoice Item data models. These models form the backbone of our financial system, tracking who owes what and when. At the core of our Members Service are two primary data models: Invoice and Invoice Item. Think of Invoice as the header, containing overall information like the member, location, and payment status — whether it's Paid, Pending, or Void. It also categorizes the charge type, such as Membership, Fee, or Write-off. The Invoice Item model, however, holds the granular details. This is where we track the base amount, any discount applied, tax charges, and the final total amount for each specific item. This parent-child relationship allows us to capture complex billing scenarios efficiently. This separation is crucial because a single membership event can trigger multiple distinct charges. For example, a new signup might incur both a signup fee and a pro-rated first month's charge. By using Invoice Item, we can record these as separate financial events, all consolidated under a single Invoice for that transaction. So, the key idea is: separating the financial obligation into a main invoice and child items allows for granular tracking of complex billing scenarios.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we've mapped out member lifecycle transitions, let's delve into the financial models that underpin these states: the Invoice and Invoice Item data models. These models form the backbone of our financial system, tracking who owes what and when."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "At the core of our Members Service are two primary data models: Invoice and Invoice Item. Think of Invoice as the header, containing overall information like the member, location, and payment status — whether it's Paid, Pending, or Void. It also categorizes the charge type, such as Membership, Fee, or Write-off."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "The Invoice Item model, however, holds the granular details. This is where we track the base amount, any discount applied, tax charges, and the final total amount for each specific item. This parent-child relationship allows us to capture complex billing scenarios efficiently."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "This separation is crucial because a single membership event can trigger multiple distinct charges. For example, a new signup might incur both a signup fee and a pro-rated first month's charge."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "By using Invoice Item, we can record these as separate financial events, all consolidated under a single Invoice for that transaction. So, the key idea is: separating the financial obligation into a main invoice and child items allows for granular tracking of complex billing scenarios."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-invoice-generation-and-key-logic",
+        "section_number": 2,
+        "title": "Invoice Generation and Key Logic",
+        "narration": "So, how and when do these invoices come into existence? Primarily, invoice generation is triggered by four key events within our business logic. The first trigger is Membership Signup, where the system calculates charges based on the selected plan. Next, Recurring Billing uses a sophisticated sequel calculator to identify members whose billing cycle has ended. Thirdly, Manual Charges allow administrators to add specific fees, like late or no-show fees, directly. Finally, Split Payments are used for high-value plans, breaking a large charge into multiple smaller invoices with staggered due dates. This flexibility ensures we can accommodate various payment structures and member needs. The invoice doesn't store its own total; it adds up its line items whenever the total is needed. This dynamic calculation is important because we explicitly exclude CANCELLED items. This preserves a historical record without affecting the member's current balance. Similarly, the Invoice Item model holds the due date, and the Invoice's effective due date is the latest among all its items, ensuring accurate payment timelines. So, the key idea is: Invoice generation logic dynamically calculates totals and due dates, while excluding cancelled items to maintain accurate financial and historical records.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So, how and when do these invoices come into existence? Primarily, invoice generation is triggered by four key events within our business logic."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "The first trigger is Membership Signup, where the system calculates charges based on the selected plan. Next, Recurring Billing uses a sophisticated sequel calculator to identify members whose billing cycle has ended. Thirdly, Manual Charges allow administrators to add specific fees, like late or no-show fees, directly."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Finally, Split Payments are used for high-value plans, breaking a large charge into multiple smaller invoices with staggered due dates. This flexibility ensures we can accommodate various payment structures and member needs. The invoice doesn't store its own total; it adds up its line items whenever the total is needed."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "This dynamic calculation is important because we explicitly exclude CANCELLED items. This preserves a historical record without affecting the member's current balance. Similarly, the Invoice Item model holds the due date, and the Invoice's effective due date is the latest among all its items, ensuring accurate payment timelines."
+          },
+          {
+            "el_id": "s2-block-4",
+            "type": "block",
+            "text": "So, the key idea is: Invoice generation logic dynamically calculates totals and due dates, while excluding cancelled items to maintain accurate financial and historical records."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-handling-complexities-and-trade-offs",
+        "section_number": 3,
+        "title": "Handling Complexities and Trade-offs",
+        "narration": "Beyond basic generation, our system handles complex scenarios like membership freezes and makes key engineering trade-offs, particularly around persisting financial data. Membership freezes present a unique challenge. When working out the next invoice, the system makes a \"Freeze Adjustment.\" It determines the last invoice date, checks for any membership freezes after that date, and adds the freeze duration to the next invoice date. This ensures that a fourteen-day freeze automatically pushes the next billing date back by exactly fourteen days. A significant engineering trade-off lies in calculated versus saved totals. While Invoice totals are dynamic, each line item's total is saved at the moment it's created. This locks in the financial agreement at the time of transaction, preventing future tax rate changes from altering historical receipts and ensuring audit integrity. Finally, we use the \"Void\" pattern for erroneous invoices instead of deletion. This involves marking the invoice as void, recording who voided it and when, and triggering ledger entries. Because we only ever add records and never erase them, the financial history can't be rewritten. So, the key idea is: Invoices and Invoice Items model financial obligations, using dynamic calculations and persisted values to ensure accuracy and auditability. Now that we have established how invoices and line items model what a member owes, our next step is tracking whether incoming payments actually settle those debts in Payment Status Tracking and Reconciliation.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Beyond basic generation, our system handles complex scenarios like membership freezes and makes key engineering trade-offs, particularly around persisting financial data."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Membership freezes present a unique challenge. When working out the next invoice, the system makes a \"Freeze Adjustment.\" It determines the last invoice date, checks for any membership freezes after that date, and adds the freeze duration to the next invoice date. This ensures that a fourteen-day freeze automatically pushes the next billing date back by exactly fourteen days."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "A significant engineering trade-off lies in calculated versus saved totals. While Invoice totals are dynamic, each line item's total is saved at the moment it's created. This locks in the financial agreement at the time of transaction, preventing future tax rate changes from altering historical receipts and ensuring audit integrity."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Finally, we use the \"Void\" pattern for erroneous invoices instead of deletion. This involves marking the invoice as void, recording who voided it and when, and triggering ledger entries. Because we only ever add records and never erase them, the financial history can't be rewritten."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "So, the key idea is: Invoices and Invoice Items model financial obligations, using dynamic calculations and persisted values to ensure accuracy and auditability. Now that we have established how invoices and line items model what a member owes, our next step is tracking whether incoming payments actually settle those debts in Payment Status Tracking and Reconciliation."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "skill_id": "6a4408b2e15b997d713c4b8f",
+  "skill_name": "Batch Worker & Scheduler",
+  "topic_id": "6ac1edf8a339ff723513e9a2",
+  "topic_name": "Designing Asynchronous Systems",
+  "topic_track": "project",
+  "content_version": 16,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6ac1edf8a339ff723513e9a2/g15/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6ac1edf8a339ff723513e9a2/g16/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 16,
+  "voiceover_data": {
+    "topic_name": "Designing Asynchronous Systems",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-synchronous-bottleneck",
+        "section_number": 1,
+        "title": "The Synchronous Bottleneck",
+        "narration": "A read replica can stop analytical queries from overloading the primary database, but slow queries aren't the only thing that can choke a web request. Let's look at why synchronous design fails during routine gym operations. Picture a gym system that has to charge subscription fees for thousands of members at once. In a synchronous design, where the caller waits until all the work is done, a single request would wait for every external system to finish. That leads to timeouts, long-held database locks, and frustrated gym owners. Even one payment can be slow. When a staff member records a card payment, the system has to call an outside payment provider, and if that connection lags, the staff member is stuck waiting. G M S avoids this by handing the payment to a background worker and replying straight away. So the key idea is moving from doing work immediately to doing it eventually, but reliably.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "A read replica can stop analytical queries from overloading the primary database, but slow queries aren't the only thing that can choke a web request. Let's look at why synchronous design fails during routine gym operations."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Picture a gym system that has to charge subscription fees for thousands of members at once. In a synchronous design, where the caller waits until all the work is done, a single request would wait for every external system to finish. That leads to timeouts, long-held database locks, and frustrated gym owners."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Even one payment can be slow. When a staff member records a card payment, the system has to call an outside payment provider, and if that connection lags, the staff member is stuck waiting. G M S avoids this by handing the payment to a background worker and replying straight away. So the key idea is moving from doing work immediately to doing it eventually, but reliably."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-async-triangle",
+        "section_number": 2,
+        "title": "The Async Triangle",
+        "narration": "Since we cannot make the user wait for every external system, we must change how we handle these heavy tasks. Now that we understand the problem, let's look at how we structure asynchronous work. We use a producer, broker, worker triangle, a three-part assembly line where a web A P I creates a job ticket, a waiting-room queue stores it, and a separate background process runs it. The A P I drops the ticket and replies at once without waiting for the result, a pattern called fire-and-forget. This decouples the user's request from the time-consuming work. The web service acts as the producer, creating a task message in about a millisecond. The broker, Redis in G M S, is a queue that holds that background work until someone picks it up. Finally, the worker is a dedicated process that serves no web traffic and only pulls tasks to process them independently. So the key idea is architectural separation.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Since we cannot make the user wait for every external system, we must change how we handle these heavy tasks. Now that we understand the problem, let's look at how we structure asynchronous work."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We use a producer, broker, worker triangle, a three-part assembly line where a web A P I creates a job ticket, a waiting-room queue stores it, and a separate background process runs it. The A P I drops the ticket and replies at once without waiting for the result, a pattern called fire-and-forget. This decouples the user's request from the time-consuming work."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "The web service acts as the producer, creating a task message in about a millisecond. The broker, Redis in G M S, is a queue that holds that background work until someone picks it up. Finally, the worker is a dedicated process that serves no web traffic and only pulls tasks to process them independently. So the key idea is architectural separation."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-managing-trade-offs",
+        "section_number": 3,
+        "title": "Managing Trade-offs",
+        "narration": "Moving to an asynchronous model brings flexibility, but it forces us to accept certain trade-offs. Let's examine these constraints. When work runs in the background, we get eventual consistency, a short delay of a few seconds before every part of the system shows the update. This is the same trade-off we saw with replica lag in Understanding Database Read Replicas. So responses report a pending status instead of the final result; in G M S, a card payment is marked as queued until the worker processes it. We must also handle failures. Many queue systems use at-least-once delivery, a rule that means a task is never lost but might run twice if a worker crashes. So we use an idempotency guard, a quick check that makes a repeated task harmless. In G M S, when a missed class session is credited back, the booking is marked as credited, and a re-run skips any booking already marked. So the key idea is handling uncertainty.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Moving to an asynchronous model brings flexibility, but it forces us to accept certain trade-offs."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Let's examine these constraints. When work runs in the background, we get eventual consistency, a short delay of a few seconds before every part of the system shows the update. This is the same trade-off we saw with replica lag in Understanding Database Read Replicas. So responses report a pending status instead of the final result; in G M S, a card payment is marked as queued until the worker processes it."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "We must also handle failures. Many queue systems use at-least-once delivery, a rule that means a task is never lost but might run twice if a worker crashes. So we use an idempotency guard, a quick check that makes a repeated task harmless. In G M S, when a missed class session is credited back, the booking is marked as credited, and a re-run skips any booking already marked. So the key idea is handling uncertainty."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-preventing-silent-failure",
+        "section_number": 4,
+        "title": "Preventing Silent Failure",
+        "narration": "Finally, we must ensure that our background processes do not fail silently. Let's discuss how we make our system robust. In a synchronous request, you see an error immediately, but async tasks fail quietly in background logs. To avoid losing work, G M S turns on late acknowledgement for its background tasks. An acknowledgement is the worker telling the broker a job is done, and with late acknowledgement it says so only after the work has finished, not the moment the job is picked up. This ensures that if a background worker is interrupted, the task remains in the waiting room to be picked up by another worker. By assuming our processes will fail, we build a system that remains resilient. So the key idea is robust background execution. Next, we'll get practical and configure these background task systems for real.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, we must ensure that our background processes do not fail silently. Let's discuss how we make our system robust."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "In a synchronous request, you see an error immediately, but async tasks fail quietly in background logs. To avoid losing work, G M S turns on late acknowledgement for its background tasks. An acknowledgement is the worker telling the broker a job is done, and with late acknowledgement it says so only after the work has finished, not the moment the job is picked up."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "This ensures that if a background worker is interrupted, the task remains in the waiting room to be picked up by another worker. By assuming our processes will fail, we build a system that remains resilient. So the key idea is robust background execution. Next, we'll get practical and configure these background task systems for real."
+          }
+        ]
+      }
+    ]
+  }
+}

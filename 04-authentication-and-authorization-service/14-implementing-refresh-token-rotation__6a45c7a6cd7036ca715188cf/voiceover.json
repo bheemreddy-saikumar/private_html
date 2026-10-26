@@ -1,0 +1,151 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a45c7a6cd7036ca715188cf",
+  "topic_name": "Implementing refresh token rotation",
+  "topic_track": "theory",
+  "content_version": 7,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a45c7a6cd7036ca715188cf/g5/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a45c7a6cd7036ca715188cf/g7/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 7,
+  "voiceover_data": {
+    "topic_name": "Implementing refresh token rotation",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-vulnerability-long-lived-token-persistence",
+        "section_number": 1,
+        "title": "The Vulnerability: Long-Lived Token Persistence",
+        "narration": "In our previous lesson, we locked down initial credential verification. Now, we need to safeguard what happens after login by rotating the long-lived refresh tokens that keep client sessions alive. Now, while short-lived access tokens limit exposure windows, long-lived refresh tokens remain high-value targets if intercepted. They could potentially grant indefinite access. This section details that core vulnerability. You see, in a standard implementation, a refresh token acts like a static credential that's used multiple times. The primary risks here are indefinite access for an attacker if the token is stolen. Also, there's a general lack of visibility because, unlike access tokens, the server has no native way to know if the refresh token itself has been compromised unless it's explicitly revoked. This static nature makes it a persistent, high-value target. Refresh Token Rotation, or RTR, transforms the refresh token from a static, reusable key into a single-use link in a cryptographic chain. Instead of a static credential, it becomes a temporary ticket. Every time a client uses a refresh token to obtain a new access token, the server also issues a brand new refresh token and invalidates the old one. This fundamentally changes its security profile. So, the key idea is: Refresh tokens are no longer static credentials but single-use tickets in a verifiable chain.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "In our previous lesson, we locked down initial credential verification. Now, we need to safeguard what happens after login by rotating the long-lived refresh tokens that keep client sessions alive."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Now, while short-lived access tokens limit exposure windows, long-lived refresh tokens remain high-value targets if intercepted. They could potentially grant indefinite access. This section details that core vulnerability. You see, in a standard implementation, a refresh token acts like a static credential that's used multiple times."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "The primary risks here are indefinite access for an attacker if the token is stolen. Also, there's a general lack of visibility because, unlike access tokens, the server has no native way to know if the refresh token itself has been compromised unless it's explicitly revoked. This static nature makes it a persistent, high-value target."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Refresh Token Rotation, or RTR, transforms the refresh token from a static, reusable key into a single-use link in a cryptographic chain. Instead of a static credential, it becomes a temporary ticket."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "Every time a client uses a refresh token to obtain a new access token, the server also issues a brand new refresh token and invalidates the old one. This fundamentally changes its security profile. So, the key idea is: Refresh tokens are no longer static credentials but single-use tickets in a verifiable chain."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-conceptual-model-token-families",
+        "section_number": 2,
+        "title": "The Conceptual Model: Token Families",
+        "narration": "To implement rotation effectively, we need a way to track related tokens. This section introduces the concept of a 'token family' to manage these continuous session chains. To implement rotation effectively, you must track the 'token family'. A token family represents a single continuous session, starting from the initial login. Think of it as a lineage: when a user first logs in, they get Access Token one and Refresh Token one. When they use Refresh Token one, the server invalidates it and issues Access Token two and Refresh Token two. This process continues for each subsequent refresh. The client sends the current refresh token, the server validates it, deletes or invalidates the old one, and then issues a new pair of access and refresh tokens. Each new refresh token belongs to the same family, allowing us to trace the entire session history back to the original authentication. This continuous chain ensures that a stolen token only provides temporary access, as it will be invalidated upon the next legitimate refresh. So, the key idea is: Refresh tokens become single-use tickets linked in a verifiable chain, not static credentials.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "To implement rotation effectively, we need a way to track related tokens. This section introduces the concept of a 'token family' to manage these continuous session chains."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "To implement rotation effectively, you must track the 'token family'. A token family represents a single continuous session, starting from the initial login. Think of it as a lineage: when a user first logs in, they get Access Token one and Refresh Token one. When they use Refresh Token one, the server invalidates it and issues Access Token two and Refresh Token two."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "This process continues for each subsequent refresh. The client sends the current refresh token, the server validates it, deletes or invalidates the old one, and then issues a new pair of access and refresh tokens. Each new refresh token belongs to the same family, allowing us to trace the entire session history back to the original authentication."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "This continuous chain ensures that a stolen token only provides temporary access, as it will be invalidated upon the next legitimate refresh. So, the key idea is: Refresh tokens become single-use tickets linked in a verifiable chain, not static credentials."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-data-flow-and-database-metadata",
+        "section_number": 3,
+        "title": "Data Flow and Database Metadata",
+        "narration": "Unlike stateless access tokens, managing refresh tokens with rotation requires stateful tracking in our database. This section covers the data flow and metadata. Unlike access tokens, which remain stateless for performance, refresh tokens require stateful tracking. You must store metadata in your database to manage the rotation and, crucially, to detect reuse. A typical schema for a refresh tokens table includes a unique identifier, often the J-T-I claim if using JWTs, a foreign key to the user, a shared 'Family ID' for all tokens in a session chain, an absolute expiration time, and a flag to mark if the token is revoked. The logic for rotating a token must be atomic. If the database update fails for any reason, the new token must not be issued, and the old one must not be invalidated. This ensures consistency. The Python code snippet on screen shows the core logic: look up the provided token, check if it's already revoked, invalidate the current token by marking it as revoked and setting a timestamp, then generate and add a new token within the same family. Crucially, this logic includes Reuse Detection. If the lookup finds a token that's already marked as revoked, it signifies a potential breach. In this scenario, the safest response is to invalidate the entire token family to immediately kill any active attacker session, raising a security breach exception. So, the key idea is: Stateful tracking and atomic database operations are essential for secure refresh token rotation.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Unlike stateless access tokens, managing refresh tokens with rotation requires stateful tracking in our database. This section covers the data flow and metadata."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Unlike access tokens, which remain stateless for performance, refresh tokens require stateful tracking. You must store metadata in your database to manage the rotation and, crucially, to detect reuse."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "A typical schema for a refresh tokens table includes a unique identifier, often the J-T-I claim if using JWTs, a foreign key to the user, a shared 'Family ID' for all tokens in a session chain, an absolute expiration time, and a flag to mark if the token is revoked."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "The logic for rotating a token must be atomic. If the database update fails for any reason, the new token must not be issued, and the old one must not be invalidated. This ensures consistency."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "The Python code snippet on screen shows the core logic: look up the provided token, check if it's already revoked, invalidate the current token by marking it as revoked and setting a timestamp, then generate and add a new token within the same family."
+          },
+          {
+            "el_id": "s3-block-5",
+            "type": "block",
+            "text": "Crucially, this logic includes Reuse Detection. If the lookup finds a token that's already marked as revoked, it signifies a potential breach. In this scenario, the safest response is to invalidate the entire token family to immediately kill any active attacker session, raising a security breach exception. So, the key idea is: Stateful tracking and atomic database operations are essential for secure refresh token rotation."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-engineering-trade-offs-and-operational-considera",
+        "section_number": 4,
+        "title": "Engineering Trade-offs and Operational Considerations",
+        "narration": "Implementing refresh token rotation involves trade-offs and requires careful operational planning. Let's examine these factors. Implementing RTR offers significant security benefits by drastically reducing the lifespan of any single stolen credential and providing a mechanism to detect and stop active breaches. However, it introduces performance considerations, as each refresh requires a database write and read. In high-scale systems, this often necessitates using a fast key-value store like Redis. It also adds complexity, demanding more robust client-side logic to handle the token swap carefully. Operationally, you must implement background tasks to purge expired and revoked tokens, as each refresh creates a new database row. Concurrency is another concern: if a client makes two refresh requests simultaneously, one might fail. A small grace period where an old token is still accepted if a new one was just issued can mitigate this. Also, while refresh tokens *can* be JWTs, they are often implemented as opaque strings since database checks are required anyway, negating the stateless benefit. So, the key idea is: Refresh token rotation enhances security at the cost of increased complexity and statefulness, requiring careful engineering and operational management. Now that we can safely manage long-lived sessions internally, our next step is integrating third-party identity providers in OAuth two and OpenID Connect integration.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Implementing refresh token rotation involves trade-offs and requires careful operational planning. Let's examine these factors."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Implementing RTR offers significant security benefits by drastically reducing the lifespan of any single stolen credential and providing a mechanism to detect and stop active breaches. However, it introduces performance considerations, as each refresh requires a database write and read. In high-scale systems, this often necessitates using a fast key-value store like Redis. It also adds complexity, demanding more robust client-side logic to handle the token swap carefully."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Operationally, you must implement background tasks to purge expired and revoked tokens, as each refresh creates a new database row. Concurrency is another concern: if a client makes two refresh requests simultaneously, one might fail."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "A small grace period where an old token is still accepted if a new one was just issued can mitigate this. Also, while refresh tokens *can* be JWTs, they are often implemented as opaque strings since database checks are required anyway, negating the stateless benefit."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "So, the key idea is: Refresh token rotation enhances security at the cost of increased complexity and statefulness, requiring careful engineering and operational management. Now that we can safely manage long-lived sessions internally, our next step is integrating third-party identity providers in OAuth two and OpenID Connect integration."
+          }
+        ]
+      }
+    ]
+  }
+}

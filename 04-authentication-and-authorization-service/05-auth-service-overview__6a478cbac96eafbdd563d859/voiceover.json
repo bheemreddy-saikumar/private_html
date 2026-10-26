@@ -1,0 +1,131 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a478cbac96eafbdd563d859",
+  "topic_name": "Auth Service Overview",
+  "topic_track": "project",
+  "content_version": 14,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a478cbac96eafbdd563d859/g10/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a478cbac96eafbdd563d859/g14/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 14,
+  "voiceover_data": {
+    "topic_name": "Auth Service Overview",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-auth-service-our-digital-gatekeeper",
+        "section_number": 1,
+        "title": "The Auth Service: Our Digital Gatekeeper",
+        "narration": "Having wrapped up our shared foundation and async task queues, we're ready to assemble our first dedicated microservice: the Auth Service. This service acts as the foundational gatekeeper for our entire gym ecosystem. In our G M S architecture, the Auth Service, specifically the auth admin service, is the source of truth for all identity and organizational structure. It is the ultimate arbiter of who a user is and what parts of the gym they can access. This service centralizes identity management and administrative oversight, which is important for preventing security logic from scattering across our codebase. It owns the lifecycle of user sessions and the configuration of gym entities, providing a secure, unified entry point for both members and administrators. The core functionality is split into two domains: the Auth Domain, for identity verification, session management, and account recovery; and the Admin Domain, for managing gyms, locations, staff, and system configurations. So, the key idea here is: the Auth Service is our central hub for identity and organizational control.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Having wrapped up our shared foundation and async task queues, we're ready to assemble our first dedicated microservice: the Auth Service. This service acts as the foundational gatekeeper for our entire gym ecosystem."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In our G M S architecture, the Auth Service, specifically the auth admin service, is the source of truth for all identity and organizational structure. It is the ultimate arbiter of who a user is and what parts of the gym they can access."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "This service centralizes identity management and administrative oversight, which is important for preventing security logic from scattering across our codebase. It owns the lifecycle of user sessions and the configuration of gym entities, providing a secure, unified entry point for both members and administrators."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "The core functionality is split into two domains: the Auth Domain, for identity verification, session management, and account recovery; and the Admin Domain, for managing gyms, locations, staff, and system configurations. So, the key idea here is: the Auth Service is our central hub for identity and organizational control."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-core-functionality-and-dependencies",
+        "section_number": 2,
+        "title": "Core Functionality and Dependencies",
+        "narration": "Now that we understand the service's purpose, let's dive into its core functions and how it interacts with the rest of our system. The Auth Domain handles user credentials, issuing secure JSON Web Tokens, managing token refreshes and logouts, and overseeing the password reset lifecycle. This ensures that user authentication is robust and secure. Complementing this, the Admin Domain provides C R U D operations for gyms and locations, manages staff accounts and their roles, and defines system-wide configurations. This domain structures the business itself within the service. Without this service, other microservices would have to duplicate login logic, which creates security risks. The Auth service is called by frontends via the A P I Gateway and can trigger the Email Worker for important notifications. So, the key idea is: it centralizes essential auth and admin tasks, interacting with frontends and backend workers.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we understand the service's purpose, let's dive into its core functions and how it interacts with the rest of our system."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "The Auth Domain handles user credentials, issuing secure JSON Web Tokens, managing token refreshes and logouts, and overseeing the password reset lifecycle. This ensures that user authentication is robust and secure."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Complementing this, the Admin Domain provides C R U D operations for gyms and locations, manages staff accounts and their roles, and defines system-wide configurations. This domain structures the business itself within the service."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Without this service, other microservices would have to duplicate login logic, which creates security risks. The Auth service is called by frontends via the A P I Gateway and can trigger the Email Worker for important notifications. So, the key idea is: it centralizes essential auth and admin tasks, interacting with frontends and backend workers."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-service-boundaries-and-architecture",
+        "section_number": 3,
+        "title": "Service Boundaries and Architecture",
+        "narration": "Understanding the service's boundaries and its internal architecture is crucial for maintainability and clear responsibilities. The service boundary starts at the H T T P request layer, receiving a login request, and ends when it returns a signed J W T token or saves changes to gyms, locations or staff. It's responsible for confirming identity, relying on the G M S shared library to save and load data. Internally, we use a strict three-layer architecture for maintainability: D T O's define the A P I contracts, Endpoints map H T T P requests to service functions, and Services contain the core business logic, kept separate from the web layer. Crucially, components like database models, migrations, shared enums, utils, and auth primitives are excluded from this service and reside in G M S shared. This keeps the Auth service thin and stateless, preventing split brain scenarios by ensuring all services use the same data schema definitions. So, the key idea is: a clear boundary and a layered architecture keep the service focused and maintainable.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Understanding the service's boundaries and its internal architecture is crucial for maintainability and clear responsibilities."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The service boundary starts at the H T T P request layer, receiving a login request, and ends when it returns a signed J W T token or saves changes to gyms, locations or staff. It's responsible for confirming identity, relying on the G M S shared library to save and load data."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Internally, we use a strict three-layer architecture for maintainability: D T O's define the A P I contracts, Endpoints map H T T P requests to service functions, and Services contain the core business logic, kept separate from the web layer."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Crucially, components like database models, migrations, shared enums, utils, and auth primitives are excluded from this service and reside in G M S shared. This keeps the Auth service thin and stateless, preventing split brain scenarios by ensuring all services use the same data schema definitions. So, the key idea is: a clear boundary and a layered architecture keep the service focused and maintainable."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-file-structure-and-dependencies",
+        "section_number": 4,
+        "title": "File Structure and Dependencies",
+        "narration": "Finally, let's look at how the Auth service is put together and what it depends on. The endpoints expose the login and management routes, the D T O's define the shape of each request and response, and the service layer holds the core logic, split into an auth part and an admin part. A small start-up script and the container definition handle running and deploying it. Importantly, shared database models and connection logic are in G M S shared, not here. This separation ensures consistency, as seen in the request flow and dependency diagrams. The Auth service depends on G M S shared, MySQL, Redis, and can trigger the Email Worker. While we use a shared database via G M S shared for referential integrity, we are disciplined about managing migrations. So, the key idea is: a clear internal structure and clear dependencies enable a robust, focused Auth Service.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let's look at how the Auth service is put together and what it depends on."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "The endpoints expose the login and management routes, the D T O's define the shape of each request and response, and the service layer holds the core logic, split into an auth part and an admin part."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "A small start-up script and the container definition handle running and deploying it. Importantly, shared database models and connection logic are in G M S shared, not here. This separation ensures consistency, as seen in the request flow and dependency diagrams."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "The Auth service depends on G M S shared, MySQL, Redis, and can trigger the Email Worker. While we use a shared database via G M S shared for referential integrity, we are disciplined about managing migrations. So, the key idea is: a clear internal structure and clear dependencies enable a robust, focused Auth Service."
+          }
+        ]
+      }
+    ]
+  }
+}

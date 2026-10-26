@@ -1,0 +1,111 @@
+{
+  "skill_id": "6a4408afe15b997d713c4b89",
+  "skill_name": "Database Schema & Migrations",
+  "topic_id": "6adf745a0561cd859d5753aa",
+  "topic_name": "Choosing a Database for GMS: Relational vs Non-Relational",
+  "topic_track": "project",
+  "content_version": 8,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6adf745a0561cd859d5753aa/g6/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6adf745a0561cd859d5753aa/g8/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 8,
+  "voiceover_data": {
+    "topic_name": "Choosing a Database for GMS: Relational vs Non-Relational",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-core-architectural-question",
+        "section_number": 1,
+        "title": "The Core Architectural Question",
+        "narration": "Before we pick any storage technology for G M S, let's step back and address the core architectural question: what must our data layer guarantee? When building a platform like G M S, our storage choice dictates how we handle complex business operations. We need to guarantee that financial records are never partially created and that our data remains clean, consistent, and audit-ready. The stakes are high; a single misaligned financial record compromises the entire system. So instead of starting from a favourite database, we start from what the business demands. So the key idea is: requirements come first, and every technology has to earn its place against them.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Before we pick any storage technology for G M S, let's step back and address the core architectural question: what must our data layer guarantee?"
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "When building a platform like G M S, our storage choice dictates how we handle complex business operations. We need to guarantee that financial records are never partially created and that our data remains clean, consistent, and audit-ready."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "The stakes are high; a single misaligned financial record compromises the entire system. So instead of starting from a favourite database, we start from what the business demands. So the key idea is: requirements come first, and every technology has to earn its place against them."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-defining-our-requirements",
+        "section_number": 2,
+        "title": "Defining Our Requirements",
+        "narration": "To build a platform that scales safely, we must first define the specific operational guardrails our storage layer must enforce. We require ACID transactions, an all-or-nothing guarantee: when a member buys a membership, the membership, the invoice, its line items and the payment must succeed together or leave no trace if one part fails, and the money must reconcile exactly. We also need referential integrity, which prevents records like payments from pointing to non-existent members, and every email and login must be unique. We also need performant joins to report on membership, billing, and attendance across different locations, a schema that can evolve safely through versioned migrations, and a fast queue for background jobs like emails and nightly batch work. So the key idea is: this checklist, not personal preference, is what every database option will be scored against.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "To build a platform that scales safely, we must first define the specific operational guardrails our storage layer must enforce."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We require ACID transactions, an all-or-nothing guarantee: when a member buys a membership, the membership, the invoice, its line items and the payment must succeed together or leave no trace if one part fails, and the money must reconcile exactly. We also need referential integrity, which prevents records like payments from pointing to non-existent members, and every email and login must be unique."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "We also need performant joins to report on membership, billing, and attendance across different locations, a schema that can evolve safely through versioned migrations, and a fast queue for background jobs like emails and nightly batch work. So the key idea is: this checklist, not personal preference, is what every database option will be scored against."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-comparing-paradigms-and-risks",
+        "section_number": 3,
+        "title": "Comparing Paradigms and Risks",
+        "narration": "Now that we know our operational needs, let's put the options side by side: relational databases, document stores like MongoDB, key-value stores like Redis, and wide-column stores like Cassandra, each scored against our checklist. Using a document store, we might pack a membership, its plan and its invoices into a single, nested JSON document. Changing a plan price would then mean updating thousands of copies, deleting a membership could leave payments with dangling references, and a checkout that writes several documents loses its simple all-or-nothing guarantee. Key-value and wide-column stores give up joins altogether, so our reports would suffer. To be fair, non-relational stores give us flexible schemas and easy horizontal scaling. G M S doesn't need those today: its data is structured and tightly linked, and its load fits comfortably on one database. A relational engine, by contrast, natively handles multi-record ACID transactions, foreign keys, unique constraints and joins. So the key idea is: scored against our checklist, only the relational model meets every requirement, and going non-relational would cost us the guarantees we care about most.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Now that we know our operational needs, let's put the options side by side: relational databases, document stores like MongoDB, key-value stores like Redis, and wide-column stores like Cassandra, each scored against our checklist."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Using a document store, we might pack a membership, its plan and its invoices into a single, nested JSON document. Changing a plan price would then mean updating thousands of copies, deleting a membership could leave payments with dangling references, and a checkout that writes several documents loses its simple all-or-nothing guarantee. Key-value and wide-column stores give up joins altogether, so our reports would suffer."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "To be fair, non-relational stores give us flexible schemas and easy horizontal scaling. G M S doesn't need those today: its data is structured and tightly linked, and its load fits comfortably on one database. A relational engine, by contrast, natively handles multi-record ACID transactions, foreign keys, unique constraints and joins. So the key idea is: scored against our checklist, only the relational model meets every requirement, and going non-relational would cost us the guarantees we care about most."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-the-decision-and-implementation",
+        "section_number": 4,
+        "title": "The Decision and Implementation",
+        "narration": "With our requirements clear and the options compared, let's look at the decision we've made for G M S, and why. We chose MySQL as our system of record, and each requirement maps to a relational feature: transactions for an all-or-nothing checkout, foreign keys for referential integrity, unique constraints for emails and logins, joins for reporting, and dbmate, our lightweight migration runner, for versioned schema changes. PostgreSQL would have met these same requirements just as well. Non-relational still has a place. We use polyglot persistence, employing different tools side-by-side so each handles what it does best: Redis acts as the in-memory broker that passes jobs to our email and batch workers, not as a database of record. So the key idea is: MySQL for transactional safety, Redis for fast background work, each chosen because it fits a requirement. Next, in G M S D B Schema, we'll see how this data is actually modelled.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "With our requirements clear and the options compared, let's look at the decision we've made for G M S, and why."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "We chose MySQL as our system of record, and each requirement maps to a relational feature: transactions for an all-or-nothing checkout, foreign keys for referential integrity, unique constraints for emails and logins, joins for reporting, and dbmate, our lightweight migration runner, for versioned schema changes. PostgreSQL would have met these same requirements just as well."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Non-relational still has a place. We use polyglot persistence, employing different tools side-by-side so each handles what it does best: Redis acts as the in-memory broker that passes jobs to our email and batch workers, not as a database of record. So the key idea is: MySQL for transactional safety, Redis for fast background work, each chosen because it fits a requirement. Next, in G M S D B Schema, we'll see how this data is actually modelled."
+          }
+        ]
+      }
+    ]
+  }
+}

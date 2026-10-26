@@ -1,0 +1,144 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a4412db940475d76870cf0c",
+  "topic_name": "Role-Based Access Control (RBAC) Implementation",
+  "topic_track": "project",
+  "content_version": 14,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4412db940475d76870cf0c/g10/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4412db940475d76870cf0c/g14/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 14,
+  "voiceover_data": {
+    "topic_name": "Role-Based Access Control (RBAC) Implementation",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-implementing-rbac-in-our-auth-service",
+        "section_number": 1,
+        "title": "Implementing RBAC in Our Auth Service",
+        "narration": "So, building on the sequence diagram we just reviewed in Designing Authentication and Authorization, we'll now dive into the actual implementation of RBAC within our Authentication and Authorization Service. This lesson focuses on the specific Python code that enforces these security policies across our microservices, ensuring consistent protection. Our Authentication and Authorization Service uses Role-Based Access Control, or RBAC, as a critical secondary security layer. Authentication confirms *who* a user is, but RBAC determines *what* actions they can perform. This system lives in the shared library, and it's applied uniformly across all microservices. So, the key idea here is: RBAC determines user permissions *after* authentication has confirmed their identity.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "So, building on the sequence diagram we just reviewed in Designing Authentication and Authorization, we'll now dive into the actual implementation of RBAC within our Authentication and Authorization Service."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This lesson focuses on the specific Python code that enforces these security policies across our microservices, ensuring consistent protection. Our Authentication and Authorization Service uses Role-Based Access Control, or RBAC, as a critical secondary security layer."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Authentication confirms *who* a user is, but RBAC determines *what* actions they can perform. This system lives in the shared library, and it's applied uniformly across all microservices. So, the key idea here is: RBAC determines user permissions *after* authentication has confirmed their identity."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-rbac-model-and-role-definitions",
+        "section_number": 2,
+        "title": "RBAC Model and Role Definitions",
+        "narration": "Now that we've seen where RBAC lives, let's examine the model itself and how roles are defined. This section details the structure of our RBAC system and the specific roles it encompasses. Our RBAC model is designed to be hierarchical and adaptable, using one shared list of roles. Permissions are grouped into categories. For instance, the standard staff group covers Owner, Staff, Manager and Coach, generally granting administrative privileges. A second group adds Members, for managing their own details, and a third adds the Kiosk, for front-desk devices. These predefined roles help categorize users and consistently apply access rules across the application. So, the key idea is: RBAC uses a predefined, hierarchical model of roles and their associated permissions.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we've seen where RBAC lives, let's examine the model itself and how roles are defined. This section details the structure of our RBAC system and the specific roles it encompasses."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Our RBAC model is designed to be hierarchical and adaptable, using one shared list of roles. Permissions are grouped into categories. For instance, the standard staff group covers Owner, Staff, Manager and Coach, generally granting administrative privileges. A second group adds Members, for managing their own details, and a third adds the Kiosk, for front-desk devices."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "These predefined roles help categorize users and consistently apply access rules across the application. So, the key idea is: RBAC uses a predefined, hierarchical model of roles and their associated permissions."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-the-check-access-decorator-flow",
+        "section_number": 3,
+        "title": "The `check_access` Decorator Flow",
+        "narration": "With the roles defined, let's dissect the core authorization logic. This section breaks down the check access decorator step-by-step, showing exactly how it validates user permissions. The shared access check is the heart of our authorization. Implemented as a decorator, it orchestrates several validation steps. First, it validates the J W T and rejects the request if the token is missing or invalid. Then, it confirms the user still exists in the database and makes them available to the rest of the request. Next, the role check performs the primary RBAC validation, comparing the user's database role against the roles permitted for the A P I endpoint. Finally, the location check applies location-based access rules. This crucial step prevents IDOR, or Insecure Direct Object Reference, where someone sees another gym's data just by changing an I D in the U R L. It does this by checking the requested location against the locations the user is assigned to. So, the key idea is: the access check confirms the token, the user, the role and the location, in that order.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "With the roles defined, let's dissect the core authorization logic. This section breaks down the check access decorator step-by-step, showing exactly how it validates user permissions."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The shared access check is the heart of our authorization. Implemented as a decorator, it orchestrates several validation steps. First, it validates the J W T and rejects the request if the token is missing or invalid. Then, it confirms the user still exists in the database and makes them available to the rest of the request."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Next, the role check performs the primary RBAC validation, comparing the user's database role against the roles permitted for the A P I endpoint. Finally, the location check applies location-based access rules."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "This crucial step prevents IDOR, or Insecure Direct Object Reference, where someone sees another gym's data just by changing an I D in the U R L. It does this by checking the requested location against the locations the user is assigned to. So, the key idea is: the access check confirms the token, the user, the role and the location, in that order."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-fastapi-integration-and-design-choices",
+        "section_number": 4,
+        "title": "FastAPI Integration and Design Choices",
+        "narration": "This section covers how we integrate this powerful authorization logic into our FastAPI applications and discusses the key design decisions behind it. In FastAPI, we integrate authorization using the Depends utility. Each endpoint declares which roles may call it, and the check runs *before* the endpoint logic. We chose Role-Based Access Control over Permission-Based Access Control for simplicity. While PBAC offers granular control, RBAC is more practical for our stable roles. The access check also records context like the location's timezone and today's date for the request, ensuring all operations use the correct, location-specific context. A beneficial side-effect of non-GET requests passing check access is the automatic triggering of update log. This provides an audit trail, logging the actor user id, payload, and response, which is recorded in the update log table. This creates a permanent record of state changes, enhancing system accountability. So, the key idea is: the check access decorator automatically creates an audit trail for non-GET requests.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "This section covers how we integrate this powerful authorization logic into our FastAPI applications and discusses the key design decisions behind it."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "In FastAPI, we integrate authorization using the Depends utility. Each endpoint declares which roles may call it, and the check runs *before* the endpoint logic."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "We chose Role-Based Access Control over Permission-Based Access Control for simplicity. While PBAC offers granular control, RBAC is more practical for our stable roles. The access check also records context like the location's timezone and today's date for the request, ensuring all operations use the correct, location-specific context."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "A beneficial side-effect of non-GET requests passing check access is the automatic triggering of update log. This provides an audit trail, logging the actor user id, payload, and response, which is recorded in the update log table. This creates a permanent record of state changes, enhancing system accountability. So, the key idea is: the check access decorator automatically creates an audit trail for non-GET requests."
+          }
+        ]
+      },
+      {
+        "section_id": "section-05-rbac-best-practices-recap",
+        "section_number": 5,
+        "title": "RBAC Best Practices Recap",
+        "narration": "Finally, let's recap the best practices implemented in this RBAC system. These principles ensure robust and maintainable security across our services. We adhere to fail-safe defaults, meaning if no roles are specified, only authentication is enforced. However, critical A P I s explicitly define roles to prevent accidental over-exposure. Our authorization logic is tightly coupled with U R L structure: because the location is part of every U R L, the location check can reliably keep each gym's data separate. Blocked requests raise shared error types, handled in one place, to generate standardized JSON error responses. So, the key idea is: RBAC enforces granular access control through one shared check and location-aware validation, ensuring security and auditability. This robust authorization mechanism prepares us to protect administrative endpoints in upcoming topics.",
+        "segments": [
+          {
+            "el_id": "s5-title",
+            "type": "title",
+            "text": "Finally, let's recap the best practices implemented in this RBAC system. These principles ensure robust and maintainable security across our services."
+          },
+          {
+            "el_id": "s5-block-1",
+            "type": "block",
+            "text": "We adhere to fail-safe defaults, meaning if no roles are specified, only authentication is enforced. However, critical A P I s explicitly define roles to prevent accidental over-exposure. Our authorization logic is tightly coupled with U R L structure: because the location is part of every U R L, the location check can reliably keep each gym's data separate."
+          },
+          {
+            "el_id": "s5-block-2",
+            "type": "block",
+            "text": "Blocked requests raise shared error types, handled in one place, to generate standardized JSON error responses. So, the key idea is: RBAC enforces granular access control through one shared check and location-aware validation, ensuring security and auditability. This robust authorization mechanism prepares us to protect administrative endpoints in upcoming topics."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "skill_id": "6a79de290420646179386285",
+  "skill_name": "Plans and Classes Service",
+  "topic_id": "6a79dec90420646179386286",
+  "topic_name": "Plans & Classes Service Overview",
+  "topic_track": "project",
+  "content_version": 20,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a79dec90420646179386286/g18/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a79dec90420646179386286/g20/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 20,
+  "voiceover_data": {
+    "topic_name": "Plans & Classes Service Overview",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-architectural-role",
+        "section_number": 1,
+        "title": "The Architectural Role",
+        "narration": "Building on our last lesson where we saw how payment reconciliation keeps member ledgers accurate, we're now looking at the downstream brain, the Plans and Classes Service, which turns that ledger status into actual gym access. Think of a cinema: it has a list of tickets you can buy and a schedule of screenings. The Plans and Classes Service holds both for the gym: the catalogue of what members can purchase, like session packs or membership tiers, and the calendar of classes. It acts as the operational brain, defining the rules for which plans are valid for certain classes, while also managing facility access. While other services track the money, this one focuses on permissions. It makes sure that even if someone has a valid membership, they can only join a session if their plan actually entitles them to it. Every request reaches it from a user who has already signed in, and it provides the core logic that dictates when and where a member can work out. Memory anchor: This service governs who gets to train where. The key idea is that it translates purchased entitlements into real-time access.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Building on our last lesson where we saw how payment reconciliation keeps member ledgers accurate, we're now looking at the downstream brain, the Plans and Classes Service, which turns that ledger status into actual gym access."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Think of a cinema: it has a list of tickets you can buy and a schedule of screenings. The Plans and Classes Service holds both for the gym: the catalogue of what members can purchase, like session packs or membership tiers, and the calendar of classes. It acts as the operational brain, defining the rules for which plans are valid for certain classes, while also managing facility access."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "While other services track the money, this one focuses on permissions. It makes sure that even if someone has a valid membership, they can only join a session if their plan actually entitles them to it."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Every request reaches it from a user who has already signed in, and it provides the core logic that dictates when and where a member can work out. Memory anchor: This service governs who gets to train where. The key idea is that it translates purchased entitlements into real-time access."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-two-halves",
+        "section_number": 2,
+        "title": "The Two Halves",
+        "narration": "With its role defined, let's look at how the service is organized on the inside. This service is built on a clean, three-layer pattern. It uses endpoint handlers for requests and security, D T O's, or data transfer objects, which are typed shapes for the information moving in and out, and a core business logic layer for the booking and scheduling rules. This keeps the code organized, testable, and strictly separated by its purpose. The logic is split into two halves: the catalogue for defining membership options and the operation module for managing the daily schedule and bookings. This division ensures that whether staff are creating new plan tiers or managing waitlists for a busy evening class, they work within a predictable environment. The key idea here is that clean layers make complex gym logic manageable.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "With its role defined, let's look at how the service is organized on the inside."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "This service is built on a clean, three-layer pattern. It uses endpoint handlers for requests and security, D T O's, or data transfer objects, which are typed shapes for the information moving in and out, and a core business logic layer for the booking and scheduling rules. This keeps the code organized, testable, and strictly separated by its purpose."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "The logic is split into two halves: the catalogue for defining membership options and the operation module for managing the daily schedule and bookings. This division ensures that whether staff are creating new plan tiers or managing waitlists for a busy evening class, they work within a predictable environment. The key idea here is that clean layers make complex gym logic manageable."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-wiring-and-security",
+        "section_number": 3,
+        "title": "Wiring and Security",
+        "narration": "Having covered the architecture, we must ensure these operations remain secure for all users. We secure these endpoints using a centralized gate that checks credentials against assigned roles. We support multiple roles, from staff who manage the full schedule to the kiosk role, a restricted account for front-desk tablets that can view classes, book members in, and check them in without full administrative rights. This ensures only authorized users can modify plan catalogues. By leveraging the hub and spoke model we set up in Structuring the Shared Code Repository, we maintain consistent rules across the entire platform. Every request is filtered through this security gate, preventing unauthorized access while letting members view their own schedules safely. Memory anchor: Unified security gates protect our business rules. The key idea is that consistent role verification keeps our operations secure.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Having covered the architecture, we must ensure these operations remain secure for all users."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "We secure these endpoints using a centralized gate that checks credentials against assigned roles. We support multiple roles, from staff who manage the full schedule to the kiosk role, a restricted account for front-desk tablets that can view classes, book members in, and check them in without full administrative rights. This ensures only authorized users can modify plan catalogues."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "By leveraging the hub and spoke model we set up in Structuring the Shared Code Repository, we maintain consistent rules across the entire platform. Every request is filtered through this security gate, preventing unauthorized access while letting members view their own schedules safely. Memory anchor: Unified security gates protect our business rules. The key idea is that consistent role verification keeps our operations secure."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-critical-design-decisions",
+        "section_number": 4,
+        "title": "Critical Design Decisions",
+        "narration": "Finally, let's explore why this service follows a specific design pattern regarding its data. This is a thin service, meaning it doesn't manage its own database tables. Instead, it relies on shared data models from our central library. By centralizing these definitions, we avoid model drift where different parts of the system interpret data in conflicting ways. The service itself contains no long-term storage, only the logic to interpret existing records. This approach allows the service to remain lightweight and focused entirely on judgment rather than data persistence. It validates whether a member's plan entitles them to a class by checking against those shared definitions, ensuring the system is coherent as a whole. Memory anchor: Data is centralized, but judgment is distributed. The key idea is that being a thin service simplifies data consistency. Next, we will break down the service boundary and rationale to understand why payment ledgers and plan catalogs live in separate microservices.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let's explore why this service follows a specific design pattern regarding its data."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "This is a thin service, meaning it doesn't manage its own database tables. Instead, it relies on shared data models from our central library. By centralizing these definitions, we avoid model drift where different parts of the system interpret data in conflicting ways. The service itself contains no long-term storage, only the logic to interpret existing records."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "This approach allows the service to remain lightweight and focused entirely on judgment rather than data persistence. It validates whether a member's plan entitles them to a class by checking against those shared definitions, ensuring the system is coherent as a whole."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "Memory anchor: Data is centralized, but judgment is distributed. The key idea is that being a thin service simplifies data consistency. Next, we will break down the service boundary and rationale to understand why payment ledgers and plan catalogs live in separate microservices."
+          }
+        ]
+      }
+    ]
+  }
+}

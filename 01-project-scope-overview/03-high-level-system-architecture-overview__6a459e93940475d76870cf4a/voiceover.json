@@ -1,0 +1,111 @@
+{
+  "skill_id": "6a459de3940475d76870cf45",
+  "skill_name": "Project Scope & Overview",
+  "topic_id": "6a459e93940475d76870cf4a",
+  "topic_name": "High-Level System Architecture Overview",
+  "topic_track": "project",
+  "content_version": 15,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a459e93940475d76870cf4a/g5/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a459e93940475d76870cf4a/g15/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 15,
+  "voiceover_data": {
+    "topic_name": "High-Level System Architecture Overview",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-mental-model",
+        "section_number": 1,
+        "title": "The Mental Model",
+        "narration": "Now that we have mapped out all eight business capabilities and the closed-loop gym lifecycle, let's look behind the counter at the technical machinery powering them. Instead of a monolith, which is a single all-in-one software program where every feature runs inside one big codebase, we are using microservices. This architecture splits our app into small, independent services. It fulfills our modular backend goal from the Project Vision and Objectives section, ensuring our system remains flexible and scalable for the future. Think of our system like a professional kitchen. The client is the host, and our microservices are specialized stations, like a grill or a dessert chef. By separating them, we gain fault tolerance. If one station hits a snag, the others keep running. This structure keeps things organized and resilient. The key idea is, modular services enable independent scaling and high availability.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we have mapped out all eight business capabilities and the closed-loop gym lifecycle, let's look behind the counter at the technical machinery powering them."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Instead of a monolith, which is a single all-in-one software program where every feature runs inside one big codebase, we are using microservices. This architecture splits our app into small, independent services. It fulfills our modular backend goal from the Project Vision and Objectives section, ensuring our system remains flexible and scalable for the future."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Think of our system like a professional kitchen. The client is the host, and our microservices are specialized stations, like a grill or a dessert chef. By separating them, we gain fault tolerance. If one station hits a snag, the others keep running. This structure keeps things organized and resilient. The key idea is, modular services enable independent scaling and high availability."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-five-layers",
+        "section_number": 2,
+        "title": "The Five Layers",
+        "narration": "To understand how data flows through this kitchen, we look at it across five distinct layers. The first layer is the Client, representing our web and mobile apps. Next are the A P I services, built with FastAPI, the high-performance, asynchronous Python framework we chose. Each service acts as a specialized station, like Auth-Admin or Members, handling one specific job. They all share the G M S shared library, our common toolbox and recipe book of code that ensures consistency. The final layers handle the heavy lifting. Our async layer uses Redis, a fast in-memory store that acts as a waiting line for tasks, so that Celery, our background worker tool, can pick them up and run long jobs in the background. Finally, we store data in MySQL, our reliable, industry-standard relational database. These layers ensure every request is handled in the right place. The key idea is, separate layers clarify how our components interact to run the gym.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "To understand how data flows through this kitchen, we look at it across five distinct layers."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "The first layer is the Client, representing our web and mobile apps. Next are the A P I services, built with FastAPI, the high-performance, asynchronous Python framework we chose. Each service acts as a specialized station, like Auth-Admin or Members, handling one specific job. They all share the G M S shared library, our common toolbox and recipe book of code that ensures consistency."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "The final layers handle the heavy lifting. Our async layer uses Redis, a fast in-memory store that acts as a waiting line for tasks, so that Celery, our background worker tool, can pick them up and run long jobs in the background. Finally, we store data in MySQL, our reliable, industry-standard relational database. These layers ensure every request is handled in the right place. The key idea is, separate layers clarify how our components interact to run the gym."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-how-parts-talk",
+        "section_number": 3,
+        "title": "How Parts Talk",
+        "narration": "Now, we need to understand how these specialized stations communicate to keep the business running smoothly. Information moves in three ways. First, we have request and response patterns, used when a client asks an A P I for immediate data. Second, services share a MySQL database, a pragmatic shortcut called the shared database pattern. Finally, we use fire-and-forget, where a service hands off a job to a background worker and moves on immediately without waiting. As we set up at the end of the Key Features and Functionalities section, these patterns translate our business workflows into technical actions. Whether it is reading from the shared database or triggering an asynchronous email via Celery, our architecture keeps the services decoupled. These patterns keep everything in sync. The key idea is, clear communication patterns allow specialized services to coordinate their work efficiently.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Now, we need to understand how these specialized stations communicate to keep the business running smoothly."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Information moves in three ways. First, we have request and response patterns, used when a client asks an A P I for immediate data. Second, services share a MySQL database, a pragmatic shortcut called the shared database pattern. Finally, we use fire-and-forget, where a service hands off a job to a background worker and moves on immediately without waiting."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "As we set up at the end of the Key Features and Functionalities section, these patterns translate our business workflows into technical actions. Whether it is reading from the shared database or triggering an asynchronous email via Celery, our architecture keeps the services decoupled. These patterns keep everything in sync. The key idea is, clear communication patterns allow specialized services to coordinate their work efficiently."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-the-architecture-map",
+        "section_number": 4,
+        "title": "The Architecture Map",
+        "narration": "Finally, let's visualize this entire flow with our architecture map. This diagram shows how clients interact with our A P I services, which use the G M S shared library to read and write to the central MySQL database. You can see the async layer connecting via fire-and-forget, ensuring background tasks never block the main experience. This visualization anchors our design in a concrete, actionable blueprint. The key idea is, our architecture map provides the definitive blueprint for our gym operations. Next up in The System Map: From Browser to Database, we will follow a single request end-to-end as it travels from a user clicking a button down to the database and back.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let's visualize this entire flow with our architecture map."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "This diagram shows how clients interact with our A P I services, which use the G M S shared library to read and write to the central MySQL database. You can see the async layer connecting via fire-and-forget, ensuring background tasks never block the main experience."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "This visualization anchors our design in a concrete, actionable blueprint. The key idea is, our architecture map provides the definitive blueprint for our gym operations. Next up in The System Map: From Browser to Database, we will follow a single request end-to-end as it travels from a user clicking a button down to the database and back."
+          }
+        ]
+      }
+    ]
+  }
+}

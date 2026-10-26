@@ -1,0 +1,131 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a45c7b4cd7036ca715188d0",
+  "topic_name": "OAuth 2.0 and OpenID Connect integration",
+  "topic_track": "theory",
+  "content_version": 7,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a45c7b4cd7036ca715188d0/g5/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a45c7b4cd7036ca715188d0/g7/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 7,
+  "voiceover_data": {
+    "topic_name": "OAuth 2.0 and OpenID Connect integration",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-delegating-identity-to-external-providers",
+        "section_number": 1,
+        "title": "Delegating Identity to External Providers",
+        "narration": "Now that we've protected our internal token lifecycle against replay attacks using refresh token rotation, we can move on to federated authentication and let external Identity Providers verify our users. This section covers integrating OAuth 2.0 and OpenID Connect to delegate user identity and access permissions. While secure password storage focused on managing local credentials, modern enterprise systems typically delegate identity to specialized Identity Providers. OAuth 2.0 and OpenID Connect are the industry standards for this, allowing our services to verify user identity and access permissions without ever needing to handle raw passwords. It's really important to distinguish between these two layers. OAuth 2.0 is for *access* \n– it issues an access token for client actions on behalf of a user, like reading a calendar. OpenID Connect, which is built on top of OAuth 2.0, is for *authentication*. It introduces an ID Token, which is a signed J W T containing user claims like their email. We use OIDC to prove who the user is, and then we issue our own internal J W Ts. So, the main idea here is: OAuth 2.0 handles access, and OpenID Connect handles authentication.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we've protected our internal token lifecycle against replay attacks using refresh token rotation, we can move on to federated authentication and let external Identity Providers verify our users."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This section covers integrating OAuth 2.0 and OpenID Connect to delegate user identity and access permissions. While secure password storage focused on managing local credentials, modern enterprise systems typically delegate identity to specialized Identity Providers. OAuth 2.0 and OpenID Connect are the industry standards for this, allowing our services to verify user identity and access permissions without ever needing to handle raw passwords."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "It's really important to distinguish between these two layers. OAuth 2.0 is for *access* \n– it issues an access token for client actions on behalf of a user, like reading a calendar. OpenID Connect, which is built on top of OAuth 2.0, is for *authentication*."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "It introduces an ID Token, which is a signed J W T containing user claims like their email. We use OIDC to prove who the user is, and then we issue our own internal J W Ts. So, the main idea here is: OAuth 2.0 handles access, and OpenID Connect handles authentication."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-authorization-code-flow",
+        "section_number": 2,
+        "title": "The Authorization Code Flow",
+        "narration": "So, OpenID Connect proves who the user is. For web applications with a Python backend, the standard way to implement this is the Authorization Code Flow. This flow securely exchanges tokens server to server. This flow starts with a redirection. Your backend generates a U R L to the Identity Provider. This U R L includes a state parameter to prevent CSRF attacks and a nonce for replay protection. The user then authenticates with the provider and grants the requested permissions, which are known as scopes. After that, the provider redirects back to your callback U R L with a short-lived authorization code. Next, your backend sends this code, along with your client ID and client secret, directly to the provider's token endpoint. The provider then responds with an access token, an ID Token, and possibly a refresh token. The whole point of this exchange is to keep sensitive tokens out of the browser's history. So, the key takeaway is: the Authorization Code Flow keeps sensitive tokens out of the browser.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So, OpenID Connect proves who the user is. For web applications with a Python backend, the standard way to implement this is the Authorization Code Flow. This flow securely exchanges tokens server to server."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "This flow starts with a redirection. Your backend generates a U R L to the Identity Provider. This U R L includes a state parameter to prevent CSRF attacks and a nonce for replay protection. The user then authenticates with the provider and grants the requested permissions, which are known as scopes. After that, the provider redirects back to your callback U R L with a short-lived authorization code."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Next, your backend sends this code, along with your client ID and client secret, directly to the provider's token endpoint. The provider then responds with an access token, an ID Token, and possibly a refresh token. The whole point of this exchange is to keep sensitive tokens out of the browser's history. So, the key takeaway is: the Authorization Code Flow keeps sensitive tokens out of the browser."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-python-integration-and-user-mapping",
+        "section_number": 3,
+        "title": "Python Integration and User Mapping",
+        "narration": "Integrating this flow in Python is made much simpler by libraries like Authlib. This library also helps map the external identity to your local user records after a successful authentication. The Authlib library automates the complex OIDC handshake. Instead of hardcoding endpoints, it uses the provider's dot well dot known slash openid configuration URL to discover authorization and token endpoints. You register your client with your client ID, client secret, and desired scopes. Once the access token is obtained in the callback, you can retrieve user information, typically from the userinfo endpoint or the ID Token's claims. After validating the ID Token's signature, issuer, and audience, you need to reconcile the external identity with your local database. This often uses what's called the 'Shadow User Pattern'. Here, you store a reference to the external subject claim, or sub claim, and the provider name, but you don't store the external password. You also need to handle account linking if an existing user's email matches the one from the provider. So, the main idea here is: always reconcile external identities with local records, using a pattern like Shadow User to avoid storing external passwords.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Integrating this flow in Python is made much simpler by libraries like Authlib. This library also helps map the external identity to your local user records after a successful authentication."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The Authlib library automates the complex OIDC handshake. Instead of hardcoding endpoints, it uses the provider's dot well dot known slash openid configuration URL to discover authorization and token endpoints. You register your client with your client ID, client secret, and desired scopes. Once the access token is obtained in the callback, you can retrieve user information, typically from the userinfo endpoint or the ID Token's claims."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "After validating the ID Token's signature, issuer, and audience, you need to reconcile the external identity with your local database. This often uses what's called the 'Shadow User Pattern'. Here, you store a reference to the external subject claim, or sub claim, and the provider name, but you don't store the external password."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "You also need to handle account linking if an existing user's email matches the one from the provider. So, the main idea here is: always reconcile external identities with local records, using a pattern like Shadow User to avoid storing external passwords."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-session-management-and-security",
+        "section_number": 4,
+        "title": "Session Management and Security",
+        "narration": "Following authentication, we need to manage our application's session independently and harden our integration against common security threats. Once the OIDC exchange is complete, initialize your *local* session by issuing your own J W Ts, including an Access Token and Refresh Token. Implement token rotation for this local session, just as if the user had logged in via a standard password flow. Avoid storing the IdP's access token locally unless your application needs to directly call the IdP's A P I's later. As we move toward a microservices-heavy environment, the centralized validation of these tokens often shifts to the perimeter. For security hardening, implement PKCE, or Proof Key for Code Exchange, which adds a cryptographic secret to prevent code injection. Request only the necessary scopes, like openid and email, avoiding broader permissions unless essential. Finally, ensure proper issuer validation, especially in multi-tenant scenarios, to prevent cross-tenant authentication leaks. So, to recap: OAuth 2.0 handles authorization, OpenID Connect handles authentication, and the Authorization Code Flow is your secure backend handshake. Now, as we move toward an environment that's heavy on microservices, the centralized validation of these tokens often shifts to the perimeter, which we'll explore in the next section on A P I Gateway security patterns.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Following authentication, we need to manage our application's session independently and harden our integration against common security threats."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Once the OIDC exchange is complete, initialize your *local* session by issuing your own J W Ts, including an Access Token and Refresh Token. Implement token rotation for this local session, just as if the user had logged in via a standard password flow."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Avoid storing the IdP's access token locally unless your application needs to directly call the IdP's A P I's later. As we move toward a microservices-heavy environment, the centralized validation of these tokens often shifts to the perimeter."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "For security hardening, implement PKCE, or Proof Key for Code Exchange, which adds a cryptographic secret to prevent code injection. Request only the necessary scopes, like openid and email, avoiding broader permissions unless essential. Finally, ensure proper issuer validation, especially in multi-tenant scenarios, to prevent cross-tenant authentication leaks."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "So, to recap: OAuth 2.0 handles authorization, OpenID Connect handles authentication, and the Authorization Code Flow is your secure backend handshake. Now, as we move toward an environment that's heavy on microservices, the centralized validation of these tokens often shifts to the perimeter, which we'll explore in the next section on A P I Gateway security patterns."
+          }
+        ]
+      }
+    ]
+  }
+}

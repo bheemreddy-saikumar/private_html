@@ -1,0 +1,2009 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dedicated Queues: Isolating the `batch-queue`</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style>
+<style>
+/* Single source of truth for the player chrome geometry. Every canvas (active
+   slide, cover, outro) and the caption band derive from these — never repeat the
+   pixel literals. --il-bottom is where a canvas ENDS: bar only, or bar + caption
+   band while captions are enabled (html.cap-band), so the band is RESERVED space
+   and a caption can never overlay content, whatever its length. */
+html.preview-mode { --il-top: 12px; --il-bar-h: 80px; --il-cap-h: 72px; --il-bottom: var(--il-bar-h); }
+html.preview-mode.cap-band { --il-bottom: calc(var(--il-bar-h) + var(--il-cap-h)); }
+html.preview-mode { scroll-snap-type: none !important; }
+html.preview-mode, html.preview-mode body { overflow: hidden !important; height: 100vh !important; }
+html.preview-mode main { overflow: hidden !important; }
+/* Hide the in-flow, non-section content of <main> (hero/title block, metric cards,
+   footer) so it never flashes through during the gap between slide transitions.
+   Sections themselves are left to the show/hide rules below. */
+html.preview-mode main > *:not(section) { display: none !important; }
+/* Un-IDed <section>s are hidden by default; if one is the deck hero it gets tagged
+   .il-native-cover (below), whose higher-specificity rule shows it before playback. */
+html.preview-mode main > section:not([id^="section-"]) { display: none !important; }
+html.preview-mode section[id^="section-"] { display: none !important; }
+html.preview-mode section[id^="section-"].slide-active {
+    display: flex !important; flex-direction: column !important; position: fixed !important;
+    top: var(--il-top) !important; left: 0 !important; right: 0 !important; bottom: var(--il-bottom) !important;
+    width: 100% !important; max-width: 100% !important;
+    /* min-height must track --il-bottom: with top+bottom both set, a larger fixed
+       min-height over-constrains the box and pushes the slide back down UNDER the
+       reserved caption band — the exact overlap the band exists to prevent. */
+    min-height: calc(100vh - var(--il-top) - var(--il-bottom)) !important;
+    z-index: 100 !important; background: #f4f7fb !important; padding: 16px 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+html.preview-mode section[id^="section-"].slide-active > * { max-width: 100% !important; box-sizing: border-box !important; }
+/* Section transitions. Decks give sections a scroll `.reveal` fade (opacity 0 →
+   1 over ~0.6s). In the player that made the whole slide box translucent while it
+   faded in, so whatever sits beneath it (the deck's recap/takeaways block, which
+   lives outside <main>) flashed through between sections. The slide box is opaque
+   from its first frame; only its CONTENT eases in over the solid background.
+   html.il-snap (MP4 frames) already disables animations, so exports stay crisp. */
+html.preview-mode section[id^="section-"].reveal,
+html.preview-mode section[id^="section-"].slide-active {
+    opacity: 1 !important; transform: none !important; transition: none !important;
+}
+html.preview-mode section[id^="section-"].slide-active > * { animation: il-section-in 420ms ease-out both; }
+/* Opaque backdrop under every canvas. Decks put blocks OUTSIDE <main> (the recap /
+   "Key Takeaways" cards) that the main-scoped hide rules never reach; on phones they
+   showed through the caption strip. Slides (z 100), cover/outro (z 120) and the
+   player chrome (z >= 9999) all sit above this. */
+html.preview-mode body::before {
+    content: ""; position: fixed; inset: 0; background: #f4f7fb; z-index: 50; pointer-events: none;
+}
+@keyframes il-section-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+html.preview-mode section[id^="section-"].slide-active .bento-card {
+    flex: 1 !important; min-height: 600px !important; display: flex !important; flex-direction: column !important;
+}
+html.preview-mode .hero-section, html.preview-mode .metric-cards, html.preview-mode footer { display: none !important; }
+
+/* Cover / thumbnail — use the deck's OWN hero (first non-section block in <main>,
+   tagged .il-native-cover by JS). Shown as the canvas BEFORE playback; hidden once
+   playback starts so playback begins on the first voice-over slide. The high
+   specificity here beats the `main > *` flash-hide rules above. */
+html.preview-mode .il-native-cover {
+    display: flex !important; flex-direction: column !important; justify-content: center !important;
+    /* `safe`: content taller than the canvas (a long recap on a phone) starts at the
+       top instead of being centred off-screen. Plain `center` stays as the fallback. */
+    justify-content: safe center !important;
+    position: fixed !important; top: var(--il-top) !important; left: 0 !important; right: 0 !important; bottom: var(--il-bottom) !important;
+    z-index: 120 !important; background: #f4f7fb !important; padding: 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+html.preview-mode.playback-started .il-native-cover { display: none !important; }
+
+/* Outro / end-card — a trailing non-section block (e.g. the summary/metric cards)
+   that has no narration. Hidden during playback; shown as a static end screen (like
+   the cover, but at the end) once playback finishes. */
+html.preview-mode .il-outro.il-show {
+    display: flex !important; flex-direction: column !important; justify-content: center !important;
+    /* `safe`: content taller than the canvas (a long recap on a phone) starts at the
+       top instead of being centred off-screen. Plain `center` stays as the fallback. */
+    justify-content: safe center !important;
+    position: fixed !important; top: var(--il-top) !important; left: 0 !important; right: 0 !important; bottom: var(--il-bottom) !important;
+    z-index: 120 !important; background: #f4f7fb !important; padding: 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+
+/* No header in the player — new decks don't generate one, and any legacy deck's
+   sticky header/nav/hamburger is hidden so the reclaimed --il-top space is real. */
+html.preview-mode .glass-header, html.preview-mode body > header, html.preview-mode header,
+html.preview-mode .mobile-nav-toggle, html.preview-mode .mobile-nav-panel { display: none !important; }
+
+/* --- Scene mode: title card vs block scene -------------------------------
+   One element plays at a time. While the section TITLE is narrated the
+   .scene-head title card fills the canvas alone; while a BLOCK is narrated the
+   title card leaves and only that block's scene (plus the stage) is on canvas.
+   Both classes are set purely from (section, elementId), so the MP4 renderer's
+   __ilShowBlock produces identical frames. Legacy decks without .scene-head /
+   .scene-body simply ignore these rules.
+
+   The scene-body is hidden during the title card with opacity + absolute (the
+   same trick the stage items use), NEVER display:none — showSlide renders the
+   section's mermaid while the title card is up, and mermaid measures at 0px
+   inside display:none (that bug shipped once: every stage diagram came out as
+   an empty box). Keeping left/right pins preserves the real column widths. */
+html.preview-mode section[id^="section-"].slide-active.il-scene-title .scene-body {
+    position: absolute !important; left: 24px !important; right: 24px !important; top: 0 !important;
+    opacity: 0 !important; pointer-events: none !important;
+}
+html.preview-mode section[id^="section-"].slide-active.il-scene-title .scene-head {
+    flex: 1 !important; display: flex !important; flex-direction: column !important; justify-content: center !important;
+}
+/* .scene-head holds no mermaid, so display:none is safe here. */
+html.preview-mode section[id^="section-"].slide-active.il-scene-block .scene-head { display: none !important; }
+
+/* Scene composition: the body owns the canvas height so the footer's
+   margin-top:auto has no slack to steal (without this, blocks pinned to the
+   top of an empty canvas). The 2-col row variant centers via its own
+   items-center; the stacked (no-visual) variant gets column centering here. */
+html.preview-mode section[id^="section-"].slide-active .scene-body { flex: 1 1 auto; min-height: 0; }
+html.preview-mode section[id^="section-"].slide-active .scene-body:not(.flex) {
+    display: flex; flex-direction: column; justify-content: center;
+}
+
+/* In a block scene only ONE element is on canvas — the legacy spotlight
+   treatment (dim everything else to .42, ring + pulse on the target) has
+   nothing to contrast against and just washes out the stage centerpiece and
+   makes the block look like a highlighted widget. Neutralize both; the
+   .il-covis visual co-highlight rules still apply.
+   The un-dim targets ONLY `.il-shown` elements: this selector out-specifies
+   the reveal-hide rule (il-reveal [data-el-id]:not(.il-shown) → opacity 0),
+   so without the .il-shown scope it would force every reveal-hidden block
+   visible again — that exact regression shipped once as "the whole section
+   shows at once". */
+html.preview-mode section[id^="section-"].slide-active.il-scene-block.il-dim [data-el-id].il-shown:not(.il-spot),
+html.preview-mode section[id^="section-"].slide-active.il-scene-block:not(.il-reveal).il-dim [data-el-id]:not(.il-spot) {
+    opacity: 1 !important; filter: none !important;
+}
+/* No ring in EITHER scene state — the title card's h2 is spotlit too. */
+html.preview-mode section[id^="section-"].slide-active.il-scene-title [data-el-id].il-spot,
+html.preview-mode section[id^="section-"].slide-active.il-scene-block [data-el-id].il-spot {
+    box-shadow: none !important; animation: none !important; transform: none !important;
+}
+
+/* --- Scene-NATIVE decks (one .scene DOM unit per element) ----------------
+   Newer HTML emits an explicit scene stack per section: .scene.scene-title +
+   one .scene[data-scene-for="sN-block-i"] per block, each with its own visual
+   inside. The player turns exactly one on; hidden scenes use the mermaid-safe
+   opacity+absolute trick (NEVER display:none — mermaid measures 0px there).
+   Sections without [data-scene-for] fall back to the reveal-based path. */
+html.preview-mode section[id^="section-"].slide-active .scene {
+    position: absolute !important; left: 24px !important; right: 24px !important; top: 0 !important;
+    opacity: 0 !important; pointer-events: none !important;
+}
+/* Visual wrapper must fill the scene's visual column: that column is a flex
+   column, and a non-stretched child shrinks to the visual's natural width
+   (the cause of "tiny mermaid" even after SVG normalization). */
+html.preview-mode .scene-visual-item { width: 100% !important; align-self: stretch !important; }
+html.preview-mode section[id^="section-"].slide-active .scene.il-on {
+    position: relative !important; left: auto !important; right: auto !important; top: auto !important;
+    opacity: 1 !important; pointer-events: auto !important;
+    flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center;
+    transition: opacity 220ms ease;
+}
+
+/* When the stage owner resolves to nothing (block owns no visuals and no
+   'hold' predecessor does either), collapse the whole visual column instead of
+   showing an empty gray wrapper, and let the text column breathe. Applied only
+   by applyStage (never at showSlide), so mermaid always renders with layout. */
+html.preview-mode section[id^="section-"].slide-active.il-scene-block.il-stage-empty .scene-body > div:has(.visual-stage) { display: none !important; }
+html.preview-mode section[id^="section-"].slide-active.il-scene-block.il-stage-empty .scene-body > div[class*="w-2/5"] {
+    width: 100% !important; max-width: 780px; margin: 0 auto;
+}
+
+
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+
+/* Laser pointer — transient dot. */
+#ilLaser {
+    position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(244,63,94,.95) 0%, rgba(244,63,94,.35) 60%, transparent 70%);
+    box-shadow: 0 0 12px 4px rgba(244,63,94,.55); pointer-events: none; opacity: 0;
+    transition: opacity .2s ease, left .25s ease, top .25s ease; z-index: 10000;
+}
+/* Player chrome — matches TopicAudioPlayer aesthetic. */
+/* Self-contained dark-glass media bar — guaranteed contrast over ANY deck theme
+   (the learner renders the deck in its native colors, so the bar must not depend
+   on the slide background). */
+.audio-player-container {
+    position: fixed; bottom: 0; left: 0; right: 0; background: rgba(17,24,39,.94); border-top: 1px solid rgba(255,255,255,.10);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    box-shadow: 0 -4px 18px -8px rgba(0,0,0,.5); padding: 12px 16px; display: flex; align-items: center;
+    justify-content: center; gap: 12px; z-index: 9999; color: #e5e7eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; flex-wrap: nowrap;
+}
+.audio-player-container button {
+    background: rgba(255,255,255,.08); border: none; color: #f1f5f9; width: 36px; height: 36px; border-radius: 8px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; flex-shrink: 0;
+}
+.audio-player-container button:hover { background: rgba(255,255,255,.18); color: #fff; }
+.audio-player-container button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+.audio-player-container button.play-btn { width: 44px; height: 44px; border-radius: 50%; background: #6366f1; color: #fff; }
+.audio-player-container button.play-btn:hover { background: #4f46e5; color: #fff; }
+.audio-progress-container { flex: 1; min-width: 0; max-width: 460px; display: flex; flex-direction: column; gap: 4px; }
+/* Drag-to-seek: a tall, touch-friendly hit area around the thin track; the thumb
+   rides the end of the fill (no JS needed to place it). */
+.audio-progress-hit { position: relative; width: 100%; padding: 8px 0; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.audio-progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,.18); border-radius: 999px; position: relative; }
+.audio-progress-fill { height: 100%; background: #818cf8; width: 0%; border-radius: 999px; transition: width .1s; position: relative; }
+.audio-progress-fill::after {
+    content: ""; position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 2px #818cf8; transform: translateY(-50%) scale(.75);
+    opacity: .9; transition: transform .12s ease;
+}
+.audio-progress-hit:hover .audio-progress-fill::after, .audio-progress-hit.scrubbing .audio-progress-fill::after { transform: translateY(-50%) scale(1.15); opacity: 1; }
+.audio-progress-hit.scrubbing .audio-progress-fill { transition: none; }
+.audio-time { display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+.audio-section-info { color: #cbd5e1; font-size: 12px; font-weight: 500; min-width: 120px; text-align: center; }
+/* Subtitles / captions — a DOCKED BAND between every canvas and the player bar,
+   never an overlay. While captions are enabled (html.cap-band, toggled by the CC
+   button) --il-bottom reserves the band's height on all three canvases (active
+   slide, cover, outro), so a caption can never touch content REGARDLESS of length:
+   the band's height is fixed and a long cue scrolls inside it (setCaption resets
+   the scroll on each new cue). The space stays reserved even while the band is
+   empty between blocks, so the slide never jumps when a caption appears/clears.
+   The side padding clamps the text column to ~880px, centered. */
+#ilCaptions {
+    position: fixed; left: 0; right: 0; bottom: var(--il-bar-h, 80px);
+    height: var(--il-cap-h, 72px); overflow: hidden; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,.94); border-top: 1px solid rgba(255,255,255,.08);
+    color: #fff; padding: 8px max(24px, calc((100vw - 760px) / 2)); font-size: 18px;
+    line-height: 1.4; text-align: center;
+    z-index: 9998;
+}
+/* One subtitle chunk (≤14 words, ≤2 lines) at a time — see buildCaption. */
+#ilCaptions .il-chunk { display: none; }
+#ilCaptions .il-chunk.il-chunk-on { display: inline; }
+#ilCaptions:empty, #ilCaptions.cap-off { display: none; }
+/* Karaoke reveal: every caption word is a span; words the narration has not
+   reached yet sit dimmed and light up at their (word-timed or proportional)
+   moment. html.il-snap kills the transition for the frame renderer. */
+#ilCaptions .il-cw { opacity: .28; transition: opacity 140ms ease; }
+#ilCaptions .il-cw.on { opacity: 1; }
+/* CC + speed pill are text buttons, not the 36px icon buttons — override the fixed size. */
+.audio-player-container .cc-btn, .audio-player-container .audio-speed-toggle { width: auto; height: auto; }
+/* CC toggle */
+.cc-btn {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); color: #e5e7eb; padding: 4px 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; border-radius: 6px; cursor: pointer; transition: all .15s;
+    flex-shrink: 0;
+}
+.cc-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+.cc-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+/* Speed popover pill */
+.audio-speed { position: relative; flex-shrink: 0; }
+.audio-speed-toggle {
+    display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22);
+    color: #e5e7eb; padding: 4px 8px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer;
+    transition: all .15s; min-width: 48px; justify-content: center; font-variant-numeric: tabular-nums;
+}
+.audio-speed-toggle:hover { background: rgba(255,255,255,.18); color: #fff; }
+.audio-speed-menu {
+    display: none; position: absolute; bottom: calc(100% + 8px); right: 0; background: #111827; border: 1px solid #374151;
+    border-radius: 10px; box-shadow: 0 8px 24px -8px rgba(0,0,0,.5); padding: 3px 0; min-width: 0; width: max-content; z-index: 10001; overflow: hidden;
+}
+.audio-speed-menu.open { display: block; }
+.audio-speed-item {
+    display: block; width: 100%; text-align: center; background: transparent; border: none; color: #e5e7eb;
+    padding: 6px 6px; font-size: 12px; font-weight: 500; border-radius: 0; cursor: pointer; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* Speed items are <button>s inside .audio-player-container, so the generic
+   `.audio-player-container button` rule (36px, 8px radius) out-specifies the
+   plain `.audio-speed-item` class. Scope these here to actually win: full-width
+   uniform rows, auto height, square corners. */
+.audio-player-container .audio-speed-item { width: 100%; height: auto; border-radius: 0; background: transparent; }
+.audio-player-container .audio-speed-item:hover { background: #374151; }
+.audio-player-container .audio-speed-item.active { background: #3730a3; color: #fff; font-weight: 600; }
+@media (max-width: 640px) {
+    /* The player bar wraps to two rows on phones — the geometry vars absorb it,
+       and every canvas + the caption band follow automatically. */
+    html.preview-mode { --il-bar-h: 120px; --il-cap-h: 64px; }
+    .audio-player-container { flex-wrap: wrap; padding: 10px 12px; gap: 8px; justify-content: space-between; }
+    .audio-section-info { display: none; }
+    .audio-progress-container { order: 99; flex: 1 0 100%; max-width: none; }
+    #ilCaptions { font-size: 13px; padding: 8px 14px; }
+    /* Mobile: let the slide be its natural height so the slide heading isn't
+       pushed off-screen. The desktop 600px card min-height + full-viewport
+       slide min-height make the single-column phone layout far taller than the
+       viewport, scrolling the heading above the fold. */
+    html.preview-mode section[id^="section-"].slide-active { min-height: 0 !important; padding: 14px 14px !important; }
+    html.preview-mode section[id^="section-"].slide-active .bento-card { min-height: auto !important; }
+    html.preview-mode main > section:not([id^="section-"]) { min-height: 0 !important; }
+}
+
+/* --- Block-owned stage ---------------------------------------------------
+   During playback only the current block's stage items are visible; the rest
+   are hidden with opacity + absolute positioning, NOT display:none — mermaid
+   renders at 0px inside display:none, and the MP4 renderer screenshots the
+   DOM as-is. The ~220ms crossfade stays under the renderer's settle wait,
+   and html.il-snap (set by the renderer) turns all motion off entirely. */
+html.preview-mode .visual-stage { position: relative; width: 100%; min-height: 240px; display: flex; flex-direction: column; justify-content: center; }
+html.preview-mode .visual-stage .stage-item { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0; opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
+html.preview-mode .visual-stage .stage-item.il-stage-on { position: relative; top: auto; transform: none; opacity: 1; pointer-events: auto; margin: 0 0 12px; }
+html.preview-mode .visual-stage .stage-item.il-stage-on:last-child { margin-bottom: 0; }
+html.il-snap * { transition: none !important; animation: none !important; }
+</style>
+</head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Dedicated Queues: Isolating the `batch-queue`</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Dedicated Queues: Isolating the `batch-queue`</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Traffic Controller: Task Routes</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Route tasks to dedicated queues to prevent workload starvation.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-urgent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-batch" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="70" y="210" width="130" height="46" rx="23" fill="#4f46e5"></rect>
+  <text x="135" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">Urgent</text>
+
+  <rect x="70" y="278" width="130" height="46" rx="23" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="135" y="308" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Batch</text>
+
+  <line x1="208" y1="267" x2="292" y2="267" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6 6"></line>
+
+  
+  <rect x="300" y="200" width="140" height="134" rx="20" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="370" y="274" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Router</text>
+
+  
+  <path d="M 440 240 C 480 240, 490 170, 526 170" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-urgent)"></path>
+  <path d="M 440 294 C 480 294, 490 364, 526 364" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow-batch)"></path>
+
+  
+  <text x="645" y="105" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#f59e0b">Dedicated Queues</text>
+
+  
+  <path d="M 540 140 L 730 140 A 16 30 0 0 1 730 200 L 540 200" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"></path>
+  <ellipse cx="730" cy="170" rx="16" ry="30" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  <ellipse cx="540" cy="170" rx="16" ry="30" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  
+  <rect x="610" y="152" width="76" height="36" rx="18" fill="#4f46e5"></rect>
+
+  
+  <path d="M 540 334 L 730 334 A 16 30 0 0 1 730 394 L 540 394" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"></path>
+  <ellipse cx="730" cy="364" rx="16" ry="30" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  <ellipse cx="540" cy="364" rx="16" ry="30" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  
+  <rect x="575" y="348" width="44" height="32" rx="16" fill="#cbd5e1"></rect>
+  <rect x="630" y="348" width="44" height="32" rx="16" fill="#cbd5e1"></rect>
+  <rect x="685" y="348" width="28" height="32" rx="14" fill="#cbd5e1"></rect>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Task Routing</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Bypasses single default queue</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Directs tasks into dedicated lanes</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4e395f8c5dd1b6294abd7d/g7/images/s1-block-1-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Dedicated Queues</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"></path>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="40" y="45" width="740" height="195" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="70" y="95" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Fast Lane</text>
+
+  
+  <line x1="120" y1="145" x2="225" y2="145" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  
+  <path d="M 240 105 L 360 105 A 16 40 0 0 1 360 185 L 240 185 A 16 40 0 0 1 240 105 Z" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></path>
+  <ellipse cx="360" cy="145" rx="16" ry="40" fill="#fde68a" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  <path d="M 240 105 A 16 40 0 0 1 240 185" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 4"></path>
+
+  
+  <line x1="380" y1="145" x2="405" y2="145" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"></line>
+
+  
+  <rect x="415" y="123" width="200" height="44" rx="22" fill="#4f46e5"></rect>
+  <text x="515" y="152" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">Password Reset</text>
+
+  
+  <line x1="620" y1="145" x2="640" y2="145" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"></line>
+  <rect x="645" y="125" width="115" height="40" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="702" y="151" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Instant</text>
+
+  
+  <rect x="40" y="275" width="740" height="195" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="70" y="325" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Batch Lane</text>
+
+  
+  <rect x="130" y="365" width="120" height="40" rx="20" fill="#c7d2fe" opacity="0.6"></rect>
+  <rect x="210" y="365" width="120" height="40" rx="20" fill="#818cf8" opacity="0.8"></rect>
+
+  
+  <path d="M 240 345 L 360 345 A 16 40 0 0 1 360 425 L 240 425 A 16 40 0 0 1 240 345 Z" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></path>
+  <ellipse cx="360" cy="385" rx="16" ry="40" fill="#fde68a" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  <path d="M 240 345 A 16 40 0 0 1 240 425" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 4"></path>
+
+  
+  <line x1="380" y1="385" x2="405" y2="385" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"></line>
+  <rect x="415" y="363" width="200" height="44" rx="22" fill="#4f46e5"></rect>
+  <text x="515" y="392" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">Credit No-Shows</text>
+
+  
+  <line x1="620" y1="385" x2="640" y2="385" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"></line>
+  <rect x="645" y="365" width="115" height="40" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="702" y="391" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">Queued</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;the traffic controller: task routes</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Why the Environment Prefix Matters</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Prefix queue names to strictly isolate environments.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="55" width="720" height="410" rx="20" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="410" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Shared Broker</text>
+
+  
+  <rect x="80" y="125" width="305" height="305" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"></rect>
+  <text x="232" y="172" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">Test</text>
+
+  
+  <rect x="152" y="210" width="160" height="46" rx="8" fill="#10b981"></rect>
+  <text x="232" y="240" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#ffffff">test-*</text>
+
+  
+  <line x1="232" y1="256" x2="232" y2="292" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow-green)"></line>
+
+  
+  <rect x="142" y="296" width="180" height="54" rx="14" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"></rect>
+  <text x="232" y="330" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#0f172a">test-queue</text>
+
+  
+  <line x1="410" y1="125" x2="410" y2="430" stroke="#ef4444" stroke-width="3" stroke-dasharray="8 8"></line>
+  <circle cx="410" cy="275" r="24" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></circle>
+  <path d="M 400 265 L 420 265 L 420 277 Q 420 288 410 292 Q 400 288 400 277 Z" fill="#ef4444"></path>
+
+  
+  <rect x="435" y="125" width="305" height="305" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"></rect>
+  <text x="588" y="172" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">Prod</text>
+
+  
+  <rect x="508" y="210" width="160" height="46" rx="8" fill="#10b981"></rect>
+  <text x="588" y="240" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#ffffff">prod-*</text>
+
+  
+  <line x1="588" y1="256" x2="588" y2="292" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow-green)"></line>
+
+  
+  <rect x="498" y="296" width="180" height="54" rx="14" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"></rect>
+  <text x="588" y="330" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#0f172a">prod-queue</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Environment-Prefixed Queue</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">batch_queue_name = f"{conf.ENV}-gms:batch-queue"</span>
+<span class="cl" data-line="2"></span>
+<span class="cl" data-line="3">celery_app = Celery("batch-worker")</span>
+<span class="cl" data-line="4"></span>
+<span class="cl" data-line="5">celery_app.conf.update(</span>
+<span class="cl" data-line="6">    # 1. The Worker: "I only listen to this specific line"</span>
+<span class="cl" data-line="7">    task_queues=(</span>
+<span class="cl" data-line="8">        Queue(batch_queue_name),</span>
+<span class="cl" data-line="9">    ),</span>
+<span class="cl" data-line="10">    # 2. The Producer: "When I call this task, send it here"</span>
+<span class="cl" data-line="11">    task_routes={</span>
+<span class="cl" data-line="12">        "credit_noshows": {"queue": batch_queue_name},</span>
+<span class="cl" data-line="13">    },</span>
+<span class="cl" data-line="14">    task_default_queue=batch_queue_name,</span>
+<span class="cl" data-line="15">)</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Strict Environment Isolation</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M1 1 L7 4 L1 7 Z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M1 1 L7 4 L1 7 Z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <text x="410" y="48" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Shared Broker</text>
+  <rect x="50" y="70" width="720" height="410" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="8 6"></rect>
+
+  
+  <line x1="70" y1="275" x2="750" y2="275" stroke="#ef4444" stroke-width="2" stroke-dasharray="8 6"></line>
+  <rect x="310" y="253" width="200" height="44" rx="22" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="410" y="282" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">Isolation Wall</text>
+
+  
+  <rect x="80" y="145" width="110" height="60" rx="30" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="135" y="182" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Test</text>
+
+  <line x1="190" y1="175" x2="262" y2="175" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-blue)"></line>
+
+  <rect x="270" y="145" width="220" height="60" rx="12" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="280" y="153" width="200" height="44" rx="8" fill="#d1fae5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="380" y="182" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#065f46">test-queue</text>
+
+  <line x1="490" y1="175" x2="562" y2="175" stroke="#10b981" stroke-width="3" marker-end="url(#arr-green)"></line>
+
+  <rect x="570" y="145" width="170" height="60" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect>
+  <text x="655" y="182" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Test Worker</text>
+
+  
+  <rect x="80" y="345" width="110" height="60" rx="30" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="135" y="382" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Prod</text>
+
+  <line x1="190" y1="375" x2="262" y2="375" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-blue)"></line>
+
+  <rect x="270" y="345" width="220" height="60" rx="12" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="280" y="353" width="200" height="44" rx="8" fill="#d1fae5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="380" y="382" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#065f46">prod-queue</text>
+
+  <line x1="490" y1="375" x2="562" y2="375" stroke="#10b981" stroke-width="3" marker-end="url(#arr-green)"></line>
+
+  <rect x="570" y="345" width="170" height="60" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect>
+  <text x="655" y="382" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Prod Worker</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;why the environment prefix matters</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Engineering Trade-offs &amp; Decisions</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Dedicated queues isolate failures and enable independent scaling.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="110" y="130" width="170" height="70" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"></rect>
+  <text x="195" y="173" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#b45309">urgent</text>
+
+  <line x1="280" y1="165" x2="430" y2="165" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)"></line>
+  <circle cx="330" cy="165" r="5" fill="#4f46e5">
+    <animate attributeName="cx" values="290;415" dur="2s" repeatCount="indefinite"></animate>
+  </circle>
+
+  <rect x="430" y="115" width="260" height="100" rx="16" fill="#0f172a"></rect>
+  <circle cx="470" cy="165" r="8" fill="#10b981">
+    <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"></animate>
+  </circle>
+  <text x="495" y="172" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#ffffff">auto-scales</text>
+
+  
+  <line x1="80" y1="260" x2="740" y2="260" stroke="#ef4444" stroke-width="2" stroke-dasharray="8 8"></line>
+  <rect x="330" y="242" width="160" height="36" rx="18" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="410" y="267" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">barrier</text>
+
+  
+  <rect x="110" y="320" width="170" height="70" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"></rect>
+  <text x="195" y="363" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#b45309">heavy</text>
+
+  <line x1="280" y1="355" x2="430" y2="355" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  <rect x="430" y="305" width="260" height="100" rx="16" fill="#f8fafc" stroke="#ef4444" stroke-width="2.5"></rect>
+  <circle cx="470" cy="355" r="10" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></circle>
+  <text x="470" y="362" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">!</text>
+  <text x="495" y="362" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#ef4444">isolated</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Blast Radius Isolation</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Crashes stay contained</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Core services stay online</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4e395f8c5dd1b6294abd7d/g7/images/s3-block-1-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Targeted Queue Scaling</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="80" y="90" width="210" height="110" rx="14" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"></rect>
+  <text x="185" y="135" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">email-queue</text>
+  <rect x="125" y="152" width="120" height="34" rx="17" fill="#fee2e2"></rect>
+  <text x="185" y="176" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">depth: 65</text>
+
+  <line x1="300" y1="145" x2="480" y2="145" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-blue)"></line>
+  <text x="390" y="132" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">+2 workers</text>
+
+  <rect x="490" y="90" width="250" height="110" rx="14" fill="#f8fafc" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <rect x="515" y="112" width="55" height="50" rx="8" fill="#0f172a"></rect>
+  <rect x="585" y="112" width="55" height="50" rx="8" fill="#0f172a"></rect>
+  <rect x="655" y="112" width="55" height="50" rx="8" fill="#4f46e5"></rect>
+  <text x="615" y="186" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">3 active</text>
+
+  
+  <rect x="80" y="300" width="210" height="110" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="185" y="345" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">batch-queue</text>
+  <rect x="125" y="362" width="120" height="34" rx="17" fill="#f1f5f9"></rect>
+  <text x="185" y="386" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">depth: 0</text>
+
+  <line x1="300" y1="355" x2="480" y2="355" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-muted)"></line>
+
+  <rect x="490" y="300" width="250" height="110" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="585" y="322" width="55" height="50" rx="8" fill="#64748b"></rect>
+  <text x="615" y="396" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">1 active</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-3" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Queue isolation enables targeted scaling.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"></path>
+    </marker>
+  </defs>
+
+  
+  <text x="240" y="95" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">email</text>
+  <path d="M 160 120 L 320 120 A 16 40 0 0 1 320 200 L 160 200 A 16 40 0 0 1 160 120 Z" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"></path>
+  <ellipse cx="320" cy="160" rx="16" ry="40" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  <path d="M 160 120 A 16 40 0 0 1 160 200" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 4"></path>
+  <rect x="210" y="142" width="60" height="36" rx="18" fill="#4f46e5"></rect>
+
+  <line x1="346" y1="160" x2="466" y2="160" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  <rect x="480" y="125" width="140" height="70" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"></rect>
+  <text x="550" y="167" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">1 worker</text>
+  <text x="720" y="167" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">lean</text>
+
+  
+  <text x="240" y="275" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">refunds</text>
+  <path d="M 160 300 L 320 300 A 16 40 0 0 1 320 380 L 160 380 A 16 40 0 0 1 160 300 Z" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"></path>
+  <ellipse cx="320" cy="340" rx="16" ry="40" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+  <path d="M 160 300 A 16 40 0 0 1 160 380" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 4"></path>
+  <rect x="180" y="322" width="38" height="36" rx="18" fill="#4f46e5"></rect>
+  <rect x="226" y="322" width="38" height="36" rx="18" fill="#4f46e5"></rect>
+  <rect x="272" y="322" width="38" height="36" rx="18" fill="#4f46e5"></rect>
+
+  <line x1="346" y1="340" x2="466" y2="340" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="480" y="270" width="66" height="50" rx="8" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect>
+  <rect x="554" y="270" width="66" height="50" rx="8" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect>
+  <rect x="480" y="330" width="66" height="50" rx="8" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect>
+  <rect x="554" y="330" width="66" height="50" rx="8" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect>
+
+  <text x="550" y="425" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">4 workers</text>
+  <text x="720" y="347" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#f59e0b">scaled</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;engineering trade-offs &amp; decisions</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">The Traffic Controller: Task Routes</p><p class="text-slate-500 text-sm mt-0.5">Route tasks to dedicated queues to prevent workload starvation.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Why the Environment Prefix Matters</p><p class="text-slate-500 text-sm mt-0.5">Prefix queue names to strictly isolate environments.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Engineering Trade-offs &amp; Decisions</p><p class="text-slate-500 text-sm mt-0.5">Dedicated queues isolate failures and enable independent scaling.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+
+<div id="ilLaser"></div>
+<div class="audio-player-container" id="audioPlayer">
+    <button onclick="prevSection()" title="Previous section" aria-label="Previous section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z"/></svg>
+    </button>
+    <button class="play-btn" onclick="togglePlay()" id="playBtn" title="Play/Pause" aria-label="Play / Pause">
+        <svg id="playIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pauseIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+    </button>
+    <button onclick="nextSection()" title="Next section" aria-label="Next section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2 0V6l6.5 6L8 18zM16 6v12h2V6h-2z"/></svg>
+    </button>
+    <div class="audio-progress-container">
+        <div class="audio-progress-hit" id="progressHit" role="slider" aria-label="Seek within this section" tabindex="0"><div class="audio-progress-bar"><div class="audio-progress-fill" id="progressFill"></div></div></div>
+        <div class="audio-time"><span id="currentTime">0:00</span><span id="duration">0:00</span></div>
+    </div>
+    <div class="audio-section-info" id="sectionInfo">Press &#9654; to start</div>
+    <button type="button" class="cc-btn active" id="ccBtn" onclick="toggleCaptions()" title="Subtitles" aria-label="Toggle subtitles" aria-pressed="true">CC</button>
+    <div class="audio-speed" data-il-speed>
+        <button type="button" class="audio-speed-toggle" id="speedToggle" onclick="toggleSpeedMenu(event)" aria-haspopup="true" aria-expanded="false" title="Playback speed">
+            <span id="speedLabel">1&times;</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="audio-speed-menu" id="speedMenu" role="menu" aria-label="Playback speed">
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="0.75" onclick="setSpeed(0.75)">0.75&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="0.8" onclick="setSpeed(0.8)">0.8&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="0.9" onclick="setSpeed(0.9)">0.9&times;</button>
+            <button type="button" class="audio-speed-item active" role="menuitemradio" data-speed="1" onclick="setSpeed(1)">1&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="1.25" onclick="setSpeed(1.25)">1.25&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="1.5" onclick="setSpeed(1.5)">1.5&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="2" onclick="setSpeed(2)">2&times;</button>
+        </div>
+    </div>
+</div>
+<div id="ilCaptions" aria-live="polite"></div>
+<audio id="audioElement"></audio>
+
+<script>
+const timeline = [{"type": "spotlight", "sectionNumber": 1, "elementId": "s1-title", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "visualFocus": null, "text": "Building on our asynchronous foundation, let's look at how to prevent workload starvation using dedicated queues and task routing.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-1-action-2.wav", "audioDurationMs": 7042, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 1, "elementId": "s1-block-1", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "visualFocus": null, "text": "In G M S, we avoid the default queue trap, where every task lands in Celery's single built-in queue, by using task routing. Think of routing as a mail sorter for your background work. Instead of having every task compete in one line, this configuration acts as a lookup table that maps specific jobs to their own designated queues, keeping heavy and light tasks separate.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-1-action-4.wav", "audioDurationMs": 22100, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 1, "elementId": "s1-block-2", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "visualFocus": null, "text": "This system ensures that heavy jobs, like credit no-shows, which gives a member back a session pack credit for a booked class they missed, have a private lane. It guarantees that high-priority requests, like password reset emails, aren't stuck waiting behind thousands of database updates. Memory anchor: dedicated queues prevent bottlenecks by giving each kind of workload its own path. The key idea is isolating workloads to maintain speed.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-1-action-6.wav", "audioDurationMs": 26291, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-title", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "visualFocus": null, "text": "Once you isolate your task lanes, you must ensure they stay strictly within their intended operational boundaries.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-2-action-2.wav", "audioDurationMs": 5979, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-block-1", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "visualFocus": null, "text": "We use environment prefixing, which means starting every queue name with its deployment tier, such as test or prod, taken from configuration. If environments ever share one broker, this prevents a developer's local worker from accidentally stealing a production task. By pinning each queue to its specific environment, we ensure that only the correct workers ever touch their intended messages.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-2-action-4.wav", "audioDurationMs": 22605, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-block-2", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "visualFocus": null, "text": "This strategy is essential for protecting data integrity and operational stability. It creates a clear wall between testing and production environments, even when they share the same physical infrastructure. Memory anchor: environment prefixes create strict lanes. The key idea is using unique naming tags to guarantee that every task reaches the correct, intended worker instance.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-2-action-6.wav", "audioDurationMs": 22697, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-title", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "visualFocus": null, "text": "Beyond simple organization, dedicated queues fundamentally change how we manage our system's scalability and its resilience to failures.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-3-action-2.wav", "audioDurationMs": 7660, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-block-1", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "visualFocus": null, "text": "Separating workloads gives us finer control. We can shut down our heavy processing workers for maintenance, for example, without interrupting urgent email delivery. We also gain a clear blast radius, which is an operational boundary ensuring a crash in one task category cannot spill over and take down the entire application. It keeps your core business functions alive.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-3-action-4.wav", "audioDurationMs": 21572, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-block-2", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "visualFocus": null, "text": "Isolation also opens the door to automated scaling tools that watch queue length. In general, when queues are isolated, you only scale the specific workers under actual load, which saves resources. G M S today runs one fixed container per worker, but its separate lines keep that option open.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-3-action-6.wav", "audioDurationMs": 17712, "wordTimings": null}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-block-3", "visualFocus": null, "text": null, "audioUrl": null, "audioDurationMs": null, "wordTimings": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "visualFocus": null, "text": "Memory anchor: independent queues enable independent scaling. The key idea is that isolation provides both resilience and cost efficiency. This clear separation prepares us to look at how the worker fleet and the scheduler scale in very different ways.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-3-action-8.wav", "audioDurationMs": 15386, "wordTimings": null}];
+const sectionAudio = {"1": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-1-action-6.wav", "2": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-2-action-6.wav", "3": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a4e395f8c5dd1b6294abd7d/g9/audio/section-3-action-8.wav"};
+const sectionCount = 3;
+const BLOCK_GAP_MS = 1000;   // silent pause between per-block clips
+const SECTION_GAP_MS = 2000;   // silent lead-in on every section after the first
+let playing = false;
+let scrubbing = false;   // the learner is dragging the progress bar — playback must not move it
+let playRate = 1;
+let currentSection = null;
+let firedCues = 0;
+let laserTimer = null;
+let fallbackTimer = null;
+let outroEl = null;
+let atOutro = false;
+
+const audioElement = document.getElementById('audioElement');
+const playIcon = document.getElementById('playIcon');
+const pauseIcon = document.getElementById('pauseIcon');
+const progressFill = document.getElementById('progressFill');
+const currentTimeEl = document.getElementById('currentTime');
+const durationEl = document.getElementById('duration');
+const sectionInfo = document.getElementById('sectionInfo');
+const laserEl = document.getElementById('ilLaser');
+let spotEl = null;   // the element currently spotlighted (for scroll re-tracking)
+
+document.documentElement.classList.add('preview-mode');
+
+// Mermaid: render per-slide (renders at 0px when display:none).
+if (typeof mermaid !== 'undefined') { mermaid.initialize({ startOnLoad: false, theme: 'neutral' }); }
+document.querySelectorAll('pre.mermaid').forEach(function(el) {
+    if (!el.getAttribute('data-mermaid-src')) { el.setAttribute('data-mermaid-src', el.textContent); }
+});
+const renderedMermaids = new Set();
+// Mermaid caps its SVG at NATURAL size via an inline max-width, which leaves a
+// diagram as a small strip in the middle of the scene's visual column. After
+// each render, normalize aspect-aware: wide (LR) diagrams stretch to the full
+// column width (the viewBox upscales text with them); tall (TD) diagrams take
+// the column's height instead, so they never stretch into a blur.
+function normalizeMermaidSvg(el) {
+    const svg = (el && el.tagName === 'svg') ? el : (el ? el.querySelector('svg') : null);
+    if (!svg) return;
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    let wide = true;
+    try {
+        const vb = svg.viewBox && svg.viewBox.baseVal;
+        if (vb && vb.height > 0) wide = (vb.width / vb.height) >= 1.2;
+    } catch (e) {}
+    if (wide) {
+        svg.style.width = '100%'; svg.style.maxWidth = '100%'; svg.style.height = 'auto';
+    } else {
+        svg.style.height = '480px'; svg.style.width = 'auto'; svg.style.maxWidth = '100%';
+    }
+}
+function renderMermaidInSection(sectionEl) {
+    if (!sectionEl || typeof mermaid === 'undefined') return;
+    sectionEl.querySelectorAll('pre.mermaid').forEach(function(el) {
+        const id = el.id || ('mermaid-' + Math.random().toString(36).substr(2, 9));
+        el.id = id;
+        if (renderedMermaids.has(id)) return;
+        const src = el.getAttribute('data-mermaid-src');
+        if (!src) return;
+        el.removeAttribute('data-processed'); el.innerHTML = ''; el.textContent = src;
+        renderedMermaids.add(id);
+        setTimeout(function() {
+            try {
+                const p = mermaid.run({ nodes: [el] });
+                if (p && p.then) {
+                    p.then(function() { normalizeMermaidSvg(el); }).catch(function() {});
+                } else {
+                    setTimeout(function() { normalizeMermaidSvg(el); }, 300);
+                }
+            } catch (e) {}
+        }, 50);
+    });
+}
+
+function formatTime(s) {
+    if (!isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+function setPlayIcon() { playIcon.style.display = 'block'; pauseIcon.style.display = 'none'; }
+function setPauseIcon() { playIcon.style.display = 'none'; pauseIcon.style.display = 'block'; }
+function markPlaybackStarted() { document.documentElement.classList.add('playback-started'); }
+
+// --- Subtitles / captions (karaoke) --------------------------------------
+// The caption is the currently-narrated text, revealed WORD BY WORD as it is
+// spoken — from per-word timings when the timeline carries them (wordTimings),
+// else character-proportionally across the clip's known duration. Rendered in a
+// reserved band BELOW the slide (html.cap-band shrinks the slide; see #ilCaptions
+// CSS) so subtitles never sit on top of slide content. Reveal is a pure function
+// of the current playback progress, so seeks, speed changes and CC toggles all
+// land on the right word for free.
+const captionsEl = document.getElementById('ilCaptions');
+const ccBtn = document.getElementById('ccBtn');
+let captionsOn = true;
+try { captionsOn = (localStorage.getItem('ilCaptions') || '1') !== '0'; } catch (e) {}
+let capArgs = null;    // {text, timings, progressFn, durMs} — last caption request
+let capState = null;   // built spans + reveal thresholds for the current caption
+let capRaf = null;
+
+const CAP_CHUNK_WORDS = 14;
+function stopCapLoop() { if (capRaf) { cancelAnimationFrame(capRaf); capRaf = null; } }
+
+function buildCaption() {
+    stopCapLoop();
+    capState = null;
+    if (!captionsEl) return;
+    if (!captionsOn || !capArgs || !capArgs.text) {
+        captionsEl.textContent = '';
+        captionsEl.classList.add('cap-off');
+        return;
+    }
+    const words = capArgs.text.split(/\s+/).filter(Boolean);
+    captionsEl.textContent = '';
+    captionsEl.classList.remove('cap-off');
+    const totalChars = Math.max(1, words.join(' ').length);
+    const spans = [], startFrac = [], chunkOf = [], chunks = [];
+    let acc = 0, chunk = null, inChunk = 0;
+    // Subtitle-style chunks (≤ CAP_CHUNK_WORDS, ~2 lines): break after a sentence
+    // end, after a clause end once the chunk is half full, or at the cap. Only
+    // the chunk being spoken is shown; the reveal runs within it.
+    words.forEach(function(w, i) {
+        if (!chunk) {
+            chunk = document.createElement('span');
+            chunk.className = 'il-chunk';
+            captionsEl.appendChild(chunk);
+            chunks.push(chunk);
+            inChunk = 0;
+        } else {
+            chunk.appendChild(document.createTextNode(' '));
+        }
+        const s = document.createElement('span');
+        s.className = 'il-cw';
+        s.textContent = w;
+        chunk.appendChild(s);
+        spans.push(s);
+        chunkOf.push(chunks.length - 1);
+        startFrac.push(acc / totalChars);   // word i lights when progress passes its START
+        acc += w.length + 1;
+        inChunk++;
+        if (/[.!?]["')\]]*$/.test(w) || (inChunk >= CAP_CHUNK_WORDS / 2 && /[,;:]$/.test(w))
+                || inChunk >= CAP_CHUNK_WORDS) {
+            chunk = null;
+        }
+    });
+    const timings = (capArgs.timings && capArgs.timings.length) ? capArgs.timings : null;
+    capState = { spans: spans, startFrac: startFrac, chunkOf: chunkOf, chunks: chunks,
+                  shown: -1, timings: timings, durMs: capArgs.durMs || 0 };
+    capTick();
+}
+
+function capTick() {
+    if (!capState) return;
+    const st = capState;
+    const p = Math.max(0, Math.min(1, capArgs && capArgs.progressFn ? capArgs.progressFn() : 1));
+    let upto = -1;
+    if (st.timings && st.durMs) {
+        const tMs = p * st.durMs;
+        for (let i = 0; i < st.spans.length; i++) {
+            const w = st.timings[i];
+            if (w && (w.ms || 0) <= tMs) upto = i; else break;
+        }
+    } else {
+        for (let i = 0; i < st.spans.length; i++) {
+            if (st.startFrac[i] <= p + 1e-6) upto = i; else break;
+        }
+    }
+    st.spans.forEach(function(s, i) { s.classList.toggle('on', i <= upto); });
+    const cur = st.chunkOf.length ? st.chunkOf[Math.max(0, upto)] : -1;
+    if (cur !== st.shown) {
+        st.chunks.forEach(function(c, i) { c.classList.toggle('il-chunk-on', i === cur); });
+        st.shown = cur;
+    }
+    capRaf = requestAnimationFrame(capTick);
+}
+
+// text + optional [{ms,word}] timings + a 0..1 progress supplier + clip duration.
+function setCaptionWords(text, timings, progressFn, durMs) {
+    capArgs = { text: text || '', timings: timings || null, progressFn: progressFn || null, durMs: durMs || 0 };
+    buildCaption();
+}
+// Static caption (no reveal) — kept for callers that have no progress source.
+function setCaption(text) { setCaptionWords(text, null, function() { return 1; }, 0); }
+function clearCaption() { capArgs = null; buildCaption(); }
+function syncCcBtn() {
+    // Reserve/release the caption band below the slide in step with the CC state.
+    document.documentElement.classList.toggle('cap-band', captionsOn);
+    if (!ccBtn) return;
+    ccBtn.classList.toggle('active', captionsOn);
+    ccBtn.setAttribute('aria-pressed', captionsOn ? 'true' : 'false');
+}
+function toggleCaptions() {
+    captionsOn = !captionsOn;
+    try { localStorage.setItem('ilCaptions', captionsOn ? '1' : '0'); } catch (e) {}
+    syncCcBtn();
+    buildCaption();   // rebuild from capArgs — reveal picks up at the current progress
+}
+syncCcBtn();
+// Proportional (section-clip) mode: show the speech whose region currentTime is
+// in, revealing its words across that speech's own cue window. `clockFn` supplies
+// the current position in SECONDS (defaults to the audio element's clock).
+let activeCueKey = null;
+function applyCaptionFromCues(t, dur, clockFn) {
+    const plan = currentPlan();
+    if (!plan || !plan.capCues || !plan.capCues.length || !dur) return;
+    let idx = -1;
+    for (let i = 0; i < plan.capCues.length; i++) {
+        if (t >= plan.capCues[i].frac * dur) idx = i; else break;
+    }
+    if (idx === -1) {
+        if (activeCueKey !== null) { activeCueKey = null; clearCaption(); }
+        return;
+    }
+    const key = currentSection + ':' + idx;
+    if (key === activeCueKey) return;   // same cue — capTick keeps revealing
+    activeCueKey = key;
+    const startF = plan.capCues[idx].frac;
+    const endF = (idx + 1 < plan.capCues.length) ? plan.capCues[idx + 1].frac : 1;
+    const clock = clockFn || function() { return audioElement.currentTime || 0; };
+    setCaptionWords(plan.capCues[idx].text, null, function() {
+        const f = dur ? (clock() / dur) : 0;
+        return endF > startF ? (f - startF) / (endF - startF) : 1;
+    }, 0);
+}
+
+function clearCoHighlight() {
+    document.querySelectorAll('.il-covis').forEach(e => e.classList.remove('il-covis'));
+}
+
+function clearSpotlight() {
+    document.querySelectorAll('.il-dim').forEach(e => e.classList.remove('il-dim'));
+    document.querySelectorAll('.il-spot').forEach(e => e.classList.remove('il-spot'));
+    clearCoHighlight();
+    spotEl = null;
+}
+
+function showSlide(sectionNumber) {
+    hideOutro();
+    document.querySelectorAll('section[id^="section-"]').forEach(el => el.classList.remove('slide-active', 'il-scene-title', 'il-scene-block'));
+    clearSpotlight();
+    const sectionEl = document.getElementById('section-' + sectionNumber);
+    if (sectionEl) {
+        sectionEl.classList.add('slide-active');
+        // Drop any reveal state left from a previous visit. Without this a slide
+        // re-entered mid-way would keep a stale partial `il-shown` set and render
+        // with blocks missing until the next spotlight fires. Absent `il-reveal`
+        // means "hide nothing", so the safe state is the visible one.
+        sectionEl.classList.remove('il-reveal');
+        // A freshly shown slide starts on its title card until a spotlight says
+        // otherwise (applyScene re-decides per element).
+        renderMermaidInSection(sectionEl);
+        applyScene(sectionNumber, null);
+        // Belt-and-braces normalization sweep: idempotent, and catches any SVG
+        // the per-render promise path missed (races, revisits, legacy decks).
+        setTimeout(function() {
+            sectionEl.querySelectorAll('pre.mermaid svg').forEach(normalizeMermaidSvg);
+        }, 450);
+        // Reset the stage — the next spotlight decides what goes on it.
+        if (typeof resetStage === 'function') resetStage(sectionEl);
+    }
+    sectionInfo.textContent = 'Section ' + sectionNumber + (sectionCount ? ' of ' + sectionCount : '');
+}
+
+// Scene mode: the section shows its title card while the TITLE narrates, and
+// only the narrated element's scene otherwise. Pure function of
+// (section, elementId) — the MP4 renderer's frames match the live player.
+// Scene-NATIVE decks carry one .scene[data-scene-for] per element: exactly one
+// is turned on (unknown/absent element → the title scene). Returns true for
+// scene-native sections so the caller can skip the legacy reveal machinery.
+function applyScene(sn, elementId) {
+    const sec = document.getElementById('section-' + sn);
+    if (!sec) return false;
+    const isTitle = !elementId || /-title$/.test(elementId);
+    sec.classList.toggle('il-scene-title', isTitle);
+    sec.classList.toggle('il-scene-block', !isTitle);
+    const scenes = sec.querySelectorAll('[data-scene-for]');
+    if (!scenes.length) return false;
+    let target = null;
+    scenes.forEach(function(sc) {
+        if (elementId && sc.getAttribute('data-scene-for') === elementId) target = sc;
+    });
+    if (!target) {
+        scenes.forEach(function(sc) {
+            if (!target && (sc.classList.contains('scene-title') || /-title$/.test(sc.getAttribute('data-scene-for') || ''))) target = sc;
+        });
+        if (!target) target = scenes[0];
+    }
+    scenes.forEach(function(sc) { sc.classList.toggle('il-on', sc === target); });
+    return true;
+}
+
+function findEl(a) { return a.elementId ? document.querySelector('[data-el-id="' + a.elementId + '"]') : null; }
+
+// --- Scene reveal --------------------------------------------------------
+// SCENE MODE: only the element being narrated is on canvas — previous blocks
+// leave when the next one enters, so every ~20-30s of narration is its own
+// sparse, full-canvas scene (the stage keeps carrying visuals via hold/clear).
+// Which element is shown MUST be derivable from (section, elementId) ALONE:
+// the headless MP4 renderer calls __ilShowBlock for arbitrary blocks in
+// arbitrary order and has no playback history to draw on.
+
+// The distinct element ids of a section, in the order narration addresses them.
+function narrationOrder(sn) {
+    const plan = sectionPlan[sn];
+    if (!plan || !plan.cues) return [];
+    const out = [];
+    plan.cues.forEach(function (c) {
+        if (c.elementId && out.indexOf(c.elementId) === -1) out.push(c.elementId);
+    });
+    return out;
+}
+
+function revealUpTo(sn, elementId) {
+    const sec = document.getElementById('section-' + sn);
+    if (!sec) return;
+    const order = narrationOrder(sn);
+    const upto = order.indexOf(elementId);
+    // Unknown element, or a section with no timeline at all — show everything
+    // rather than risk rendering a blank slide into the video.
+    if (upto === -1) { sec.classList.remove('il-reveal'); return; }
+    sec.classList.add('il-reveal');
+    sec.querySelectorAll('[data-el-id]').forEach(function (el) {
+        const idx = order.indexOf(el.getAttribute('data-el-id'));
+        // idx === -1 → an element the narration never addresses (e.g. stage
+        // items, whose visibility the stage script owns). Keep it shown;
+        // otherwise it would stay invisible for the slide's whole runtime.
+        // idx === upto → the ONE element whose scene is on canvas right now.
+        el.classList.toggle('il-shown', idx === -1 || idx === upto);
+    });
+}
+
+// --- Visual co-highlight -------------------------------------------------
+// Mermaid emits node ids as "flowchart-<nodeId>-<counter>" — strip both ends to
+// get back to the author's node id. Same scheme the design-diagram template uses
+// to resolve clicks.
+function mermaidNodeId(el) {
+    const raw = el.id || '';
+    const parts = raw.split('-');
+    return parts.length >= 3 ? parts.slice(1, -1).join('-') : raw;
+}
+
+// visualFocus = "<visual-el-id>#<kind>:<value>" — e.g. "s2-visual-1#node:B",
+// "s2-visual-1#lines:5-8", "s2-visual-1#row:3". Anything unparseable or
+// unresolvable is a silent no-op: highlighting the WRONG part of a diagram is
+// worse than highlighting none of it.
+function applyCoHighlight(ref) {
+    clearCoHighlight();
+    if (!ref) return;
+    const hash = ref.indexOf('#');
+    if (hash === -1) return;
+    const host = document.querySelector('[data-el-id="' + ref.slice(0, hash) + '"]');
+    if (!host) return;
+    const rest = ref.slice(hash + 1);
+    const colon = rest.indexOf(':');
+    if (colon === -1) return;
+    const kind = rest.slice(0, colon), val = rest.slice(colon + 1);
+    if (kind === 'node') {
+        host.querySelectorAll('g.node').forEach(function (n) {
+            if (mermaidNodeId(n) === val) n.classList.add('il-covis');
+        });
+    } else if (kind === 'lines') {
+        const bits = val.split('-');
+        const lo = parseInt(bits[0], 10);
+        const hi = parseInt(bits.length > 1 ? bits[1] : bits[0], 10);
+        if (isNaN(lo) || isNaN(hi)) return;
+        host.querySelectorAll('.cl[data-line]').forEach(function (l) {
+            const n = parseInt(l.getAttribute('data-line'), 10);
+            if (n >= lo && n <= hi) l.classList.add('il-covis');
+        });
+    } else if (kind === 'row') {
+        const n = parseInt(val, 10);
+        if (isNaN(n)) return;
+        const rows = host.querySelectorAll('tbody tr');
+        if (rows[n - 1]) rows[n - 1].classList.add('il-covis');
+    }
+}
+
+function applySpotlight(a) {
+    const sec = document.getElementById('section-' + a.sectionNumber);
+    if (sec) sec.classList.add('il-dim');
+    document.querySelectorAll('.il-spot').forEach(e => e.classList.remove('il-spot'));
+    const el = findEl(a);
+    if (el) {
+        el.classList.add('il-spot');
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        spotEl = el;
+    }
+    // Scene-native sections switch whole scenes; only legacy sections need the
+    // reveal-based per-element hiding.
+    const sceneNative = applyScene(a.sectionNumber, a.elementId);
+    if (!sceneNative) revealUpTo(a.sectionNumber, a.elementId);
+    applyCoHighlight(a.visualFocus);
+    // Block-owned stage: swap the right-column visuals to the current block's.
+    // Defined in the stage script below; guard so a legacy deck stays inert.
+    if (typeof applyStage === 'function') applyStage(a.sectionNumber, a.elementId);
+}
+
+function fireLaser(a) {
+    const el = findEl(a);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    laserEl.style.left = (r.left + r.width / 2) + 'px';
+    laserEl.style.top = (r.top + r.height / 2) + 'px';
+    laserEl.style.opacity = '1';
+    if (laserTimer) clearTimeout(laserTimer);
+    laserTimer = setTimeout(() => { laserEl.style.opacity = '0'; }, 900);
+}
+
+// --- Section plan / cue map ---------------------------------------------
+// One continuous clip per section; element highlights fire off a proportional cue
+// map. A spotlight's cue fraction = (speech chars before it) / (total section speech
+// chars); at runtime it fires when currentTime >= frac × clip duration.
+const sectionPlan = {};
+const sectionOrder = [];
+timeline.forEach(function(a) {
+    const sn = a.sectionNumber;
+    if (sn == null) return;
+    if (!sectionPlan[sn]) { sectionPlan[sn] = { acts: [] }; sectionOrder.push(sn); }
+    sectionPlan[sn].acts.push(a);
+});
+sectionOrder.sort(function(x, y) { return x - y; });
+sectionOrder.forEach(function(sn) {
+    const acts = sectionPlan[sn].acts;
+    let total = 0;
+    acts.forEach(function(a) { if (a.type === 'speech') total += (a.text || '').length; });
+    total = Math.max(1, total);
+    const cues = [];
+    const capCues = [];   // {frac, text} per speech — caption appears at the start of its region
+    let acc = 0;
+    acts.forEach(function(a) {
+        if (a.type === 'spotlight' || a.type === 'laser') {
+            cues.push({ elementId: a.elementId, type: a.type, sectionNumber: sn, visualFocus: a.visualFocus, frac: acc / total });
+        } else if (a.type === 'speech') {
+            if (a.text) capCues.push({ frac: acc / total, text: a.text });
+            acc += (a.text || '').length;
+        }
+    });
+    sectionPlan[sn].cues = cues;
+    sectionPlan[sn].capCues = capCues;
+    sectionPlan[sn].chars = total;
+    sectionPlan[sn].audioUrl = sectionAudio[sn] || null;
+    // Per-block mode: every speech action carries its own clip → play one clip
+    // per spotlighted element (blocking on each) for exact highlight↔audio sync.
+    sectionPlan[sn].perBlock = acts.some(function(a) { return a.type === 'speech' && a.audioUrl; });
+    // Whole-slide duration for the progress bar = Σ block clip durations + gaps.
+    var __speechN = 0, __totalMs = 0;
+    acts.forEach(function(a) { if (a.type === 'speech') { __totalMs += blockMs(a); __speechN++; } });
+    __totalMs += BLOCK_GAP_MS * Math.max(0, __speechN - 1);
+    // A new section opens on a silent hold so its opener scene can land.
+    sectionPlan[sn].leadMs = (sectionOrder.indexOf(sn) > 0 && __speechN > 0) ? SECTION_GAP_MS : 0;
+    __totalMs += sectionPlan[sn].leadMs;
+    sectionPlan[sn].totalMs = __totalMs;
+});
+
+// Clip preloading: the next beat's clip is fetched while the current one plays
+// (clips are immutable + long-cached, so the main element then starts from the
+// browser cache instead of a cold download — that download was the bulk of the
+// silence between beats). The first clip is warmed while the cover shows.
+const preloadEl = new Audio();
+preloadEl.preload = 'auto';
+preloadEl.muted = true;
+function nextClipUrl(sn, fromIdx) {
+    const order = sectionOrder.indexOf(sn) >= 0 ? sectionOrder.slice(sectionOrder.indexOf(sn)) : [];
+    for (let k = 0; k < order.length; k++) {
+        const acts = (sectionPlan[order[k]] || {}).acts || [];
+        for (let i = (k === 0 ? fromIdx : 0); i < acts.length; i++) {
+            if (acts[i].type === 'speech' && acts[i].audioUrl) return acts[i].audioUrl;
+        }
+    }
+    return null;
+}
+function preloadClip(url) {
+    if (!url || preloadEl.getAttribute('src') === url) return;
+    try { preloadEl.src = url; preloadEl.load(); } catch (e) {}
+}
+if (sectionOrder.length) preloadClip(nextClipUrl(sectionOrder[0], 0));
+
+function currentPlan() { return currentSection != null ? sectionPlan[currentSection] : null; }
+function clearFallback() { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } }
+
+// Fire every cue whose time has passed; the latest spotlight stays lit.
+function applyCuesUpTo(t, dur) {
+    const plan = currentPlan();
+    if (!plan || !dur) return;
+    while (firedCues < plan.cues.length && t >= plan.cues[firedCues].frac * dur) {
+        const cue = plan.cues[firedCues];
+        if (cue.type === 'laser') fireLaser(cue); else applySpotlight(cue);
+        firedCues++;
+    }
+}
+
+// Seeking: re-fire from scratch so the right highlight is lit at the new position.
+function resyncCues(t, dur) { firedCues = 0; clearSpotlight(); applyCuesUpTo(t, dur); applyCaptionFromCues(t, dur); }
+
+function loadSection(sn) {
+    if (sn == null || sectionPlan[sn] == null) return;
+    if (!document.getElementById('section-' + sn)) {
+        // Ghost section: the timeline knows a section this HTML doesn't have
+        // (stale actions on an already-frozen deck). Skip it instead of playing
+        // minutes of audio over a blank canvas. advance() walks from
+        // currentSection, so set it first; the chain ends at the last section.
+        clearFallback();
+        currentSection = sn;
+        advance();
+        return;
+    }
+    clearFallback();
+    currentSection = sn;
+    firedCues = 0;
+    activeCueKey = null;
+    clearCaption();
+    showSlide(sn);
+    const plan = sectionPlan[sn];
+    if (plan.perBlock) {
+        blockIdx = 0;
+        slidePlayedMs = 0;
+        curSpeechMs = 0;
+        pendingSeekMs = null;
+        progressFill.style.width = '0%';
+        currentTimeEl.textContent = '0:00';
+        durationEl.textContent = formatTime((plan.totalMs || 0) / 1000);   // whole slide
+        if (plan.leadMs > 0) runLead(sn);   // silent hold on the opener, then the clips
+        else runBlock(sn);       // one clip per block, blocking on each
+    } else if (plan.audioUrl) {
+        audioElement.src = plan.audioUrl;
+        audioElement.playbackRate = playRate;
+        audioElement.play().catch(function() {});
+    } else {
+        runFallback(plan);   // no clip → estimate timing
+    }
+}
+
+// --- Per-block playback: one clip per spotlighted element, blocking on each ---
+// spotlight/laser fire instantly and advance; speech plays its own clip and, on
+// 'ended', banks the clip's duration, holds a short silent gap, then advances —
+// so the highlight stays lit exactly for the duration of its narration and the
+// progress bar/duration reflect the WHOLE slide (Σ clips + gaps), not one clip.
+let blockIdx = 0;
+let slidePlayedMs = 0;     // completed speeches + gaps so far in this section
+let curSpeechMs = 0;       // duration of the clip currently playing
+let pendingSeekMs = null;  // offset to apply once a seeked clip's metadata loads
+
+function estMs(text) { return Math.max(800, ((text || '').length / 5) * 240); }
+function blockMs(a) { return (a && a.audioDurationMs) ? a.audioDurationMs : estMs(a ? a.text : ''); }
+
+function updateProgress(elapsedMs) {
+    if (scrubbing) return;
+    const plan = currentPlan();
+    if (!plan || !plan.totalMs) return;
+    const frac = Math.min(1, elapsedMs / plan.totalMs);
+    progressFill.style.width = (frac * 100) + '%';
+    currentTimeEl.textContent = formatTime(elapsedMs / 1000);
+    durationEl.textContent = formatTime(plan.totalMs / 1000);
+}
+
+function runBlock(sn) {
+    const plan = sectionPlan[sn];
+    if (!playing || currentSection !== sn || !plan) return;
+    if (blockIdx >= plan.acts.length) { advance(); return; }
+    if (blockIdx === 0 && slidePlayedMs < (plan.leadMs || 0)) slidePlayedMs = plan.leadMs;
+    const a = plan.acts[blockIdx];
+    if (a.type === 'spotlight') { applySpotlight(a); blockIdx++; runBlock(sn); }
+    else if (a.type === 'laser') { fireLaser(a); blockIdx++; runBlock(sn); }
+    else if (a.type === 'speech') {
+        curSpeechMs = blockMs(a);
+        if (a.audioUrl) {
+            // Karaoke progress rides the media clock: playbackRate, pauses and
+            // seeks are all reflected in currentTime, so the reveal needs no
+            // extra handling for any of them.
+            const clipMs = curSpeechMs;
+            setCaptionWords(a.text, a.wordTimings, function() {
+                return clipMs ? (audioElement.currentTime * 1000) / clipMs : 1;
+            }, clipMs);
+            audioElement.src = a.audioUrl;
+            audioElement.playbackRate = playRate;
+            audioElement.play().catch(function() {});   // → 'ended' → onSpeechEnd
+            preloadClip(nextClipUrl(sn, blockIdx + 1));
+        } else {
+            // No clip → hold the spotlight for the estimated narration time,
+            // revealing words on a wall-clock scaled by the playback rate.
+            const estStart = performance.now();
+            const clipMs = curSpeechMs;
+            setCaptionWords(a.text, a.wordTimings, function() {
+                return clipMs ? ((performance.now() - estStart) * playRate) / clipMs : 1;
+            }, clipMs);
+            fallbackTimer = setTimeout(function() { onSpeechEnd(sn); }, curSpeechMs / playRate);
+        }
+    } else { blockIdx++; runBlock(sn); }
+}
+
+// A speech clip finished: bank its time, then a short silent gap before the next.
+function onSpeechEnd(sn) {
+    if (currentSection !== sn) return;
+    slidePlayedMs += curSpeechMs;
+    curSpeechMs = 0;
+    blockIdx++;
+    const moreSpeech = sectionPlan[sn].acts.slice(blockIdx).some(function(a) { return a.type === 'speech'; });
+    if (moreSpeech && BLOCK_GAP_MS > 0) runGap(sn); else runBlock(sn);
+}
+
+// Silent presenter pause — spotlight stays lit, progress keeps advancing.
+function runGap(sn) {
+    const start = performance.now();
+    (function tick() {
+        if (!playing || currentSection !== sn) return;
+        const ge = Math.min(BLOCK_GAP_MS, performance.now() - start);
+        updateProgress(slidePlayedMs + ge);
+        if (ge >= BLOCK_GAP_MS) { slidePlayedMs += BLOCK_GAP_MS; runBlock(sn); return; }
+        fallbackTimer = setTimeout(tick, 60);
+    })();
+}
+
+// Silent section lead-in — the opener is on screen, nothing speaks yet. A pause
+// mid-lead resumes straight into the first clip (same as the beat gap).
+function runLead(sn) {
+    const start = performance.now();
+    const leadMs = sectionPlan[sn].leadMs;
+    (function tick() {
+        if (!playing || currentSection !== sn) return;
+        const ge = Math.min(leadMs, performance.now() - start);
+        updateProgress(ge);
+        if (ge >= leadMs) { runBlock(sn); return; }
+        fallbackTimer = setTimeout(tick, 60);
+    })();
+}
+
+// Click-to-seek within a slide: find the block the target time lands in, light
+// its spotlight, and play that clip from the right offset.
+function seekSlide(plan, targetMs) {
+    clearFallback();
+    let acc = plan.leadMs || 0, lastSpot = null;
+    for (let i = 0; i < plan.acts.length; i++) {
+        const a = plan.acts[i];
+        if (a.type === 'spotlight' || a.type === 'laser') { lastSpot = a; continue; }
+        if (a.type !== 'speech') continue;
+        const dur = blockMs(a);
+        const isLast = !plan.acts.slice(i + 1).some(function(x) { return x.type === 'speech'; });
+        if (targetMs < acc + dur || isLast) {
+            if (lastSpot) applySpotlight(lastSpot);
+            blockIdx = i;
+            slidePlayedMs = acc;
+            curSpeechMs = dur;
+            const offMs = Math.max(0, Math.min(dur, targetMs - acc));
+            if (a.audioUrl) {
+                // The media clock jumps to offMs once metadata loads, and the
+                // karaoke reveal follows it — the seek lands on the right word.
+                setCaptionWords(a.text, a.wordTimings, function() {
+                    return dur ? (audioElement.currentTime * 1000) / dur : 1;
+                }, dur);
+                pendingSeekMs = offMs;
+                audioElement.src = a.audioUrl;
+                audioElement.playbackRate = playRate;
+                audioElement.play().catch(function() {});
+            } else {
+                const estStart = performance.now();
+                setCaptionWords(a.text, a.wordTimings, function() {
+                    return dur ? (offMs + (performance.now() - estStart) * playRate) / dur : 1;
+                }, dur);
+                fallbackTimer = setTimeout(function() { onSpeechEnd(currentSection); }, (dur - offMs) / playRate);
+            }
+            updateProgress(targetMs);
+            return;
+        }
+        acc += dur + BLOCK_GAP_MS;
+    }
+}
+
+// Fallback when a section clip is missing: estimate duration from char count
+// (~240ms/word ≈ chars/5 × 240ms) and fire cues + advance on a timer.
+function runFallback(plan) {
+    const durS = Math.max(2, ((plan ? plan.chars : 0) / 5) * 0.24);
+    const start = performance.now();
+    const clockFn = function() { return (performance.now() - start) / 1000; };
+    (function tick() {
+        if (!playing || currentSection == null) return;
+        const t = (performance.now() - start) / 1000;
+        applyCuesUpTo(t, durS);
+        applyCaptionFromCues(t, durS, clockFn);
+        if (!scrubbing) {
+            progressFill.style.width = Math.min(100, (t / durS) * 100) + '%';
+            currentTimeEl.textContent = formatTime(t);
+        }
+        if (t >= durS) { advance(); return; }
+        fallbackTimer = setTimeout(tick, 120);
+    })();
+}
+
+function advance() {
+    clearFallback();
+    const i = sectionOrder.indexOf(currentSection);
+    if (i >= 0 && i < sectionOrder.length - 1) { loadSection(sectionOrder[i + 1]); }
+    else if (outroEl && !atOutro) { showOutro(); }   // end card after the last narrated section
+    else { playing = false; setPlayIcon(); }
+}
+
+function togglePlay() { playing ? pause() : play(); }
+
+function play() {
+    if (playing) return;
+    if (atOutro) {   // replay from the start when play is pressed on the end card
+        hideOutro(); currentSection = null;
+        playing = true; setPauseIcon(); markPlaybackStarted();
+        loadSection(sectionOrder.length ? sectionOrder[0] : 1);
+        return;
+    }
+    playing = true; setPauseIcon(); markPlaybackStarted();
+    if (currentSection == null) {
+        loadSection(sectionOrder.length ? sectionOrder[0] : 1);
+    } else if (audioElement.src && audioElement.paused && !audioElement.ended) {
+        audioElement.playbackRate = playRate;
+        audioElement.play().catch(function() {});
+    } else if (currentPlan() && currentPlan().perBlock) {
+        runBlock(currentSection);     // resume the per-block runner
+    } else if (!currentPlan() || !currentPlan().audioUrl) {
+        runFallback(currentPlan());   // resume the no-clip path
+    } else {
+        advance();
+    }
+}
+
+function pause() {
+    playing = false; setPlayIcon();
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+}
+
+function gotoSection(n) {
+    if (n == null || sectionPlan[n] == null) return;
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+    playing = true; setPauseIcon(); markPlaybackStarted();
+    loadSection(n);
+}
+function nextSection() {
+    if (atOutro) return;   // already at the end card
+    const i = sectionOrder.indexOf(currentSection);
+    if (i >= 0 && i < sectionOrder.length - 1) gotoSection(sectionOrder[i + 1]);
+    else if (i === sectionOrder.length - 1 && outroEl) showOutro();   // last → end card
+    else if (i < 0 && sectionOrder.length) gotoSection(sectionOrder[0]);
+}
+function prevSection() {
+    if (atOutro) {   // from the end card back to the last narrated section
+        hideOutro();
+        if (sectionOrder.length) gotoSection(sectionOrder[sectionOrder.length - 1]);
+        return;
+    }
+    const i = sectionOrder.indexOf(currentSection);
+    if (i > 0) gotoSection(sectionOrder[i - 1]);
+    else if (sectionOrder.length) gotoSection(sectionOrder[0]);
+}
+
+function seekAudio(e) {
+    const __p = currentPlan();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (__p && __p.perBlock) {
+        // Seek across the WHOLE slide → jump to the block at that time.
+        if (!playing) { playing = true; setPauseIcon(); markPlaybackStarted(); }
+        seekSlide(__p, frac * (__p.totalMs || 0));
+        return;
+    }
+    if (!isFinite(audioElement.duration)) return;
+    const t = frac * audioElement.duration;
+    audioElement.currentTime = t;
+    resyncCues(t, audioElement.duration);
+}
+
+// Drag-to-seek (mouse + touch). While dragging, playback is paused and only the
+// fill/time PREVIEW the target; the seek is committed once, on release. A plain
+// click is a down+up, so it still seeks. Resumes only if it was playing before.
+(function setupScrub() {
+    const hit = document.getElementById('progressHit');
+    if (!hit) return;
+    let wasPlaying = false, frac = 0;
+    function fracAt(e) {
+        const r = hit.getBoundingClientRect();
+        return r.width ? Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) : 0;
+    }
+    function spanMs() {
+        const p = currentPlan();
+        if (p && p.perBlock) return p.totalMs || 0;
+        return isFinite(audioElement.duration) ? audioElement.duration * 1000 : 0;
+    }
+    function preview(f) {
+        progressFill.style.width = (f * 100) + '%';
+        const ms = spanMs();
+        if (ms) currentTimeEl.textContent = formatTime((f * ms) / 1000);
+    }
+    function commit(f, resume) {
+        const p = currentPlan();
+        if (!p) return;
+        if (p.perBlock) {
+            playing = true; setPauseIcon(); markPlaybackStarted();
+            seekSlide(p, f * (p.totalMs || 0));
+            if (!resume) pause();
+            updateProgress(f * (p.totalMs || 0));
+            return;
+        }
+        if (!isFinite(audioElement.duration)) return;
+        const t = f * audioElement.duration;
+        audioElement.currentTime = t;
+        resyncCues(t, audioElement.duration);
+        if (resume) play();
+    }
+    hit.addEventListener('pointerdown', function(e) {
+        if (!currentPlan()) return;
+        e.preventDefault();
+        try { hit.setPointerCapture(e.pointerId); } catch (_) {}
+        wasPlaying = playing;
+        if (playing) pause();
+        scrubbing = true;
+        hit.classList.add('scrubbing');
+        frac = fracAt(e);
+        preview(frac);
+    });
+    hit.addEventListener('pointermove', function(e) {
+        if (!scrubbing) return;
+        frac = fracAt(e);
+        preview(frac);
+    });
+    function end() {
+        if (!scrubbing) return;
+        scrubbing = false;
+        hit.classList.remove('scrubbing');
+        commit(frac, wasPlaying);
+    }
+    hit.addEventListener('pointerup', end);
+    hit.addEventListener('pointercancel', end);
+    // Keyboard: ←/→ step 5% within the section.
+    hit.addEventListener('keydown', function(e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        const ms = spanMs(); if (!ms) return;
+        e.preventDefault();
+        const cur = (parseFloat(progressFill.style.width) || 0) / 100;
+        commit(Math.max(0, Math.min(1, cur + (e.key === 'ArrowRight' ? 0.05 : -0.05))), playing);
+    });
+})();
+
+function setSpeed(rate) {
+    playRate = rate; audioElement.playbackRate = rate;
+    const lbl = document.getElementById('speedLabel');
+    if (lbl) lbl.textContent = String(rate) + '×';
+    document.querySelectorAll('.audio-speed-item').forEach(function(btn) {
+        btn.classList.toggle('active', Math.abs(parseFloat(btn.getAttribute('data-speed')) - rate) < 1e-6);
+    });
+    closeSpeedMenu();
+}
+function toggleSpeedMenu(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('speedMenu');
+    const tgl = document.getElementById('speedToggle');
+    if (!menu) return;
+    const open = menu.classList.toggle('open');
+    if (tgl) tgl.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeSpeedMenu() {
+    const menu = document.getElementById('speedMenu');
+    const tgl = document.getElementById('speedToggle');
+    if (menu) menu.classList.remove('open');
+    if (tgl) tgl.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('click', function(e) {
+    const wrap = (e.target && e.target.closest) ? e.target.closest('.audio-speed') : null;
+    if (!wrap) closeSpeedMenu();
+});
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSpeedMenu(); });
+
+audioElement.addEventListener('timeupdate', () => {
+    if (!isFinite(audioElement.duration)) return;
+    const __p = currentPlan();
+    if (__p && __p.perBlock) {
+        // Whole-slide progress: time banked from prior blocks/gaps + this clip.
+        updateProgress(slidePlayedMs + audioElement.currentTime * 1000);
+    } else {
+        if (!scrubbing) {
+            progressFill.style.width = ((audioElement.currentTime / audioElement.duration) * 100) + '%';
+            currentTimeEl.textContent = formatTime(audioElement.currentTime);
+        }
+        applyCuesUpTo(audioElement.currentTime, audioElement.duration);
+        applyCaptionFromCues(audioElement.currentTime, audioElement.duration);
+    }
+});
+audioElement.addEventListener('loadedmetadata', () => {
+    const __p = currentPlan();
+    if (__p && __p.perBlock) {
+        // Apply a pending click-seek offset once the new clip's metadata is ready.
+        if (pendingSeekMs != null) {
+            try { audioElement.currentTime = pendingSeekMs / 1000; } catch (e) {}
+            pendingSeekMs = null;
+        }
+        // Duration label stays the whole-slide total (set in loadSection).
+    } else {
+        durationEl.textContent = formatTime(audioElement.duration);
+    }
+});
+audioElement.addEventListener('ended', () => {
+    if (!playing) return;
+    const __p = currentPlan();
+    if (__p && __p.perBlock) onSpeechEnd(currentSection);   // bank time + gap + next block
+    else advance();                                          // next section
+});
+
+// --- Cover / thumbnail ---------------------------------------------------
+// Use the deck's OWN hero (the first real content block in <main> that isn't a
+// numbered section and isn't the header/nav) as the pre-playback canvas. Tagging it
+// .il-native-cover makes the CSS show it before play and hide it once playback starts.
+function setupNativeCover() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    for (const el of main.children) {
+        if (!el.matches) continue;
+        if (el.matches('section[id^="section-"]')) continue;            // a content slide
+        if (el.matches('header, nav, .glass-header')) continue;          // the sticky header/nav
+        if (el.querySelector && el.querySelector('.nav-link')) continue; // a nav container
+        if (((el.textContent || '').trim()).length === 0) continue;      // empty wrapper
+        el.classList.add('il-native-cover');
+        return;
+    }
+}
+setupNativeCover();
+
+// --- Outro / end card ----------------------------------------------------
+// Pick the LAST substantive non-section block in <main> (e.g. the summary / metric
+// cards) — it has no narration — and tag it .il-outro so it can be shown as a static
+// end screen after the last narrated section. Skips the header/nav, footer, and the
+// hero cover (so a single non-section block stays the cover, not the outro).
+function setupOutro() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    // Deck blocks AFTER <main> (e.g. the recap / "Key Takeaways" cards) are part of
+    // the deck too; they come last, so they are the best end card. Stop at the
+    // player chrome injected after the deck.
+    const after = [];
+    for (let el = main.nextElementSibling; el; el = el.nextElementSibling) {
+        if (el.matches && el.matches('script, style, link, .audio-player-container, #audioPlayer, #ilCaptions, #ilLaser, [id^="il"], [class^="il-"]')) {
+            if (el.matches('.audio-player-container, #audioPlayer')) break;
+            continue;
+        }
+        after.push(el);
+    }
+    const kids = Array.from(main.children).concat(after);
+    for (let i = kids.length - 1; i >= 0; i--) {
+        const el = kids[i];
+        if (!el.matches) continue;
+        if (el.matches('section[id^="section-"]')) continue;
+        if (el.matches('header, nav, .glass-header, footer')) continue;
+        if (el.classList.contains('il-native-cover')) continue;
+        if (el.querySelector && el.querySelector('.nav-link')) continue;
+        const txt = (el.textContent || '').trim();
+        if (txt.length < 20) continue;                 // empty / tiny wrapper
+        if (/generated (on|by)/i.test(txt)) continue;  // a <div>-based footer
+        el.classList.add('il-outro');
+        outroEl = el;
+        return;
+    }
+}
+setupOutro();
+
+// The phone player wraps to a variable height; size every canvas from the REAL bar,
+// not the CSS guess (which left a strip the deck showed through). Ignores 0 heights
+// (bar hidden, e.g. MP4 frame capture) so those keep the CSS value.
+(function syncBarHeight() {
+    const bar = document.querySelector('.audio-player-container');
+    if (!bar || !window.ResizeObserver) return;
+    const sync = function() {
+        const h = bar.offsetHeight;
+        if (h > 0) document.documentElement.style.setProperty('--il-bar-h', h + 'px');
+    };
+    new ResizeObserver(sync).observe(bar);
+    sync();
+})();
+
+function showOutro() {
+    if (!outroEl) { playing = false; setPlayIcon(); return; }
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+    document.querySelectorAll('section[id^="section-"]').forEach(el => el.classList.remove('slide-active'));
+    clearSpotlight();
+    clearCaption();
+    outroEl.classList.add('il-show');
+    atOutro = true;
+    playing = false; setPlayIcon();
+    sectionInfo.textContent = 'Summary';
+}
+function hideOutro() {
+    if (outroEl) outroEl.classList.remove('il-show');
+    atOutro = false;
+}
+
+// --- MP4 renderer hooks --------------------------------------------------
+// The server-side video renderer (Playwright) drives these to capture one static
+// frame per highlight cue, so the exported MP4 shows the same section-switching +
+// element spotlights as the live player (no audio playback needed).
+window.__ilSections = function() { return sectionOrder.slice(); };
+window.__ilCues = function(sn) {
+    const plan = sectionPlan[sn];
+    if (!plan || !plan.cues) return [];
+    return plan.cues.map(function(c) { return { elementId: c.elementId, type: c.type, frac: c.frac }; });
+};
+// Show section `sn` with highlights applied up to cue index `k` (k = -1 → no
+// highlight yet, the pre-first-cue lead-in). Hides the cover so the slide is visible.
+window.__ilShowFrame = function(sn, k) {
+    markPlaybackStarted();
+    currentSection = sn;
+    showSlide(sn);            // switches slide + clears any prior spotlight
+    const plan = sectionPlan[sn];
+    if (!plan) return;
+    for (let j = 0; j <= k && j < plan.cues.length; j++) {
+        const cue = plan.cues[j];
+        if (cue.type !== 'laser') applySpotlight(cue);   // latest spotlight wins
+    }
+};
+// MP4 export (per-block): show section `sn` and spotlight exactly `elementId`
+// (the block currently narrating). Used by the video service to render one frame
+// per block, held for that block's clip duration — so the exported MP4 reproduces
+// the live per-block highlight↔audio sync. elementId may be null/'' (speech with
+// no addressable element → just show the slide).
+window.__ilShowBlock = function(sn, elementId) {
+    markPlaybackStarted();
+    currentSection = sn;
+    showSlide(sn);            // switch slide + render mermaid + clear prior spotlight
+    // Frame renderer: SMIL scene animations would be captured mid-motion; park
+    // every SVG on its settled end state (scene animations end with fill=freeze).
+    if (document.documentElement.classList.contains('il-snap')) {
+        document.querySelectorAll('svg').forEach(function (svg) {
+            try { svg.pauseAnimations(); svg.setCurrentTime(60); } catch (e) {}
+        });
+    }
+    if (!elementId) return;
+    // The renderer passes only (section, element), so recover this block's
+    // visualFocus from the timeline rather than widening the export hook — the
+    // video service stays unaware that co-highlight exists.
+    const plan = sectionPlan[sn];
+    let vf = null;
+    if (plan && plan.cues) {
+        for (let i = 0; i < plan.cues.length; i++) {
+            if (plan.cues[i].elementId === elementId) { vf = plan.cues[i].visualFocus || null; break; }
+        }
+    }
+    applySpotlight({ elementId: elementId, sectionNumber: sn, type: 'spotlight', visualFocus: vf });
+};
+</script>
+
+<script>
+const stageModes = {};   // el_id -> 'clear' (absent = hold)
+
+// The owning block whose visuals should be on stage while `elementId` narrates:
+// the block itself if it owns stage items, else walk BACK through the narration
+// order (hold semantics), stopping at any explicit 'clear' block.
+function stageOwnerFor(sn, elementId) {
+    if (!elementId) return null;
+    const order = narrationOrder(sn);
+    const idx = order.indexOf(elementId);
+    if (idx === -1) return null;
+    for (let i = idx; i >= 0; i--) {
+        const id = order[i];
+        if (document.querySelector('.stage-item[data-owner="' + id + '"]')) return id;
+        if (stageModes[id] === 'clear') return null;
+    }
+    return null;
+}
+
+function applyStage(sn, elementId) {
+    const stage = document.querySelector('.visual-stage[data-stage-for="' + sn + '"]');
+    if (!stage) return;
+    const owner = stageOwnerFor(sn, elementId);
+    stage.querySelectorAll('.stage-item').forEach(function (it) {
+        it.classList.toggle('il-stage-on', !!owner && it.getAttribute('data-owner') === owner);
+    });
+    // No owner → nothing on stage: collapse the whole visual column (CSS
+    // .il-stage-empty) instead of showing an empty gray wrapper. Set ONLY
+    // here — never at showSlide/resetStage — so the column still has layout
+    // when renderMermaidInSection runs.
+    const sec = document.getElementById('section-' + sn);
+    if (sec) sec.classList.toggle('il-stage-empty', !owner);
+}
+
+function resetStage(sectionEl) {
+    if (sectionEl && sectionEl.classList) sectionEl.classList.remove('il-stage-empty');
+    const stage = sectionEl && sectionEl.querySelector ? sectionEl.querySelector('.visual-stage') : null;
+    if (!stage) return;
+    stage.querySelectorAll('.stage-item.il-stage-on').forEach(function (it) {
+        it.classList.remove('il-stage-on');
+    });
+}
+
+// Eager-load every stage image up front. Sections are display:none until
+// active, so a lazy image inside one has no box and never starts loading —
+// it would flash blank on its first block (and screenshot blank in the MP4).
+document.querySelectorAll('.visual-stage img').forEach(function (img) {
+    if (img.getAttribute('loading') === 'lazy') img.setAttribute('loading', 'eager');
+    const u = img.getAttribute('src');
+    if (u) { const p = new Image(); p.src = u; }
+});
+
+// Readiness signal for the headless MP4 renderer: resolves once the VISIBLE
+// stage items' images are decoded and mermaid diagrams are drawn. The renderer
+// awaits this (plus html.il-snap to freeze transitions) instead of a fixed wait.
+window.__ilStageReady = function () {
+    const proms = [];
+    document.querySelectorAll('.stage-item.il-stage-on img').forEach(function (img) {
+        if (img.decode) proms.push(img.decode().catch(function () {}));
+        else if (!img.complete) proms.push(new Promise(function (res) { img.onload = img.onerror = res; }));
+    });
+    const pending = [];
+    document.querySelectorAll('.stage-item.il-stage-on pre.mermaid').forEach(function (el) {
+        if (!el.querySelector('svg')) pending.push(el);
+    });
+    if (pending.length) {
+        proms.push(new Promise(function (res) {
+            let tries = 0;
+            (function poll() {
+                if (++tries > 40 || pending.every(function (el) { return el.querySelector('svg'); })) return res();
+                setTimeout(poll, 100);
+            })();
+        }));
+    }
+    return Promise.all(proms).then(function () { return true; });
+};
+</script>
+</body></html>

@@ -1,0 +1,121 @@
+{
+  "skill_id": "6a4408afe15b997d713c4b89",
+  "skill_name": "Database Schema & Migrations",
+  "topic_id": "6a4adff9a7061bf948c93bfb",
+  "topic_name": "Concept Seeding Development Database with dbmate",
+  "topic_track": "project",
+  "content_version": 12,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4adff9a7061bf948c93bfb/g6/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4adff9a7061bf948c93bfb/g12/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 12,
+  "voiceover_data": {
+    "topic_name": "Concept Seeding Development Database with dbmate",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-need-for-development-data",
+        "section_number": 1,
+        "title": "The Need for Development Data",
+        "narration": "Okay, so we've used db mate to get all our tables created. This means our local database has the right structure, but it's completely empty. This presents a significant bottleneck for developing complex features that rely on existing data, like member plans or role-based access. To overcome this, we introduce Vertical Slice Seeding. This strategy avoids the pitfalls of massive, anonymized production dumps or shallow manual data. Instead, we selectively pull a functional slice of data from our staging environment directly into our local Docker container. The philosophy here is selective, relational, and anonymized. We pick a specific gym, then pull everything connected to it—staff, members, plans—maintaining all the intricate relationships. Crucially, we scrub all personally identifiable information, ensuring a secure local development environment. So the key idea is: selective, relational, and anonymized data pulls keep our local environment secure and realistic.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Okay, so we've used db mate to get all our tables created. This means our local database has the right structure, but it's completely empty."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This presents a significant bottleneck for developing complex features that rely on existing data, like member plans or role-based access. To overcome this, we introduce Vertical Slice Seeding. This strategy avoids the pitfalls of massive, anonymized production dumps or shallow manual data. Instead, we selectively pull a functional slice of data from our staging environment directly into our local Docker container."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "The philosophy here is selective, relational, and anonymized. We pick a specific gym, then pull everything connected to it—staff, members, plans—maintaining all the intricate relationships. Crucially, we scrub all personally identifiable information, ensuring a secure local development environment. So the key idea is: selective, relational, and anonymized data pulls keep our local environment secure and realistic."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-seeding-engine-architecture",
+        "section_number": 2,
+        "title": "Seeding Engine Architecture",
+        "narration": "Our primary tool for this process is a seeding script, an intelligent engine designed to handle the complexities of data migration. It addresses key challenges like schema drift and referential integrity. To combat schema drift—where staging and local databases have different columns due to unapplied migrations—the script uses schema introspection. It queries both source and target schemas to identify common columns, ensuring it only copies data for fields that exist in both environments, preventing crashes. To manage referential integrity, where the database normally refuses a row until the row it points to already exists, the script temporarily disables these checks. The script switches these checks off before copying and back on afterward, so tables can be copied in any order. Finally, the script cleans up and transforms the data. This matters a lot for local development. Special clean-up steps reset passwords to a standard test value, remove real emails so they don't accidentally get sent out, and standardize user roles. So, the main takeaway here is: data transformation and sanitization make our seeded data safe and predictable for local use.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Our primary tool for this process is a seeding script, an intelligent engine designed to handle the complexities of data migration. It addresses key challenges like schema drift and referential integrity."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "To combat schema drift—where staging and local databases have different columns due to unapplied migrations—the script uses schema introspection. It queries both source and target schemas to identify common columns, ensuring it only copies data for fields that exist in both environments, preventing crashes."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "To manage referential integrity, where the database normally refuses a row until the row it points to already exists, the script temporarily disables these checks. The script switches these checks off before copying and back on afterward, so tables can be copied in any order."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Finally, the script cleans up and transforms the data. This matters a lot for local development. Special clean-up steps reset passwords to a standard test value, remove real emails so they don't accidentally get sent out, and standardize user roles. So, the main takeaway here is: data transformation and sanitization make our seeded data safe and predictable for local use."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-execution-flow-and-trade-offs",
+        "section_number": 3,
+        "title": "Execution Flow and Trade-offs",
+        "narration": "When you run the seeding script, it follows a specific order to get your local database filled up quickly and safely. The script first copies fixed lookup data, then the top-level tables like gyms and locations. It then identifies users associated with those locations, separating them into staff and members, and caps the number of members to keep the database lightweight. Personal details are scrubbed throughout. This approach involves key trade-offs. Suppressing FK checks allows for fast, simple logic but risks orphan records if staging data is corrupt. Column intersection prevents crashes with schema drift but silently skips new columns if local migrations aren't run first. Always copying the same gym ensures consistent test cases but testing with several gyms needs a manual change. So the key idea is: we accept specific trade-offs for speed and simplicity in seeding, and must be aware of their risks.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "When you run the seeding script, it follows a specific order to get your local database filled up quickly and safely."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The script first copies fixed lookup data, then the top-level tables like gyms and locations. It then identifies users associated with those locations, separating them into staff and members, and caps the number of members to keep the database lightweight. Personal details are scrubbed throughout."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "This approach involves key trade-offs. Suppressing FK checks allows for fast, simple logic but risks orphan records if staging data is corrupt. Column intersection prevents crashes with schema drift but silently skips new columns if local migrations aren't run first."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Always copying the same gym ensures consistent test cases but testing with several gyms needs a manual change. So the key idea is: we accept specific trade-offs for speed and simplicity in seeding, and must be aware of their risks."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-running-the-seed-script",
+        "section_number": 4,
+        "title": "Running the Seed Script",
+        "narration": "To execute the seeding process, you don't run the script on your host machine; it must be run inside the service container to access both the local Docker database and the staging tunnel. You run it inside the auth admin service container. This makes sure the script executes in the right place with the necessary network access. After the script completes, you'll have a populated local database. You can then log in with the demo owner account and see a fully functional dashboard, ready for feature development. So the key idea is: the seed script transforms an empty schema into a usable development environment.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "To execute the seeding process, you don't run the script on your host machine; it must be run inside the service container to access both the local Docker database and the staging tunnel."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "You run it inside the auth admin service container. This makes sure the script executes in the right place with the necessary network access."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "After the script completes, you'll have a populated local database. You can then log in with the demo owner account and see a fully functional dashboard, ready for feature development. So the key idea is: the seed script transforms an empty schema into a usable development environment."
+          }
+        ]
+      }
+    ]
+  }
+}

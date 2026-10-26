@@ -1,0 +1,419 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Concept Seeding Development Database with dbmate</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Concept Seeding Development Database with dbmate</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Concept Seeding Development Database with dbmate</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Need for Development Data</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Migrated schemas are structured, but completely empty.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <g transform="translate(100, 130)">
+    
+    <path d="M 0 40 L 0 220 A 90 28 0 0 0 180 220 L 180 40 Z" fill="#f8fafc" stroke="#4f46e5" stroke-width="3"></path>
+    
+    <ellipse cx="90" cy="220" rx="90" ry="28" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></ellipse>
+    
+    <ellipse cx="90" cy="40" rx="90" ry="28" fill="#e0e7ff" stroke="#4f46e5" stroke-width="3"></ellipse>
+    
+    <text x="90" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Local DB</text>
+  </g>
+
+  
+  <path d="M 280 200 C 340 200, 350 152, 395 152" fill="none" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></path>
+  <path d="M 280 260 L 395 260" fill="none" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></path>
+  <path d="M 280 320 C 340 320, 350 368, 395 368" fill="none" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></path>
+
+  
+  <g transform="translate(405, 110)">
+    <rect x="0" y="0" width="330" height="84" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+    <text x="24" y="40" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">gym</text>
+    <rect x="200" y="18" width="105" height="34" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <text x="252" y="42" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">0 rows</text>
+    <line x1="24" y1="62" x2="305" y2="62" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"></line>
+  </g>
+
+  
+  <g transform="translate(405, 218)">
+    <rect x="0" y="0" width="330" height="84" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+    <text x="24" y="40" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">user</text>
+    <rect x="200" y="18" width="105" height="34" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <text x="252" y="42" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">0 rows</text>
+    <line x1="24" y1="62" x2="305" y2="62" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"></line>
+  </g>
+
+  
+  <g transform="translate(405, 326)">
+    <rect x="0" y="0" width="330" height="84" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+    <text x="24" y="40" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">membership</text>
+    <rect x="200" y="18" width="105" height="34" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+    <text x="252" y="42" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">0 rows</text>
+    <line x1="24" y1="62" x2="305" y2="62" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"></line>
+  </g>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Vertical Slice Seeding</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Pulls a coherent sub-graph</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Fast, connected local data</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4adff9a7061bf948c93bfb/drafts/dece4b8182494d7c8801f882428bed4a/images/s1-block-1-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Vertical Slice Philosophy</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="36" y="50" width="224" height="420" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="148" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Selective</text>
+
+  
+  <circle cx="86" cy="180" r="14" fill="#e2e8f0"></circle>
+  <circle cx="148" cy="160" r="14" fill="#e2e8f0"></circle>
+  <circle cx="210" cy="180" r="14" fill="#e2e8f0"></circle>
+  <circle cx="96" cy="320" r="14" fill="#e2e8f0"></circle>
+  <circle cx="200" cy="320" r="14" fill="#e2e8f0"></circle>
+
+  
+  <rect x="76" y="222" width="144" height="52" rx="12" fill="#c7d2fe" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="148" y="255" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Gym 43</text>
+  <text x="148" y="425" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">single target</text>
+
+  
+  <rect x="298" y="50" width="224" height="420" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="410" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Relational</text>
+
+  
+  <rect x="340" y="152" width="140" height="44" rx="8" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="410" y="181" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">user</text>
+
+  <line x1="410" y1="196" x2="410" y2="230" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  <rect x="340" y="238" width="140" height="44" rx="8" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="410" y="267" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">location</text>
+
+  <line x1="410" y1="282" x2="410" y2="316" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  <rect x="340" y="324" width="140" height="44" rx="8" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="410" y="353" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">plan</text>
+
+  <text x="410" y="425" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">links intact</text>
+
+  
+  <rect x="560" y="50" width="224" height="420" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="672" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Anonymized</text>
+
+  
+  <rect x="596" y="152" width="152" height="216" rx="12" fill="#ffffff" stroke="#10b981" stroke-width="2.5"></rect>
+  <circle cx="672" cy="196" r="20" fill="#d1fae5"></circle>
+  <path d="M666 196 L670 200 L678 191" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"></path>
+
+  
+  <rect x="616" y="240" width="112" height="14" rx="4" fill="#0f172a"></rect>
+  <rect x="616" y="266" width="92" height="14" rx="4" fill="#0f172a"></rect>
+  <rect x="616" y="292" width="104" height="14" rx="4" fill="#0f172a"></rect>
+
+  
+  <rect x="616" y="324" width="112" height="28" rx="6" fill="#ecfdf5"></rect>
+  <text x="672" y="344" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">SAFE</text>
+
+  <text x="672" y="425" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">PII scrubbed</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;the need for development data</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Seeding Engine Architecture</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">An intelligent seeding engine bridges drift, dependencies, and data sanitization.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><path d="M 60 180 v 110 a 50 18 0 0 0 100 0 v -110 Z" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"></path><ellipse cx="110" cy="180" rx="50" ry="18" fill="#fde68a" stroke="#f59e0b" stroke-width="3"></ellipse><text x="110" y="340" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Staging</text><line x1="160" y1="260" x2="204" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line><rect x="210" y="120" width="400" height="280" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><text x="410" y="158" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#4f46e5">seed_from_stage.py</text><line x1="210" y1="176" x2="610" y2="176" stroke="#e2e8f0" stroke-width="2"></line><rect x="235" y="192" width="350" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="255" y="225" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">1. Column Matching</text><rect x="235" y="258" width="350" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="255" y="291" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">2. Disable FK Checks</text><rect x="235" y="324" width="350" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="255" y="357" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">3. Sanitize PII</text><line x1="610" y1="260" x2="654" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line><path d="M 660 180 v 110 a 50 18 0 0 0 100 0 v -110 Z" fill="#e0e7ff" stroke="#4f46e5" stroke-width="3"></path><ellipse cx="710" cy="180" rx="50" ry="18" fill="#c7d2fe" stroke="#4f46e5" stroke-width="3"></ellipse><text x="710" y="340" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Local DB</text><circle r="5" fill="#4f46e5"><animateMotion path="M 160 260 L 654 260" dur="3s" repeatCount="indefinite"></animateMotion></circle></svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Schema Introspection</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1"># From gms_be/scripts/seed_from_stage.py</span>
+<span class="cl" data-line="2">def copy(table, where="", limit=None, transform=None):</span>
+<span class="cl" data-line="3">    scols = cols(src, SRC_DB, table) # Get columns from Staging</span>
+<span class="cl" data-line="4">    tcols = set(cols(tgt, "gms", table)) # Get columns from Local</span>
+<span class="cl" data-line="5">    </span>
+<span class="cl" data-line="6">    # Only use columns that exist in BOTH environments</span>
+<span class="cl" data-line="7">    use = [c for c in scols if c in tcols]</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Bypassing Foreign Key Checks</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">tc = tgt.cursor()</span>
+<span class="cl" data-line="2">tc.execute("SET FOREIGN_KEY_CHECKS=0") # Ignore constraints during seed</span>
+<span class="cl" data-line="3"># ... copy all data ...</span>
+<span class="cl" data-line="4">tc.execute("SET FOREIGN_KEY_CHECKS=1") # Re-enable constraints</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-3"><div data-el-id="s2-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Sanitization Hook</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-3-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">def u_tf(d):</span>
+<span class="cl" data-line="2">    # Standardize all seeded users to a single test password</span>
+<span class="cl" data-line="3">    d["password_hash"] = PW_HASH </span>
+<span class="cl" data-line="4">    d["verified"] = 1</span>
+<span class="cl" data-line="5">    d["active"] = 1</span>
+<span class="cl" data-line="6">    # Replace real emails with dev-safe versions</span>
+<span class="cl" data-line="7">    d["email"] = "owner@demo.gym" if d.get("role_type_id") == 1 else f"u{d['id']}@demo.gym"</span></code></pre></div></div></div></div><div class="scene-footer"><span>2 &nbsp;seeding engine architecture</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Execution Flow and Trade-offs</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">A deterministic sequence seeds local data safely.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"></path>
+    </marker>
+    <marker id="flow-arrow-primary" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <text x="410" y="52" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Execution Flow</text>
+
+  
+  <g>
+    <path d="M 60 180 A 55 22 0 0 0 170 180 V 340 A 55 22 0 0 1 60 340 Z" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></path>
+    <ellipse cx="115" cy="180" rx="55" ry="22" fill="#fde68a" stroke="#f59e0b" stroke-width="2.5"></ellipse>
+    <ellipse cx="115" cy="260" rx="55" ry="20" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5 4"></ellipse>
+    <text x="115" y="385" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Staging</text>
+  </g>
+
+  
+  <rect x="230" y="85" width="360" height="395" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+
+  
+  <rect x="250" y="110" width="320" height="88" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="410" y="148" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">1. Reference</text>
+  <text x="410" y="176" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">static tables</text>
+
+  
+  <line x1="410" y1="198" x2="410" y2="224" stroke="#64748b" stroke-width="2" marker-end="url(#flow-arrow)"></line>
+
+  
+  <rect x="250" y="228" width="320" height="88" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="410" y="266" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">2. Hierarchy</text>
+  <text x="410" y="294" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">gym &amp; locations</text>
+
+  
+  <line x1="410" y1="316" x2="410" y2="342" stroke="#64748b" stroke-width="2" marker-end="url(#flow-arrow)"></line>
+
+  
+  <rect x="250" y="346" width="320" height="88" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="410" y="384" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">3. Slice</text>
+  <text x="410" y="412" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#4f46e5">sanitized users</text>
+
+  
+  <g>
+    <path d="M 650 180 A 55 22 0 0 0 760 180 V 340 A 55 22 0 0 1 650 340 Z" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2.5"></path>
+    <ellipse cx="705" cy="180" rx="55" ry="22" fill="#c7d2fe" stroke="#4f46e5" stroke-width="2.5"></ellipse>
+    <ellipse cx="705" cy="260" rx="55" ry="20" fill="none" stroke="#4f46e5" stroke-width="1.5" stroke-dasharray="5 4"></ellipse>
+    <text x="705" y="385" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Local DB</text>
+  </g>
+
+  
+  <line x1="172" y1="272" x2="226" y2="272" stroke="#64748b" stroke-width="2.5" marker-end="url(#flow-arrow)"></line>
+  <line x1="592" y1="272" x2="646" y2="272" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#flow-arrow-primary)"></line>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Execution Flow</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"></path>
+    </marker>
+    <marker id="arr-muted" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path>
+    </marker>
+    <marker id="arr-indigo" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <g>
+    <path d="M 70 95 v 55 a 55 18 0 0 0 110 0 v -55 Z" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"></path>
+    <ellipse cx="125" cy="95" rx="55" ry="18" fill="#fde68a" stroke="#f59e0b" stroke-width="3"></ellipse>
+    <text x="125" y="198" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#b45309">Staging</text>
+  </g>
+
+  
+  <path d="M 180 122 C 215 122, 215 87, 244 87" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr-amber)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  
+  <rect x="250" y="55" width="320" height="64" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="410" y="95" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">1. Reference Data</text>
+
+  
+  <line x1="410" y1="119" x2="410" y2="151" stroke="#64748b" stroke-width="3" marker-end="url(#arr-muted)"></line>
+
+  
+  <rect x="250" y="155" width="320" height="64" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="410" y="195" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">2. Hierarchy</text>
+
+  
+  <line x1="410" y1="219" x2="410" y2="251" stroke="#64748b" stroke-width="3" marker-end="url(#arr-muted)"></line>
+
+  
+  <rect x="250" y="255" width="320" height="64" rx="14" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="410" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">3. Users (≤ 40)</text>
+
+  
+  <line x1="410" y1="319" x2="410" y2="351" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-indigo)"></line>
+
+  
+  <rect x="250" y="355" width="320" height="64" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="3"></rect>
+  <text x="410" y="395" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">4. Sanitize</text>
+
+  
+  <path d="M 570 387 C 605 387, 605 360, 634 360" fill="none" stroke="#10b981" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr-green)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  
+  <g>
+    <path d="M 640 335 v 55 a 55 18 0 0 0 110 0 v -55 Z" fill="#e0e7ff" stroke="#4f46e5" stroke-width="3"></path>
+    <ellipse cx="695" cy="335" rx="55" ry="18" fill="#c7d2fe" stroke="#4f46e5" stroke-width="3"></ellipse>
+    <text x="695" y="438" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4338ca">Local Docker</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Engineering Trade-offs</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="36" y="40" width="360" height="440" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><rect x="60" y="70" width="312" height="52" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect><text x="216" y="103" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">FK Suppression</text><rect x="60" y="152" width="312" height="116" rx="12" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect><circle cx="96" cy="210" r="16" fill="#10b981"></circle><path d="M90 210 l4 4 l8 -8" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path><text x="126" y="217" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Fast logic</text><rect x="60" y="296" width="312" height="116" rx="12" fill="#ffffff" stroke="#ef4444" stroke-width="2"></rect><circle cx="96" cy="354" r="16" fill="#ef4444"></circle><path d="M91 349 l10 10 M101 349 l-10 10" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"></path><text x="126" y="361" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Orphan records</text><rect x="424" y="40" width="360" height="440" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><rect x="448" y="70" width="312" height="52" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect><text x="604" y="103" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Column Intersection</text><rect x="448" y="152" width="312" height="116" rx="12" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect><circle cx="484" cy="210" r="16" fill="#10b981"></circle><path d="M478 210 l4 4 l8 -8" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path><text x="514" y="217" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">No crashes</text><rect x="448" y="296" width="312" height="116" rx="12" fill="#ffffff" stroke="#ef4444" stroke-width="2"></rect><circle cx="484" cy="354" r="16" fill="#ef4444"></circle><path d="M479 349 l10 10 M489 349 l-10 10" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"></path><text x="514" y="361" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Skipped columns</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div data-el-id="s3-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Hardcoded GYM_ID</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="70" width="330" height="380" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="165" y="100" width="120" height="36" rx="18" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="225" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Benefit</text>
+
+  
+  <rect x="145" y="165" width="160" height="42" rx="8" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="225" y="193" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#4f46e5">GYM_ID = 101</text>
+
+  
+  <path d="M 180 207 L 120 255" fill="none" stroke="#4f46e5" stroke-width="2" marker-end="url(#arrow)"></path>
+  <path d="M 225 207 L 225 255" fill="none" stroke="#4f46e5" stroke-width="2" marker-end="url(#arrow)"></path>
+  <path d="M 270 207 L 330 255" fill="none" stroke="#4f46e5" stroke-width="2" marker-end="url(#arrow)"></path>
+
+  
+  <rect x="95" y="265" width="50" height="42" rx="8" fill="#c7d2fe"></rect>
+  <rect x="200" y="265" width="50" height="42" rx="8" fill="#c7d2fe"></rect>
+  <rect x="305" y="265" width="50" height="42" rx="8" fill="#c7d2fe"></rect>
+
+  <text x="225" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Identical repro</text>
+
+  
+  <rect x="430" y="70" width="330" height="380" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="525" y="100" width="140" height="36" rx="18" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="595" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Trade-off</text>
+
+  
+  <rect x="470" y="180" width="110" height="100" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="525" y="238" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Tenant A</text>
+  <circle cx="560" cy="200" r="10" fill="#10b981"></circle>
+  <polyline points="556,200 559,203 565,197" fill="none" stroke="#ffffff" stroke-width="2"></polyline>
+
+  
+  <rect x="610" y="180" width="110" height="100" rx="12" fill="#fff1f2" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 4"></rect>
+  <text x="665" y="238" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Tenant B</text>
+  <circle cx="700" cy="200" r="10" fill="#ef4444"></circle>
+  <line x1="696" y1="196" x2="704" y2="204" stroke="#ffffff" stroke-width="2"></line>
+  <line x1="704" y1="196" x2="696" y2="204" stroke="#ffffff" stroke-width="2"></line>
+
+  <text x="595" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Manual multi-tenant</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;execution flow and trade-offs</span><span>concept brief</span></div></div></section><section id="section-4" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s4-title"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 4</p><h2 data-el-id="s4-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Running the Seed Script</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Run inside the container to bridge staging tunnel and local database.</p></div><div class="scene" data-scene-for="s4-block-1"><div data-el-id="s4-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Run Inside Container</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s4-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-bash"><span class="cl" data-line="1">docker compose run --rm --no-deps auth-admin-service python scripts/seed_from_stage.py</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s4-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s4-block-2" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Local Environment Ready</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Populated gym data</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Ready for feature work</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4adff9a7061bf948c93bfb/drafts/dece4b8182494d7c8801f882428bed4a/images/s4-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene-footer"><span>4 &nbsp;running the seed script</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">The Need for Development Data</p><p class="text-slate-500 text-sm mt-0.5">Migrated schemas are structured, but completely empty.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Seeding Engine Architecture</p><p class="text-slate-500 text-sm mt-0.5">An intelligent seeding engine bridges drift, dependencies, and data sanitization.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Execution Flow and Trade-offs</p><p class="text-slate-500 text-sm mt-0.5">A deterministic sequence seeds local data safely.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span><div><p class="font-bold text-slate-900 leading-tight">Running the Seed Script</p><p class="text-slate-500 text-sm mt-0.5">Run inside the container to bridge staging tunnel and local database.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

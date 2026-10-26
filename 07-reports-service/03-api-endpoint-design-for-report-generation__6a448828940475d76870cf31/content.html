@@ -1,0 +1,497 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>API Endpoint Design for Report Generation</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">API Endpoint Design for Report Generation</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">API Endpoint Design for Report Generation</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Unified Endpoint Structure</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">One unified route serves diverse analytical reports safely.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#64748b"></path>
+    </marker>
+    <marker id="arrow-primary" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="230" width="160" height="60" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="130" y="267" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Client</text>
+
+  
+  <line x1="210" y1="260" x2="288" y2="260" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-primary)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </line>
+
+  
+  <text x="410" y="195" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Front Door</text>
+  <rect x="300" y="215" width="220" height="90" rx="45" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="410" y="271" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#4f46e5">/reports</text>
+
+  
+  <path d="M 520 245 C 560 245, 570 175, 608 175" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></path>
+  <path d="M 520 275 C 560 275, 570 345, 608 345" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></path>
+
+  
+  <g transform="translate(620, 140)">
+    <rect x="8" y="-8" width="150" height="68" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" opacity="0.6"></rect>
+    <rect x="0" y="0" width="150" height="68" rx="10" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+    <text x="75" y="42" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Revenue</text>
+  </g>
+
+  
+  <g transform="translate(620, 310)">
+    <rect x="8" y="-8" width="150" height="68" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" opacity="0.6"></rect>
+    <rect x="0" y="0" width="150" height="68" rx="10" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+    <text x="75" y="42" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Enrollment</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Polymorphic Endpoint</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="225" width="280" height="70" rx="35" fill="#4f46e5"></rect>
+  <text x="190" y="268" text-anchor="middle" font-family="monospace" font-size="24" font-weight="700" fill="#ffffff">GET /reports</text>
+
+  
+  <path d="M 330 245 C 390 245, 420 160, 488 160" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></path>
+  
+  <rect x="345" y="165" width="116" height="34" rx="8" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"></rect>
+  <text x="403" y="188" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">revenue</text>
+
+  
+  <rect x="500" y="100" width="270" height="120" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="525" y="142" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Monthly Revenue</text>
+  <rect x="525" y="162" width="130" height="12" rx="6" fill="#c7d2fe"></rect>
+  <rect x="525" y="184" width="200" height="12" rx="6" fill="#c7d2fe"></rect>
+
+  
+  <path d="M 330 275 C 390 275, 420 360, 488 360" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></path>
+  
+  <rect x="338" y="320" width="130" height="34" rx="8" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"></rect>
+  <text x="403" y="343" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">enrollment</text>
+
+  
+  <rect x="500" y="300" width="270" height="120" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="525" y="342" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Branch Enrollment</text>
+  <rect x="525" y="362" width="170" height="12" rx="6" fill="#c7d2fe"></rect>
+  <rect x="525" y="384" width="100" height="12" rx="6" fill="#c7d2fe"></rect>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Allowed Report Types</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s1-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">from enum import Enum</span>
+<span class="cl" data-line="2"></span>
+<span class="cl" data-line="3">class ReportType(str, Enum):</span>
+<span class="cl" data-line="4">    ENROLLMENT_TRENDS = "enrollment_trends"</span>
+<span class="cl" data-line="5">    REVENUE_SUMMARY = "revenue_summary"</span>
+<span class="cl" data-line="6">    ATTENDANCE_HEATMAP = "attendance_heatmap"</span>
+<span class="cl" data-line="7">    MEMBER_RETENTION = "member_retention"</span></code></pre></div></div></div></div><div class="scene-footer"><span>1 &nbsp;the unified endpoint structure</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Schema-Driven Parameter Design</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Schema validation stops invalid parameters before they reach execution.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"></path>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <g transform="translate(60, 160)">
+    <rect x="0" y="0" width="180" height="52" rx="10" fill="#e0e7ff" stroke="#c7d2fe" stroke-width="2"></rect>
+    <text x="90" y="33" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Query Params</text>
+
+    
+    <rect x="15" y="70" width="150" height="36" rx="6" fill="#f1f5f9" stroke="#cbd5e1"></rect>
+    <text x="90" y="94" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" fill="#64748b">date range</text>
+
+    <rect x="15" y="116" width="150" height="36" rx="6" fill="#f1f5f9" stroke="#cbd5e1"></rect>
+    <text x="90" y="140" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" fill="#64748b">location_id</text>
+  </g>
+
+  
+  <line x1="240" y1="230" x2="310" y2="230" stroke="#94a3b8" stroke-width="3" marker-end="url(#arr-gray)"></line>
+
+  
+  <g transform="translate(320, 120)">
+    <rect x="0" y="0" width="220" height="230" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="3" stroke-dasharray="8 6"></rect>
+    <rect x="20" y="-16" width="180" height="32" rx="6" fill="#10b981"></rect>
+    <text x="110" y="6" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#ffffff">Validation Schema</text>
+
+    
+    <circle cx="45" cy="70" r="14" fill="#ecfdf5"></circle>
+    <path d="M 39 70 L 43 74 L 51 66" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"></path>
+    <text x="72" y="76" font-family="Inter, sans-serif" font-size="18" font-weight="500" fill="#0f172a">Type check</text>
+
+    <circle cx="45" cy="125" r="14" fill="#ecfdf5"></circle>
+    <path d="M 39 125 L 43 129 L 51 121" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"></path>
+    <text x="72" y="131" font-family="Inter, sans-serif" font-size="18" font-weight="500" fill="#0f172a">Range logic</text>
+
+    <circle cx="45" cy="180" r="14" fill="#ecfdf5"></circle>
+    <path d="M 39 180 L 43 184 L 51 176" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"></path>
+    <text x="72" y="186" font-family="Inter, sans-serif" font-size="18" font-weight="500" fill="#0f172a">Required keys</text>
+  </g>
+
+  
+  <line x1="540" y1="200" x2="610" y2="200" stroke="#10b981" stroke-width="3" marker-end="url(#arr-green)"></line>
+  <g transform="translate(620, 165)">
+    <rect x="0" y="0" width="140" height="68" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+    <text x="70" y="41" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#059669">Verified</text>
+  </g>
+
+  
+  <line x1="430" y1="350" x2="430" y2="400" stroke="#ef4444" stroke-width="3" stroke-dasharray="4 4"></line>
+  <g transform="translate(360, 410)">
+    <rect x="0" y="0" width="140" height="44" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+    <text x="70" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#ef4444">422 Rejected</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s2-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Schema Validation</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Unifies raw inputs into one object</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#64748b"></path>
+    </marker>
+    <marker id="arrow-emerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <g>
+    
+    <rect x="36" y="148" width="180" height="46" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+    <text x="126" y="178" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">report_type</text>
+
+    
+    <rect x="36" y="234" width="180" height="46" rx="8" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"></rect>
+    <text x="126" y="264" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">location_id</text>
+
+    
+    <rect x="36" y="320" width="180" height="46" rx="8" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"></rect>
+    <text x="126" y="350" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">date range</text>
+  </g>
+
+  
+  <line x1="216" y1="171" x2="276" y2="200" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="216" y1="257" x2="276" y2="257" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="216" y1="343" x2="276" y2="314" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  
+  <g>
+    <rect x="284" y="110" width="248" height="294" rx="14" fill="#ffffff" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6 4"></rect>
+    <rect x="284" y="110" width="248" height="52" rx="14" fill="#ecfdf5"></rect>
+    <text x="408" y="143" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">Validation Schema</text>
+
+    
+    <path d="M 320 200 C 370 200, 390 257, 480 257" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"></path>
+    <path d="M 320 257 L 480 257" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"></path>
+    <path d="M 320 314 C 370 314, 390 257, 480 257" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"></path>
+    <circle cx="488" cy="257" r="8" fill="#10b981"></circle>
+  </g>
+
+  
+  <line x1="532" y1="257" x2="590" y2="257" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-emerald)"></line>
+
+  
+  <g>
+    <rect x="598" y="202" width="186" height="110" rx="12" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+    <text x="691" y="247" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Validated</text>
+    <text x="691" y="281" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Query Object</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Pydantic Schema Validation</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">class ReportQueryParams(BaseModel):</span>
+<span class="cl" data-line="2">    """Parameters for fetching and filtering reports."""</span>
+<span class="cl" data-line="3">    report_type: ReportType</span>
+<span class="cl" data-line="4">    start_date: date</span>
+<span class="cl" data-line="5">    end_date: date</span>
+<span class="cl" data-line="6">    location_id: Optional[int] = None</span>
+<span class="cl" data-line="7"></span>
+<span class="cl" data-line="8">    @root_validator</span>
+<span class="cl" data-line="9">    def validate_date_range(cls, values):</span>
+<span class="cl" data-line="10">        """Ensures that start_date is not after end_date."""</span>
+<span class="cl" data-line="11">        start, end = values.get("start_date"), values.get("end_date")</span>
+<span class="cl" data-line="12">        if start and end and start &gt; end:</span>
+<span class="cl" data-line="13">            raise ValueError("start_date must be before end_date")</span>
+<span class="cl" data-line="14">        return values</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-3"><div data-el-id="s2-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Gatekeeper Schema</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="270" y="80" width="280" height="360" rx="16" fill="#f0fdf4" stroke="#10b981" stroke-width="3" stroke-dasharray="6 6"></rect>
+  <rect x="300" y="62" width="220" height="36" rx="18" fill="#10b981"></rect>
+  <text x="410" y="87" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Validation Schema</text>
+
+  
+  <rect x="40" y="160" width="170" height="52" rx="10" fill="#c7d2fe" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="125" y="193" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Query Params</text>
+
+  <line x1="210" y1="186" x2="600" y2="186" stroke="#10b981" stroke-width="4" marker-end="url(#arrow-green)"></line>
+  <circle cx="410" cy="186" r="22" fill="#ffffff" stroke="#10b981" stroke-width="3"></circle>
+  <path d="M 400 186 L 407 193 L 421 179" fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  
+  <rect x="610" y="152" width="170" height="68" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="695" y="193" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Report Logic</text>
+
+  
+  <rect x="40" y="300" width="170" height="52" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="125" y="333" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Invalid Params</text>
+
+  <path d="M 210 326 L 330 326 Q 360 326 360 356 L 360 380" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-red)"></path>
+  <circle cx="330" cy="326" r="14" fill="#ffffff" stroke="#ef4444" stroke-width="2.5"></circle>
+  <path d="M 324 320 L 336 332 M 336 320 L 324 332" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></path>
+
+  
+  <rect x="300" y="390" width="120" height="38" rx="19" fill="#ef4444"></rect>
+  <text x="360" y="416" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Rejected</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;schema-driven parameter design</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Engineering and Production Choices</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Design choices balance client simplicity, URL shareability, and timezone safety.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <text x="410" y="70" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Production Architecture Choices</text>
+
+  
+  <rect x="60" y="120" width="215" height="320" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="167" y="170" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">GET Params</text>
+  <rect x="90" y="230" width="155" height="54" rx="12" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"></rect>
+  <text x="167" y="264" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">?branch=1</text>
+  <text x="167" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">shareable URLs</text>
+
+  
+  <rect x="302" y="120" width="215" height="320" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect>
+  <text x="410" y="170" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Validation</text>
+  <rect x="332" y="230" width="155" height="54" rx="12" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="2"></rect>
+  <text x="410" y="264" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">start &lt; end</text>
+  <text x="410" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">safe ranges</text>
+
+  
+  <rect x="545" y="120" width="215" height="320" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="652" y="170" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Timezones</text>
+  <rect x="575" y="230" width="155" height="54" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="652" y="264" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Local → UTC</text>
+  <text x="652" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">clean records</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Query Parameters in URL</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="70" y="100" width="680" height="90" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+
+  
+  <rect x="90" y="120" width="76" height="50" rx="12" fill="#4f46e5"></rect>
+  <text x="128" y="153" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">GET</text>
+
+  
+  <text x="186" y="153" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">/reports/revenue</text>
+
+  
+  <rect x="400" y="122" width="160" height="46" rx="10" fill="#c7d2fe" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="480" y="152" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">?branch=east</text>
+
+  
+  <rect x="576" y="122" width="154" height="46" rx="10" fill="#c7d2fe" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="653" y="152" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">&amp;year=2024</text>
+
+  
+  <line x1="175" y1="190" x2="175" y2="266" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="410" y1="190" x2="410" y2="266" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="645" y1="190" x2="645" y2="266" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="75" y="275" width="200" height="135" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="175" cy="320" r="20" fill="#f1f5f9"></circle>
+  <path d="M 166 320 L 184 320 M 177 313 L 184 320 L 177 327" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="175" y="372" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Shareable</text>
+
+  
+  <rect x="310" y="275" width="200" height="135" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="410" cy="320" r="20" fill="#f1f5f9"></circle>
+  <rect x="399" y="310" width="22" height="20" rx="3" fill="none" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <line x1="404" y1="316" x2="416" y2="316" stroke="#4f46e5" stroke-width="2"></line>
+  <text x="410" y="372" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Cache Key</text>
+
+  
+  <rect x="545" y="275" width="200" height="135" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="645" cy="320" r="20" fill="#f1f5f9"></circle>
+  <path d="M 637 320 A 8 8 0 1 1 653 324" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"></path>
+  <polyline points="653,318 653,325 646,325" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+  <text x="645" y="372" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Idempotent</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-2" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Timezone Boundary</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Local branch calendar</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Converted to UTC for queries</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a448828940475d76870cf31/g8/images/s3-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div data-el-id="s3-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Timezone Boundary</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-right" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <polygon points="0 1, 10 5, 0 9" fill="#4f46e5"></polygon>
+    </marker>
+    <marker id="arrow-left" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <polygon points="0 1, 10 5, 0 9" fill="#10b981"></polygon>
+    </marker>
+    <marker id="arrow-down" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <polygon points="0 1, 10 5, 0 9" fill="#94a3b8"></polygon>
+    </marker>
+  </defs>
+
+  
+  <line x1="360" y1="90" x2="360" y2="460" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="8 6"></line>
+  <rect x="330" y="50" width="60" height="32" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="360" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">API</text>
+
+  
+  <text x="180" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Client</text>
+  
+  <rect x="60" y="160" width="240" height="70" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="180" y="203" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Local Input</text>
+
+  <rect x="60" y="350" width="240" height="70" rx="14" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect>
+  <text x="180" y="393" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Local Output</text>
+
+  
+  <rect x="410" y="90" width="360" height="370" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="590" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Service</text>
+
+  
+  <rect x="460" y="165" width="260" height="60" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="590" y="202" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">UTC Range</text>
+
+  <line x1="590" y1="225" x2="590" y2="256" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow-down)"></line>
+
+  <rect x="490" y="260" width="200" height="56" rx="10" fill="#ffffff" stroke="#64748b" stroke-width="2"></rect>
+  <text x="590" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Database</text>
+
+  <line x1="590" y1="316" x2="590" y2="351" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow-down)"></line>
+
+  <rect x="460" y="355" width="260" height="60" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="590" y="392" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#059669">Localize</text>
+
+  
+  <line x1="300" y1="195" x2="452" y2="195" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-right)"></line>
+  <circle r="5" fill="#4f46e5">
+    <animate attributeName="cx" values="300;450" dur="2.2s" repeatCount="indefinite"></animate>
+    <animate attributeName="cy" values="195;195" dur="2.2s" repeatCount="indefinite"></animate>
+  </circle>
+
+  <line x1="460" y1="385" x2="308" y2="385" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-left)"></line>
+  <circle r="5" fill="#10b981">
+    <animate attributeName="cx" values="460;310" dur="2.2s" repeatCount="indefinite"></animate>
+    <animate attributeName="cy" values="385;385" dur="2.2s" repeatCount="indefinite"></animate>
+  </circle>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;engineering and production choices</span><span>concept brief</span></div></div></section><section id="section-4" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s4-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 4</p><h2 data-el-id="s4-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Integration and Future Flow</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Edge validation connects upstream auth to downstream report services.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><text x="160" y="160" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Upstream</text><rect x="70" y="200" width="180" height="120" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><path d="M160 226 l14 7 v12 c0 10 -14 17 -14 17 s-14 -7 -14 -17 v-12 z" fill="none" stroke="#64748b" stroke-width="2"></path><text x="160" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="600" fill="#0f172a">Auth</text><line x1="250" y1="260" x2="304" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line><circle cx="275" cy="260" r="5" fill="#4f46e5"><animate attributeName="cx" values="256;300;256" dur="2.4s" repeatCount="indefinite"></animate></circle><text x="410" y="160" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Edge</text><rect x="310" y="200" width="200" height="120" rx="60" fill="#4f46e5"></rect><text x="410" y="268" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#ffffff">Report Route</text><line x1="510" y1="260" x2="564" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line><circle cx="535" cy="260" r="5" fill="#4f46e5"><animate attributeName="cx" values="516;560;516" dur="2.4s" repeatCount="indefinite"></animate></circle><text x="660" y="160" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Downstream</text><rect x="570" y="200" width="180" height="120" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><path d="M648 230 c0 -4 24 -4 24 0 v16 c0 4 -24 4 -24 0 z" fill="none" stroke="#64748b" stroke-width="2"></path><path d="M648 238 c0 4 24 4 24 0" fill="none" stroke="#64748b" stroke-width="2"></path><text x="660" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="600" fill="#0f172a">Service</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-1"><div data-el-id="s4-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Two-Tier Authorization</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><rect x="50" y="110" width="310" height="300" rx="16" fill="#f8fafc" stroke="#10b981" stroke-width="2"></rect><text x="205" y="170" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Endpoint Boundary</text><rect x="85" y="236" width="240" height="64" rx="32" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect><text x="205" y="276" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Token + Location</text><line x1="360" y1="268" x2="416" y2="268" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line><rect x="420" y="110" width="350" height="300" rx="16" fill="#f8fafc" stroke="#4f46e5" stroke-width="2"></rect><text x="595" y="170" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Service Logic</text><rect x="445" y="236" width="300" height="64" rx="32" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect><text x="595" y="276" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Role: Owner / Manager</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-2"><div data-el-id="s4-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Shielded Core Service</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path></marker><marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path></marker></defs><rect x="50" y="140" width="150" height="52" rx="12" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect><text x="125" y="173" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Malformed</text><line x1="200" y1="166" x2="295" y2="166" stroke="#ef4444" stroke-width="2.5" marker-end="url(#arrow-red)"></line><rect x="50" y="310" width="150" height="52" rx="12" fill="#f0fdf4" stroke="#10b981" stroke-width="2"></rect><text x="125" y="343" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Valid</text><line x1="200" y1="336" x2="295" y2="336" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow-green)"></line><rect x="260" y="70" width="220" height="380" rx="16" fill="#f8fafc" stroke="#10b981" stroke-width="3"></rect><rect x="275" y="95" width="190" height="42" rx="21" fill="#10b981"></rect><text x="370" y="123" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Edge Validation</text><rect x="305" y="142" width="130" height="48" rx="24" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect><text x="370" y="172" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">Blocked</text><rect x="305" y="312" width="130" height="48" rx="24" fill="#dcfce7" stroke="#10b981" stroke-width="2"></rect><text x="370" y="342" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">Passed</text><line x1="435" y1="336" x2="520" y2="336" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow-green)"></line><rect x="530" y="70" width="240" height="380" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect><rect x="550" y="95" width="200" height="42" rx="21" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect><text x="650" y="123" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">ReportService</text><rect x="555" y="180" width="190" height="220" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><text x="650" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Compiling Data</text><rect x="580" y="275" width="140" height="12" rx="6" fill="#c7d2fe"></rect><rect x="580" y="305" width="100" height="12" rx="6" fill="#818cf8"></rect><rect x="580" y="335" width="120" height="12" rx="6" fill="#4f46e5"></rect><circle cx="650" cy="375" r="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></circle><path d="M645 375 l3 3 l7 -7" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></div></div></div></div><div class="scene-footer"><span>4 &nbsp;integration and future flow</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">The Unified Endpoint Structure</p><p class="text-slate-500 text-sm mt-0.5">One unified route serves diverse analytical reports safely.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Schema-Driven Parameter Design</p><p class="text-slate-500 text-sm mt-0.5">Schema validation stops invalid parameters before they reach execution.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Engineering and Production Choices</p><p class="text-slate-500 text-sm mt-0.5">Design choices balance client simplicity, URL shareability, and timezone safety.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span><div><p class="font-bold text-slate-900 leading-tight">Integration and Future Flow</p><p class="text-slate-500 text-sm mt-0.5">Edge validation connects upstream auth to downstream report services.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

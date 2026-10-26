@@ -1,0 +1,149 @@
+{
+  "skill_id": "6a459de3940475d76870cf45",
+  "skill_name": "Project Scope & Overview",
+  "topic_id": "6a459e92940475d76870cf49",
+  "topic_name": "Key Features and Functionalities",
+  "topic_track": "project",
+  "content_version": 26,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a459e92940475d76870cf49/g20/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a459e92940475d76870cf49/g26/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 26,
+  "voiceover_data": {
+    "topic_name": "Key Features and Functionalities",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-gms-features-the-business-engine",
+        "section_number": 1,
+        "title": "GMS Features: The Business Engine",
+        "narration": "Now that our scope and layered service boundaries are locked in from Defining Project Scope, let's step out of the raw code and look at the exact business capabilities this system needs to run. As backend engineers, it's easy to get lost in the technical details. But to build a system that truly solves customer problems, we must first understand the business capabilities it provides. The Gym Management System backend isn't just a collection of APIs; it's the engine that runs a gym's entire lifecycle, from member sign-ups to financial reporting. We'll explore these critical features and functionalities from the perspective of the gym owner, staff, and members. Think of these as the core workflows our system must automate, enabling a seamless experience for everyone involved. So, the key idea is: we must understand the business capabilities before diving into technical details.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that our scope and layered service boundaries are locked in from Defining Project Scope, let's step out of the raw code and look at the exact business capabilities this system needs to run."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "As backend engineers, it's easy to get lost in the technical details. But to build a system that truly solves customer problems, we must first understand the business capabilities it provides. The Gym Management System backend isn't just a collection of APIs; it's the engine that runs a gym's entire lifecycle, from member sign-ups to financial reporting."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "We'll explore these critical features and functionalities from the perspective of the gym owner, staff, and members. Think of these as the core workflows our system must automate, enabling a seamless experience for everyone involved. So, the key idea is: we must understand the business capabilities before diving into technical details."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-membership-billing-and-lifecycle",
+        "section_number": 2,
+        "title": "Membership, Billing, and Lifecycle",
+        "narration": "We've set the stage for understanding the business, now let's dive into the core revenue-generating and member-management features: Membership Plans and their associated billing and lifecycle. Membership Plan Management allows gym owners to define their product offerings. This includes setting prices, billing cycles like weekly or monthly, and access tiers such as \"Basic\" or \"Gold.\" This forms the foundation of the gym's revenue stream and ensures the system accurately tracks what each member is entitled to. Membership Lifecycle and Status Tracking manages the member's journey from active enrollment and automated renewals to pausing a membership with a \"freeze\" or cancelling it entirely. Automating freezes and cancellations is crucial for reducing administrative overhead and preventing costly billing disputes. Automated Billing and Payment Processing handles invoice generation, payments via providers like Payrix, and managing payment methods. It also deals with refunds and discounts, ensuring the gym gets paid on time without manual intervention and can manage complex disbursement scenarios. So, the key idea is: we automate the entire membership and billing lifecycle to ensure accurate revenue capture and member satisfaction.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "We've set the stage for understanding the business, now let's dive into the core revenue-generating and member-management features: Membership Plans and their associated billing and lifecycle."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Membership Plan Management allows gym owners to define their product offerings. This includes setting prices, billing cycles like weekly or monthly, and access tiers such as \"Basic\" or \"Gold.\" This forms the foundation of the gym's revenue stream and ensures the system accurately tracks what each member is entitled to."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Membership Lifecycle and Status Tracking manages the member's journey from active enrollment and automated renewals to pausing a membership with a \"freeze\" or cancelling it entirely. Automating freezes and cancellations is crucial for reducing administrative overhead and preventing costly billing disputes."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Automated Billing and Payment Processing handles invoice generation, payments via providers like Payrix, and managing payment methods. It also deals with refunds and discounts, ensuring the gym gets paid on time without manual intervention and can manage complex disbursement scenarios. So, the key idea is: we automate the entire membership and billing lifecycle to ensure accurate revenue capture and member satisfaction."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-classes-training-and-access",
+        "section_number": 3,
+        "title": "Classes, Training, and Access",
+        "narration": "Building on membership management, we now look at how members engage with the gym's facilities and services through scheduling and physical access. Group Class Scheduling and Reservations provides a digital calendar for classes. Members can view schedules, book spots, and join waitlists. This feature maximizes facility utilization and prevents overbooking, ensuring a high-quality experience and efficient scheduling for instructors. Private Training and 1-on-1 Sessions facilitate booking and tracking of personalized sessions between a member and a trainer. This manages a high-margin revenue stream and ensures these premium services are scheduled without conflicting with group classes. Physical Access Control, a key feature, grants entry to gym sections or doors based on a member's plan, using digital credentials that communicate with hardware like scanners. This allows for 24/7 unstaffed access, reducing labor costs while maintaining security. So, the key idea is: we manage all aspects of member engagement, from booking classes to physical entry, based on their membership status.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Building on membership management, we now look at how members engage with the gym's facilities and services through scheduling and physical access."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Group Class Scheduling and Reservations provides a digital calendar for classes. Members can view schedules, book spots, and join waitlists. This feature maximizes facility utilization and prevents overbooking, ensuring a high-quality experience and efficient scheduling for instructors."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Private Training and 1-on-1 Sessions facilitate booking and tracking of personalized sessions between a member and a trainer. This manages a high-margin revenue stream and ensures these premium services are scheduled without conflicting with group classes."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Physical Access Control, a key feature, grants entry to gym sections or doors based on a member's plan, using digital credentials that communicate with hardware like scanners. This allows for 24/7 unstaffed access, reducing labor costs while maintaining security. So, the key idea is: we manage all aspects of member engagement, from booking classes to physical entry, based on their membership status."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-member-data-and-business-insights",
+        "section_number": 4,
+        "title": "Member Data and Business Insights",
+        "narration": "With member engagement features covered, let's focus on the data aspects: managing member profiles and generating crucial business insights. Member CRM and Profile Management acts as the central source of truth for all member data, including contact details, onboarding status, and their primary gym location. This ensures staff can provide personalized service and access a member's complete history across all locations. Business Analytics and Financial Reporting generates high-level summaries of total revenue, tracks \"Past Due\" members, and monitors overall business health. This data is vital for identifying revenue \"leaks\" and making informed decisions about expansion or cost-cutting. So, the key idea is: we consolidate member data and provide actionable business insights for effective gym management.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "With member engagement features covered, let's focus on the data aspects: managing member profiles and generating crucial business insights."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Member CRM and Profile Management acts as the central source of truth for all member data, including contact details, onboarding status, and their primary gym location. This ensures staff can provide personalized service and access a member's complete history across all locations."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Business Analytics and Financial Reporting generates high-level summaries of total revenue, tracks \"Past Due\" members, and monitors overall business health. This data is vital for identifying revenue \"leaks\" and making informed decisions about expansion or cost-cutting. So, the key idea is: we consolidate member data and provide actionable business insights for effective gym management."
+          }
+        ]
+      },
+      {
+        "section_id": "section-05-a-complete-closed-loop-system",
+        "section_number": 5,
+        "title": "A Complete, Closed-Loop System",
+        "narration": "We've covered the core features; now let's see how they form a complete, closed-loop system and prepare for the next steps in our architecture overview. When we look at all these features together—Membership Plans, Lifecycle, Scheduling, Billing, Access Control, CRM, and Reporting—we see a complete, closed-loop system. There are no missing links in the gym's operations, from initial attraction and enrollment through active usage, retention, and finally, business intelligence. This end-to-end coverage ensures a gym owner can manage their entire daily operation within the system, reducing reliance on external tools or manual processes. We've now covered what the Gym Management System does; next, we look at how it's built. With all eight business capabilities and the complete member lifecycle clearly defined, we're ready to translate these workflows into technical components in our High-Level System Architecture Overview. So, the key idea is: we translate business capabilities into technical components.",
+        "segments": [
+          {
+            "el_id": "s5-title",
+            "type": "title",
+            "text": "We've covered the core features; now let's see how they form a complete, closed-loop system and prepare for the next steps in our architecture overview."
+          },
+          {
+            "el_id": "s5-block-1",
+            "type": "block",
+            "text": "When we look at all these features together—Membership Plans, Lifecycle, Scheduling, Billing, Access Control, CRM, and Reporting—we see a complete, closed-loop system. There are no missing links in the gym's operations, from initial attraction and enrollment through active usage, retention, and finally, business intelligence."
+          },
+          {
+            "el_id": "s5-block-2",
+            "type": "block",
+            "text": "This end-to-end coverage ensures a gym owner can manage their entire daily operation within the system, reducing reliance on external tools or manual processes. We've now covered what the Gym Management System does; next, we look at how it's built."
+          },
+          {
+            "el_id": "s5-block-3",
+            "type": "block",
+            "text": "With all eight business capabilities and the complete member lifecycle clearly defined, we're ready to translate these workflows into technical components in our High-Level System Architecture Overview. So, the key idea is: we translate business capabilities into technical components."
+          }
+        ]
+      }
+    ]
+  }
+}

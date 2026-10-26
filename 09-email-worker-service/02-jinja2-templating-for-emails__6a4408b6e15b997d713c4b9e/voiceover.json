@@ -1,0 +1,98 @@
+{
+  "skill_id": "6a4408b2e15b997d713c4b8e",
+  "skill_name": "Email Worker Service",
+  "topic_id": "6a4408b6e15b997d713c4b9e",
+  "topic_name": "Jinja2 Templating for Emails",
+  "topic_track": "project",
+  "content_version": 16,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408b6e15b997d713c4b9e/g14/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4408b6e15b997d713c4b9e/g16/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 16,
+  "voiceover_data": {
+    "topic_name": "Jinja2 Templating for Emails",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-rendering-architecture",
+        "section_number": 1,
+        "title": "The Rendering Architecture",
+        "narration": "Now that we understand the structural layout of the G M S email service and how tasks route through it, let's zoom in on how raw task data turns into a finished plain text email. This is where we use the templating engine to generate our email bodies. Our system manages these templates as individual files stored on the server disk. To load them efficiently, we initialize a central management object known as a Jinja two Environment, which acts as the core settings hub for the engine. This setup uses a file system loader to point the engine toward the directory on our server holding our email templates. Jinja2 also offers a safety option called autoescape, which turns characters like angle brackets into harmless text so malicious input cannot inject scripts into an H T M L page. G M S leaves it off, which is acceptable only because its emails are plain text. The usual advice is also to create the engine once and reuse it; G M S instead builds a fresh one for every email, which is fine at today's volumes. So the key idea is template management.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we understand the structural layout of the G M S email service and how tasks route through it, let's zoom in on how raw task data turns into a finished plain text email."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This is where we use the templating engine to generate our email bodies. Our system manages these templates as individual files stored on the server disk."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "To load them efficiently, we initialize a central management object known as a Jinja two Environment, which acts as the core settings hub for the engine. This setup uses a file system loader to point the engine toward the directory on our server holding our email templates."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Jinja2 also offers a safety option called autoescape, which turns characters like angle brackets into harmless text so malicious input cannot inject scripts into an H T M L page. G M S leaves it off, which is acceptable only because its emails are plain text. The usual advice is also to create the engine once and reuse it; G M S instead builds a fresh one for every email, which is fine at today's volumes. So the key idea is template management."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-dynamic-data-injection",
+        "section_number": 2,
+        "title": "Dynamic Data Injection",
+        "narration": "With the rendering engine ready, we can look at how the worker injects dynamic information into these templates. We rely on two main templating tools to turn raw data into a finished message. First, we use expressions to place variables directly into the document. When a task arrives, we drop pieces of information, like names or booking details, into placeholders. If the information is missing, the template will render an empty string, which is the silent contract trap we uncovered in our earlier overview. Second, we use control structures to handle logic within the document. A condition can show a sentence only when some data is present, and a loop can repeat a line for each item in a list. G M S uses these sparingly: one email, about changes to recurring personal training, shows the end date only when one is set, and no email uses a loop. Keeping logic this simple keeps templates readable. So the key idea is dynamic content.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "With the rendering engine ready, we can look at how the worker injects dynamic information into these templates. We rely on two main templating tools to turn raw data into a finished message."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "First, we use expressions to place variables directly into the document. When a task arrives, we drop pieces of information, like names or booking details, into placeholders. If the information is missing, the template will render an empty string, which is the silent contract trap we uncovered in our earlier overview."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Second, we use control structures to handle logic within the document. A condition can show a sentence only when some data is present, and a loop can repeat a line for each item in a list. G M S uses these sparingly: one email, about changes to recurring personal training, shows the end date only when one is set, and no email uses a loop. Keeping logic this simple keeps templates readable. So the key idea is dynamic content."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-template-inheritance-and-reusability",
+        "section_number": 3,
+        "title": "Template Inheritance and Reusability",
+        "narration": "To keep branding consistent, a common approach is the base template pattern, where every email shares one layout instead of being built from scratch. This pattern, called template inheritance, uses a master shell that defines the shared layout, like headers, footers and sign-offs. Each email builds on that shell and fills in only its own content, so a branding change is made once. G M S does not use it yet: each email is a standalone plain text file that repeats its own greeting and sign-off. Whatever the structure, templates should only handle presentation, while calculations happen beforehand in the worker. Styling for basic email clients only becomes a concern if G M S ever moves to H T M L emails. Consistency is the goal, so every email feels like it comes from the same gym. So the key idea is reusability. With the email built and handed to the mail server, we have covered how G M S works on the inside. Next, we step back to see why deployment and infrastructure matter for running all of these services.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "To keep branding consistent, a common approach is the base template pattern, where every email shares one layout instead of being built from scratch."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "This pattern, called template inheritance, uses a master shell that defines the shared layout, like headers, footers and sign-offs. Each email builds on that shell and fills in only its own content, so a branding change is made once. G M S does not use it yet: each email is a standalone plain text file that repeats its own greeting and sign-off."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Whatever the structure, templates should only handle presentation, while calculations happen beforehand in the worker. Styling for basic email clients only becomes a concern if G M S ever moves to H T M L emails."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Consistency is the goal, so every email feels like it comes from the same gym. So the key idea is reusability. With the email built and handed to the mail server, we have covered how G M S works on the inside. Next, we step back to see why deployment and infrastructure matter for running all of these services."
+          }
+        ]
+      }
+    ]
+  }
+}

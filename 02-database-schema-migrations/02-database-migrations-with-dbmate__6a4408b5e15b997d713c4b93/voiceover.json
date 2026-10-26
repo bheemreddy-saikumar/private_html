@@ -1,0 +1,103 @@
+{
+  "skill_id": "6a4408afe15b997d713c4b89",
+  "skill_name": "Database Schema & Migrations",
+  "topic_id": "6a4408b5e15b997d713c4b93",
+  "topic_name": "Database Migrations with dbmate",
+  "topic_track": null,
+  "content_version": 6,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408b5e15b997d713c4b93/g4/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4408b5e15b997d713c4b93/g3/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 3,
+  "voiceover_data": {
+    "topic_name": "Alembic for Database Schema Management",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-alembic-version-control-for-your-database",
+        "section_number": 1,
+        "title": "Alembic: Version Control for Your Database",
+        "narration": "Now that we understand why migrations are essential to prevent schema drift across environments, let's look at the tool that puts that theory into practice in Python: Alembic. Alembic acts as version control for your database, built on SQLAlchemy, to manage schema changes through Python scripts and ensure consistency. In any microservices architecture, the database schema is constantly evolving. Manually updating sequel scripts across different environments is a recipe for disaster, leading to schema drift. Alembic solves this by treating your database schema like code, using Python scripts for all changes. Alembic relies on two key configuration files. The alembic dot ini file sets global parameters like the location of your migration scripts and logging. The S Q L A L C H E M Y U R L is often defined here, though in production, it's usually overridden in environment dot py using environment variables for security. The environment dot py file is the heart of Alembic. It runs on every command, configuring the SQLAlchemy engine and the migration context. Crucially, it links your SQLAlchemy models' metadata to Alembic, allowing it to compare your code's structure against the live database to detect differences. So the key idea is that environment dot py connects your models to Alembic's change detection.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we understand why migrations are essential to prevent schema drift across environments, let's look at the tool that puts that theory into practice in Python: Alembic."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Alembic acts as version control for your database, built on SQLAlchemy, to manage schema changes through Python scripts and ensure consistency. In any microservices architecture, the database schema is constantly evolving. Manually updating sequel scripts across different environments is a recipe for disaster, leading to schema drift. Alembic solves this by treating your database schema like code, using Python scripts for all changes."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Alembic relies on two key configuration files. The alembic dot ini file sets global parameters like the location of your migration scripts and logging. The S Q L A L C H E M Y U R L is often defined here, though in production, it's usually overridden in environment dot py using environment variables for security."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "The environment dot py file is the heart of Alembic. It runs on every command, configuring the SQLAlchemy engine and the migration context. Crucially, it links your SQLAlchemy models' metadata to Alembic, allowing it to compare your code's structure against the live database to detect differences. So the key idea is that environment dot py connects your models to Alembic's change detection."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-anatomy-of-a-migration-script",
+        "section_number": 2,
+        "title": "Anatomy of a Migration Script",
+        "narration": "So Alembic manages schema changes, but how are those changes actually defined? Each migration is a Python script with unique upgrade and downgrade functions. Every migration script has a unique revision ID, like a Git commit hash. It contains two essential functions: upgrade applies the change, for instance, adding a column using op dot add column. The downgrade function must be able to perfectly reverse that change, like using op dot drop column to remove it. This script defines adding a 'phone number' column to the 'users' table. The upgrade function adds it, while the downgrade function removes it, ensuring the migration is reversible. A core invariant is that migrations should be idempotent and always reversible. So the key idea is: migration scripts must contain paired upgrade and downgrade operations to manage schema evolution safely and reversibly.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So Alembic manages schema changes, but how are those changes actually defined? Each migration is a Python script with unique upgrade and downgrade functions."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Every migration script has a unique revision ID, like a Git commit hash. It contains two essential functions: upgrade applies the change, for instance, adding a column using op dot add column. The downgrade function must be able to perfectly reverse that change, like using op dot drop column to remove it."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "This script defines adding a 'phone number' column to the 'users' table. The upgrade function adds it, while the downgrade function removes it, ensuring the migration is reversible. A core invariant is that migrations should be idempotent and always reversible. So the key idea is: migration scripts must contain paired upgrade and downgrade operations to manage schema evolution safely and reversibly."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-managing-schema-with-alembic-commands",
+        "section_number": 3,
+        "title": "Managing Schema with Alembic Commands",
+        "narration": "With migration scripts written, we need commands to manage them. Alembic provides a C L I for generating and applying these database changes. The alembic revision dash dash autogenerate command is a powerful accelerator. It compares your SQLAlchemy models against the database and automatically generates the upgrade and downgrade functions for detected changes. Always review autogenerated scripts, as they can miss complex changes like column renames. To apply pending migrations, you use alembic upgrade head. head refers to the latest revision in your codebase. This command is crucial in C I, C D pipelines to ensure your database schema always matches the deployed application code. Commands like alembic current and alembic history help introspect the database state. Alembic is for schema evolution, not large data seeding. While op dot bulk insert exists, essential data belongs in a separate seeding process. The alembic underscore version table in your database tracks applied migrations, and should never be altered manually. So the key idea is: use Alembic for schema changes and keep production schema updates confined to migration scripts. With schema evolution safely tracked through Alembic migrations, the next challenge is populating those freshly built tables with initial data—which brings us to database seeding.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "With migration scripts written, we need commands to manage them. Alembic provides a C L I for generating and applying these database changes."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The alembic revision dash dash autogenerate command is a powerful accelerator. It compares your SQLAlchemy models against the database and automatically generates the upgrade and downgrade functions for detected changes. Always review autogenerated scripts, as they can miss complex changes like column renames."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "To apply pending migrations, you use alembic upgrade head. head refers to the latest revision in your codebase. This command is crucial in C I, C D pipelines to ensure your database schema always matches the deployed application code. Commands like alembic current and alembic history help introspect the database state."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Alembic is for schema evolution, not large data seeding. While op dot bulk insert exists, essential data belongs in a separate seeding process. The alembic underscore version table in your database tracks applied migrations, and should never be altered manually."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "So the key idea is: use Alembic for schema changes and keep production schema updates confined to migration scripts. With schema evolution safely tracked through Alembic migrations, the next challenge is populating those freshly built tables with initial data—which brings us to database seeding."
+          }
+        ]
+      }
+    ]
+  }
+}

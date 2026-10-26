@@ -1,0 +1,146 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8b",
+  "skill_name": "Members Service",
+  "topic_id": "6a4a90ddc96eafbdd563d97a",
+  "topic_name": "Membership Overview",
+  "topic_track": "project",
+  "content_version": 15,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4a90ddc96eafbdd563d97a/g7/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4a90ddc96eafbdd563d97a/g15/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 15,
+  "voiceover_data": {
+    "topic_name": "Membership Overview",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-membership-core-of-the-business",
+        "section_number": 1,
+        "title": "The Membership: Core of the Business",
+        "narration": "With our shared libraries, authentication flows, and Celery task pipelines all set up, we can now dive into the main engine of the platform: managing memberships. This section overviews what a Membership is and why its complexity is essential for real-world operations. At its heart, the Membership is the legal and financial link between a Member and a Plan. Think of the Plan as the template, like \"Monthly Gold,\" and the Membership as the specific instance of that plan assigned to a particular person. It tracks crucial details like when their access begins, its duration, their specific discounted price, and their overall standing with the gym. You might ask why we need more than a simple \"is active\" flag and a payment date. Real-world gym operations demand a more robust model. A membership represents a contract over time, with many moving parts that need to be precisely tracked. Key among these are the signup fee, specific discounts that should be preserved even if plan prices change, and precise start and end dates that drive automated access revocation. Additionally, the auto-renewal setting dictates whether the membership automatically continues or transitions to a cancelled state, so the key idea is that membership is a detailed contract over time.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "With our shared libraries, authentication flows, and Celery task pipelines all set up, we can now dive into the main engine of the platform: managing memberships."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This section overviews what a Membership is and why its complexity is essential for real-world operations. At its heart, the Membership is the legal and financial link between a Member and a Plan."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Think of the Plan as the template, like \"Monthly Gold,\" and the Membership as the specific instance of that plan assigned to a particular person. It tracks crucial details like when their access begins, its duration, their specific discounted price, and their overall standing with the gym."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "You might ask why we need more than a simple \"is active\" flag and a payment date. Real-world gym operations demand a more robust model. A membership represents a contract over time, with many moving parts that need to be precisely tracked."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "Key among these are the signup fee, specific discounts that should be preserved even if plan prices change, and precise start and end dates that drive automated access revocation. Additionally, the auto-renewal setting dictates whether the membership automatically continues or transitions to a cancelled state, so the key idea is that membership is a detailed contract over time."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-membership-design-story-complexity",
+        "section_number": 2,
+        "title": "Membership Design Story & Complexity",
+        "narration": "Now that we understand what a membership represents, let's dive into the design story behind its complexity. We'll explore the specific requirements that led us to this particular model. We initially tried to keep things simple, but operational realities pushed us toward a more detailed model. For example, a signup fee is stored directly on the membership itself to differentiate it from recurring charges. And similarly, storing the exact discount on the membership preserves that unique deal a member received, protecting it from future changes to the base plan price. The plan start date and plan end date are not just for display; they are critical for automated systems. These dates directly control background workers that revoke a member's facility access precisely when their contract expires, ensuring strict adherence to terms. Furthermore, the auto-renewal setting is essential. It signals whether the system should automatically generate a new invoice when the current one expires, or if it should allow the membership to enter a cancelled state. So, the key idea is to encode real-world contract details directly into the membership.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we understand what a membership represents, let's dive into the design story behind its complexity. We'll explore the specific requirements that led us to this particular model."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We initially tried to keep things simple, but operational realities pushed us toward a more detailed model. For example, a signup fee is stored directly on the membership itself to differentiate it from recurring charges. And similarly, storing the exact discount on the membership preserves that unique deal a member received, protecting it from future changes to the base plan price."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "The plan start date and plan end date are not just for display; they are critical for automated systems. These dates directly control background workers that revoke a member's facility access precisely when their contract expires, ensuring strict adherence to terms."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Furthermore, the auto-renewal setting is essential. It signals whether the system should automatically generate a new invoice when the current one expires, or if it should allow the membership to enter a cancelled state. So, the key idea is to encode real-world contract details directly into the membership."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-the-membership-lifecycle",
+        "section_number": 3,
+        "title": "The Membership Lifecycle",
+        "narration": "A membership doesn't just exist statically; it evolves through a defined lifecycle. This section will detail the various states a membership can be in and how it transitions between them. The primary state is 'Active,' signifying a member with a current invoice and active facility access. However, members often need to pause their membership due to holidays or injuries. For this, we use a 'Frozen' state with a start and end date for the freeze. The membership's end date then moves out by the same amount, ensuring members don't lose paid time. Each time a contract renews, we increment the renewal count. This metric is vital for the Reports Service to accurately calculate Customer Lifetime Value. Memberships can also move to 'Cancelled' or 'Non-Renewal' states. Crucially, we record why the member cancelled and their final payment date to manage the grace period, allowing access until the paid period concludes. This lifecycle management—moving from pending to active, frozen, renewed, or cancelled states—ensures the system accurately reflects the member's current standing and contractual obligations. So, the key idea is that memberships are dynamic entities with distinct, managed states.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "A membership doesn't just exist statically; it evolves through a defined lifecycle. This section will detail the various states a membership can be in and how it transitions between them."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The primary state is 'Active,' signifying a member with a current invoice and active facility access. However, members often need to pause their membership due to holidays or injuries. For this, we use a 'Frozen' state with a start and end date for the freeze. The membership's end date then moves out by the same amount, ensuring members don't lose paid time."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Each time a contract renews, we increment the renewal count. This metric is vital for the Reports Service to accurately calculate Customer Lifetime Value. Memberships can also move to 'Cancelled' or 'Non-Renewal' states. Crucially, we record why the member cancelled and their final payment date to manage the grace period, allowing access until the paid period concludes."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "This lifecycle management—moving from pending to active, frozen, renewed, or cancelled states—ensures the system accurately reflects the member's current standing and contractual obligations. So, the key idea is that memberships are dynamic entities with distinct, managed states."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-invoices-the-turning-point",
+        "section_number": 4,
+        "title": "Invoices: The Turning Point",
+        "narration": "Now, the most critical architectural shift in the Members Service involved how we handle financial transactions. We moved from a simple payment ledger to a robust invoice system, and this transition unlocked some significant capabilities. Previously, we only tracked payment history, knowing what money came in but not what was owed. This made it impossible to track money owed to the gym or handle staggered payments for large fees like signup costs. The introduction of formal invoices, invoice line items, and linking payments to specific invoices changed everything. Now, a Membership generates an Invoice, which is a demand for payment with a due date. Individual charges like \"Monthly Dues\" or \"Signup Fee\" are captured as invoice line items. Each payment record now links to these invoices. Our shared billing logic uses invoice status to determine a member's standing, enabling scheduled payments where an invoice can be created now but not be due for weeks. This architectural change—separating the demand for payment via invoices from the actual payment record—is foundational. It ensures we correctly track revenue, manage debt, and understand financial obligations. This also connects to other services: Access Control relies on the membership status, and the Plans Service benefits from the membership's link to plan definitions. With the membership model and the split between invoices and payments established, we'll next drill into each exact transition of the state machine in Membership Lifecycle and State Management. So, the key idea is that the membership drives financial obligations through a formal invoice system.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Now, the most critical architectural shift in the Members Service involved how we handle financial transactions. We moved from a simple payment ledger to a robust invoice system, and this transition unlocked some significant capabilities."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Previously, we only tracked payment history, knowing what money came in but not what was owed. This made it impossible to track money owed to the gym or handle staggered payments for large fees like signup costs. The introduction of formal invoices, invoice line items, and linking payments to specific invoices changed everything."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Now, a Membership generates an Invoice, which is a demand for payment with a due date. Individual charges like \"Monthly Dues\" or \"Signup Fee\" are captured as invoice line items. Each payment record now links to these invoices."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "Our shared billing logic uses invoice status to determine a member's standing, enabling scheduled payments where an invoice can be created now but not be due for weeks."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "This architectural change—separating the demand for payment via invoices from the actual payment record—is foundational. It ensures we correctly track revenue, manage debt, and understand financial obligations. This also connects to other services: Access Control relies on the membership status, and the Plans Service benefits from the membership's link to plan definitions."
+          },
+          {
+            "el_id": "s4-block-5",
+            "type": "block",
+            "text": "With the membership model and the split between invoices and payments established, we'll next drill into each exact transition of the state machine in Membership Lifecycle and State Management. So, the key idea is that the membership drives financial obligations through a formal invoice system."
+          }
+        ]
+      }
+    ]
+  }
+}

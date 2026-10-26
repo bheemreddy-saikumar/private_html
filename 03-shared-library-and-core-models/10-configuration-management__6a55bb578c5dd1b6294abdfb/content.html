@@ -1,0 +1,409 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Configuration Management</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Configuration Management</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Configuration Management</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">12-Factor App: Environment Configuration</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">One environment configuration shared across the entire fleet.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8"></path></marker></defs><text x="175" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Environment</text><rect x="65" y="165" width="220" height="48" rx="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect><text x="175" y="196" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">DATABASE_URI</text><rect x="65" y="235" width="220" height="48" rx="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect><text x="175" y="266" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">SECRET_KEY</text><rect x="65" y="305" width="220" height="48" rx="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect><text x="175" y="336" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">BROKER_URI</text><line x1="285" y1="189" x2="340" y2="235" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line><line x1="285" y1="259" x2="340" y2="259" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line><line x1="285" y1="329" x2="340" y2="283" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line><rect x="345" y="180" width="140" height="158" rx="16" fill="#0f172a"></rect><text x="415" y="252" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#ffffff">Config</text><text x="415" y="286" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#94a3b8">shared</text><line x1="485" y1="235" x2="540" y2="189" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line><line x1="485" y1="259" x2="540" y2="259" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line><line x1="485" y1="283" x2="540" y2="329" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"></line><text x="645" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Fleet Services</text><rect x="545" y="165" width="200" height="48" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="645" y="196" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#0f172a">Auth Service</text><rect x="545" y="235" width="200" height="48" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="645" y="266" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#0f172a">Members API</text><rect x="545" y="305" width="200" height="48" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="645" y="336" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#0f172a">Batch Worker</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Shared Configuration Surface</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr-env" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#818cf8"></path>
+    </marker>
+    <marker id="arr-out" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <text x="130" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Environment</text>
+
+  <rect x="40" y="125" width="180" height="52" rx="26" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="130" y="157" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#4f46e5">DB_URI</text>
+
+  <rect x="40" y="231" width="180" height="52" rx="26" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="130" y="263" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#b45309">SECRET_KEY</text>
+
+  <rect x="40" y="337" width="180" height="52" rx="26" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="130" y="369" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#4f46e5">BROKER_URI</text>
+
+  
+  <line x1="220" y1="151" x2="288" y2="151" stroke="#818cf8" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arr-env)">
+    <animate attributeName="stroke-dashoffset" from="10" to="0" dur="1.2s" repeatCount="indefinite"></animate>
+  </line>
+  <line x1="220" y1="257" x2="288" y2="257" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arr-env)">
+    <animate attributeName="stroke-dashoffset" from="10" to="0" dur="1.2s" repeatCount="indefinite"></animate>
+  </line>
+  <line x1="220" y1="363" x2="288" y2="363" stroke="#818cf8" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arr-env)">
+    <animate attributeName="stroke-dashoffset" from="10" to="0" dur="1.2s" repeatCount="indefinite"></animate>
+  </line>
+
+  
+  <rect x="290" y="105" width="230" height="295" rx="16" fill="#ffffff" stroke="#0f172a" stroke-width="3"></rect>
+  <rect x="306" y="125" width="198" height="42" rx="8" fill="#f1f5f9"></rect>
+  <text x="405" y="153" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Shared Config</text>
+
+  <rect x="312" y="195" width="186" height="175" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <rect x="328" y="218" width="154" height="28" rx="6" fill="#e0e7ff"></rect>
+  <rect x="328" y="268" width="154" height="28" rx="6" fill="#fef3c7"></rect>
+  <rect x="328" y="318" width="154" height="28" rx="6" fill="#e0e7ff"></rect>
+
+  
+  <line x1="520" y1="151" x2="588" y2="151" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arr-out)"></line>
+  <line x1="520" y1="257" x2="588" y2="257" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arr-out)"></line>
+  <line x1="520" y1="363" x2="588" y2="363" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arr-out)"></line>
+
+  
+  <text x="680" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Fleet</text>
+
+  <rect x="590" y="125" width="180" height="52" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="680" y="157" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Database</text>
+
+  <rect x="590" y="231" width="180" height="52" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="680" y="263" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Auth</text>
+
+  <rect x="590" y="337" width="180" height="52" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="680" y="369" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Workers</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">12-Factor Configuration</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path></marker></defs><rect x="260" y="40" width="300" height="80" rx="16" fill="#0f172a"></rect><text x="410" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#ffffff">One Docker Image</text><path d="M 350 120 C 350 180, 150 180, 150 236" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"><animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate></path><line x1="410" y1="120" x2="410" y2="236" stroke="#64748b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"><animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate></line><path d="M 470 120 C 470 180, 670 180, 670 236" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"><animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate></path><rect x="40" y="240" width="220" height="220" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><text x="150" y="300" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Dev</text><rect x="55" y="340" width="190" height="52" rx="26" fill="#4f46e5"></rect><text x="150" y="373" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#ffffff">env: local</text><rect x="300" y="240" width="220" height="220" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><text x="410" y="300" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Staging</text><rect x="315" y="340" width="190" height="52" rx="26" fill="#4f46e5"></rect><text x="410" y="373" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#ffffff">env: stage</text><rect x="560" y="240" width="220" height="220" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><text x="670" y="300" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Prod</text><rect x="575" y="340" width="190" height="52" rx="26" fill="#4f46e5"></rect><text x="670" y="373" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#ffffff">env: prod</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-3"><div data-el-id="s1-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Single Fleet Config</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s1-block-3-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">class Config:</span>
+<span class="cl" data-line="2">    # Security</span>
+<span class="cl" data-line="3">    SECRET_KEY = os.getenv("SECRET_KEY")</span>
+<span class="cl" data-line="4">    BCRYPT_LOG_ROUNDS = int(os.getenv("BCRYPT_LOG_ROUNDS"))</span>
+<span class="cl" data-line="5">    </span>
+<span class="cl" data-line="6">    # Infrastructure</span>
+<span class="cl" data-line="7">    SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")</span>
+<span class="cl" data-line="8">    BROKER_URI = os.getenv("BROKER_URI")</span>
+<span class="cl" data-line="9">    </span>
+<span class="cl" data-line="10">    # Integrations</span>
+<span class="cl" data-line="11">    PAYRIX_APIKEY = os.getenv("PAYRIX_APIKEY")</span>
+<span class="cl" data-line="12">    ...</span>
+<span class="cl" data-line="13"></span>
+<span class="cl" data-line="14">def get_config():</span>
+<span class="cl" data-line="15">    return Config</span></code></pre></div></div></div></div><div class="scene-footer"><span>1 &nbsp;12-factor app: environment configuration</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Type Coercion and Fail-Fast Initialization</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Convert strings at startup; crash fast on missing keys.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"></path>
+    </marker>
+    <marker id="arr-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"></path>
+    </marker>
+    <marker id="arr-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  
+  <line x1="390" y1="70" x2="390" y2="450" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></line>
+  <rect x="300" y="44" width="180" height="38" rx="19" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="390" y="69" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Type Boundary</text>
+
+  
+  <rect x="80" y="150" width="160" height="64" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="160" y="190" text-anchor="middle" font-family="monospace" font-size="24" fill="#0f172a">"12"</text>
+
+  <line x1="240" y1="182" x2="330" y2="182" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"></line>
+
+  <rect x="330" y="152" width="120" height="60" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="390" y="189" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#4f46e5">int()</text>
+
+  <line x1="450" y1="182" x2="550" y2="182" stroke="#10b981" stroke-width="2.5" marker-end="url(#arr-good)"></line>
+
+  <rect x="550" y="150" width="180" height="64" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="640" y="190" text-anchor="middle" font-family="monospace" font-size="24" font-weight="700" fill="#10b981">12</text>
+
+  
+  <rect x="80" y="320" width="160" height="64" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="160" y="360" text-anchor="middle" font-family="monospace" font-size="24" fill="#64748b">None</text>
+
+  <line x1="240" y1="352" x2="330" y2="352" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"></line>
+
+  <rect x="330" y="322" width="120" height="60" rx="12" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="390" y="359" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#ef4444">int()</text>
+
+  <line x1="450" y1="352" x2="530" y2="352" stroke="#ef4444" stroke-width="2.5" marker-end="url(#arr-bad)"></line>
+
+  <rect x="530" y="320" width="220" height="64" rx="14" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="640" y="360" text-anchor="middle" font-family="Inter, sans-serif" font-size="21" font-weight="700" fill="#ef4444">Crash at boot</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Boundary Type Coercion</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="70" y="120" width="270" height="190" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="205" y="165" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Environment</text>
+  
+  <rect x="95" y="190" width="220" height="90" rx="45" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="205" y="232" text-anchor="middle" font-family="monospace" font-size="32" font-weight="700" fill="#4f46e5">"12"</text>
+  <text x="205" y="262" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">string</text>
+
+  
+  <line x1="340" y1="235" x2="365" y2="235" stroke="#cbd5e1" stroke-width="3"></line>
+  <rect x="365" y="210" width="90" height="50" rx="12" fill="#4f46e5"></rect>
+  <text x="410" y="242" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#ffffff">int()</text>
+  <line x1="455" y1="235" x2="474" y2="235" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="480" y="120" width="270" height="190" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="615" y="165" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Config</text>
+
+  <rect x="505" y="190" width="220" height="90" rx="16" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="615" y="232" text-anchor="middle" font-family="monospace" font-size="32" font-weight="700" fill="#10b981">12</text>
+  <text x="615" y="262" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#047857">integer</text>
+
+  
+  <rect x="220" y="370" width="380" height="60" rx="30" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="410" y="407" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#b45309">No default fallback</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s2-block-2" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Crash immediately on startup rather than failing in production.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a55bb578c5dd1b6294abdfb/drafts/926b2f6726c94af7961dc7ce1bce2e01/images/s2-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s2-block-3"><div data-el-id="s2-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Boolean String Coercion</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-bad" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#cbd5e1"></path>
+    </marker>
+    <marker id="arrow-primary" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-good" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="70" width="700" height="170" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="90" y="104" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#64748b">Naive</text>
+  <text x="670" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">Bug</text>
+
+  <rect x="90" y="125" width="150" height="60" rx="30" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="165" y="162" text-anchor="middle" font-family="monospace" font-size="22" font-weight="600" fill="#64748b">"False"</text>
+
+  <line x1="242" y1="155" x2="348" y2="155" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow-bad)"></line>
+
+  <rect x="350" y="125" width="160" height="60" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="430" y="162" text-anchor="middle" font-family="monospace" font-size="22" font-weight="600" fill="#0f172a">bool()</text>
+
+  <line x1="512" y1="155" x2="608" y2="155" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow-bad)"></line>
+
+  <rect x="610" y="125" width="120" height="60" rx="12" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="670" y="162" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#ef4444">True</text>
+
+  
+  <rect x="60" y="280" width="700" height="170" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect>
+  <text x="90" y="314" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">With eval()</text>
+  <text x="670" y="314" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">Correct</text>
+
+  <rect x="90" y="335" width="150" height="60" rx="30" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="165" y="372" text-anchor="middle" font-family="monospace" font-size="22" font-weight="600" fill="#4f46e5">"False"</text>
+
+  <line x1="242" y1="365" x2="348" y2="365" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></line>
+
+  <rect x="350" y="335" width="160" height="60" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="430" y="372" text-anchor="middle" font-family="monospace" font-size="22" font-weight="600" fill="#4f46e5">eval()</text>
+
+  <line x1="512" y1="365" x2="608" y2="365" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-good)"></line>
+
+  <rect x="610" y="335" width="120" height="60" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="670" y="372" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#10b981">False</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;type coercion and fail-fast initialization</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Trade-offs, Documentation, and Evolution</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Centralized config brings uniformity, but trade-offs guide when to evolve.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#cbd5e1"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="130" width="210" height="260" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="165" cy="180" r="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></circle>
+  <text x="165" y="188" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">1</text>
+  <text x="165" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Trade-offs</text>
+  <text x="165" y="280" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Uniformity</text>
+  <text x="165" y="315" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">vs Scoping</text>
+
+  
+  <line x1="270" y1="260" x2="300" y2="260" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="305" y="130" width="210" height="260" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="410" cy="180" r="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></circle>
+  <text x="410" y="188" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">2</text>
+  <text x="410" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Contract</text>
+  <text x="410" y="280" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#4f46e5">.env-template</text>
+  <text x="410" y="315" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Safe secrets</text>
+
+  
+  <line x1="515" y1="260" x2="545" y2="260" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="550" y="130" width="210" height="260" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="655" cy="180" r="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></circle>
+  <text x="655" y="188" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">3</text>
+  <text x="655" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Evolution</text>
+  <text x="655" y="280" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Vault</text>
+  <text x="655" y="315" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">&amp; Schemas</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Engineering Trade-offs</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L6,3 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="40" width="340" height="440" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="70" y="65" width="65" height="36" rx="8" fill="#dcfce7"></rect>
+  <text x="102" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">PRO</text>
+  <text x="150" y="91" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Uniformity</text>
+
+  <rect x="120" y="145" width="200" height="48" rx="10" fill="#4f46e5"></rect>
+  <text x="220" y="176" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#ffffff">gmsshared</text>
+
+  <line x1="170" y1="193" x2="115" y2="272" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+  <line x1="220" y1="193" x2="220" y2="272" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+  <line x1="270" y1="193" x2="325" y2="272" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  <rect x="75" y="280" width="80" height="54" rx="8" fill="#ffffff" stroke="#c7d2fe" stroke-width="2"></rect>
+  <circle cx="115" cy="307" r="10" fill="#10b981"></circle>
+
+  <rect x="180" y="280" width="80" height="54" rx="8" fill="#ffffff" stroke="#c7d2fe" stroke-width="2"></rect>
+  <circle cx="220" cy="307" r="10" fill="#10b981"></circle>
+
+  <rect x="285" y="280" width="80" height="54" rx="8" fill="#ffffff" stroke="#c7d2fe" stroke-width="2"></rect>
+  <circle cx="325" cy="307" r="10" fill="#10b981"></circle>
+
+  <text x="220" y="390" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">synced fleet</text>
+
+  
+  <rect x="430" y="40" width="340" height="440" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="450" y="65" width="65" height="36" rx="8" fill="#fee2e2"></rect>
+  <text x="482" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">CON</text>
+  <text x="530" y="91" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">No Scoping</text>
+
+  <rect x="460" y="145" width="280" height="195" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="480" y="182" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">email-worker</text>
+
+  <rect x="480" y="200" width="240" height="42" rx="8" fill="#f1f5f9"></rect>
+  <text x="500" y="228" font-family="monospace" font-size="20" fill="#64748b">SMTP_HOST</text>
+
+  <rect x="480" y="255" width="240" height="46" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="500" y="285" font-family="monospace" font-size="20" font-weight="700" fill="#ef4444">PAYRIX_APIKEY</text>
+
+  <text x="600" y="390" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">unneeded secret</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">.env-template contract</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s3-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-text"><span class="cl" data-line="1"># .env-template excerpt</span>
+<span class="cl" data-line="2">SQLALCHEMY_DATABASE_URI=postgresql://&lt;user&gt;:&lt;pass&gt;@localhost:5432/gms</span>
+<span class="cl" data-line="3">SECRET_KEY=generate-a-long-random-string</span>
+<span class="cl" data-line="4">BCRYPT_LOG_ROUNDS=12</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div data-el-id="s3-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">When to Evolve</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-sec" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b"></path></marker><marker id="arrow-val" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"></path></marker></defs><rect x="55" y="190" width="220" height="140" rx="14" fill="#ffffff" stroke="#0f172a" stroke-width="2"></rect><text x="165" y="246" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Shared Config</text><rect x="120" y="268" width="90" height="34" rx="17" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.5"></rect><text x="165" y="292" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">.env</text><path d="M 275 238 C 355 238, 365 165, 437 165" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow-sec)"><animate attributeName="stroke-dashoffset" from="20" to="0" dur="2.5s" repeatCount="indefinite"></animate></path><rect x="445" y="95" width="325" height="140" rx="14" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect><rect x="474" y="152" width="28" height="22" rx="4" fill="#f59e0b"></rect><path d="M 479 152 v-8 a9 9 0 0 1 18 0 v8" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"></path><text x="520" y="150" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Secrets Manager</text><text x="520" y="184" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Strict security</text><path d="M 275 282 C 355 282, 365 355, 437 355" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow-val)"><animate attributeName="stroke-dashoffset" from="20" to="0" dur="2.5s" repeatCount="indefinite"></animate></path><rect x="445" y="285" width="325" height="140" rx="14" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect><path d="M 474 340 l14 -7 l14 7 v14 c0 11 -14 18 -14 18 c0 0 -14 -7 -14 -18 z" fill="#10b981"></path><text x="520" y="340" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Pydantic Settings</text><text x="520" y="374" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Complex schemas</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-4"><div data-el-id="s3-block-4" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Fleet-Wide Consistency</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-4-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker><marker id="arrow-slate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path></marker></defs><rect x="70" y="235" width="140" height="50" rx="25" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect><text x="140" y="267" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Env Vars</text><line x1="210" y1="260" x2="282" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-indigo)"></line><rect x="290" y="150" width="220" height="220" rx="16" fill="#ffffff" stroke="#0f172a" stroke-width="3"></rect><path d="M 290 166 A 16 16 0 0 1 306 150 L 494 150 A 16 16 0 0 1 510 166 L 510 206 L 290 206 Z" fill="#0f172a"></path><text x="400" y="186" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Shared Config</text><rect x="325" y="232" width="150" height="36" rx="18" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect><circle cx="346" cy="250" r="6" fill="#10b981"></circle><text x="408" y="257" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">validated</text><rect x="325" y="292" width="150" height="36" rx="18" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect><circle cx="346" cy="310" r="6" fill="#10b981"></circle><text x="408" y="317" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">typed</text><line x1="510" y1="220" x2="578" y2="175" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-slate)"></line><line x1="510" y1="260" x2="578" y2="260" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-slate)"></line><line x1="510" y1="300" x2="578" y2="345" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-slate)"></line><text x="660" y="105" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#64748b">Fleet</text><rect x="585" y="140" width="150" height="60" rx="10" fill="#f8fafc" stroke="#64748b" stroke-width="2"></rect><text x="660" y="177" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Auth</text><rect x="585" y="230" width="150" height="60" rx="10" fill="#f8fafc" stroke="#64748b" stroke-width="2"></rect><text x="660" y="267" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">API</text><rect x="585" y="320" width="150" height="60" rx="10" fill="#f8fafc" stroke="#64748b" stroke-width="2"></rect><text x="660" y="357" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Worker</text></svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;trade-offs, documentation, and evolution</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">12-Factor App: Environment Configuration</p><p class="text-slate-500 text-sm mt-0.5">One environment configuration shared across the entire fleet.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Type Coercion and Fail-Fast Initialization</p><p class="text-slate-500 text-sm mt-0.5">Convert strings at startup; crash fast on missing keys.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Trade-offs, Documentation, and Evolution</p><p class="text-slate-500 text-sm mt-0.5">Centralized config brings uniformity, but trade-offs guide when to evolve.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Role-Based Access Control (RBAC) with FastAPI Dependencies</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Role-Based Access Control (RBAC) with FastAPI Dependencies</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Role-Based Access Control (RBAC) with FastAPI Dependencies</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Introduction to RBAC</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">RBAC uses token claims to guard routes before execution.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#94a3b8"></path></marker><marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#10b981"></path></marker></defs><rect x="60" y="160" width="190" height="180" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="3"></rect><text x="155" y="215" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Identity</text><rect x="80" y="245" width="150" height="42" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect><text x="155" y="273" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#b45309">role: Admin</text><line x1="260" y1="250" x2="330" y2="250" stroke="#94a3b8" stroke-width="4" marker-end="url(#arrow)"></line><rect x="340" y="130" width="210" height="240" rx="20" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></rect><rect x="365" y="160" width="160" height="40" rx="8" fill="#4f46e5"></rect><text x="445" y="187" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">check_access</text><text x="445" y="248" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#4f46e5">Role in [Admin]?</text><circle cx="445" cy="305" r="20" fill="#10b981"></circle><path d="M436 305 L442 312 L454 298" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"></path><line x1="560" y1="250" x2="620" y2="250" stroke="#10b981" stroke-width="4" marker-end="url(#arrow-green)"></line><rect x="630" y="160" width="140" height="180" rx="16" fill="#f0fdf4" stroke="#10b981" stroke-width="3"></rect><text x="700" y="235" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#10b981">Route</text><text x="700" y="275" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#047857">Execute</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Role-Based Access Control</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <text x="130" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Users</text>
+  <text x="680" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Permissions</text>
+
+  
+  <circle cx="130" cy="210" r="30" fill="#f1f5f9" stroke="#0f172a" stroke-width="2.5"></circle>
+  <circle cx="130" cy="202" r="9" fill="#0f172a"></circle>
+  <path d="M 116 226 A 14 14 0 0 1 144 226" fill="#0f172a"></path>
+
+  
+  <circle cx="130" cy="310" r="30" fill="#f1f5f9" stroke="#0f172a" stroke-width="2.5"></circle>
+  <circle cx="130" cy="302" r="9" fill="#0f172a"></circle>
+  <path d="M 116 326 A 14 14 0 0 1 144 326" fill="#0f172a"></path>
+
+  
+  <line x1="410" y1="120" x2="410" y2="175" stroke="#cbd5e1" stroke-width="4"></line>
+  <rect x="385" y="170" width="50" height="12" rx="6" fill="#64748b"></rect>
+
+  <rect x="300" y="185" width="220" height="150" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <path d="M 300 201 A 16 16 0 0 1 316 185 L 504 185 A 16 16 0 0 1 520 201 L 520 228 L 300 228 Z" fill="#4f46e5"></path>
+  <text x="410" y="215" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff" letter-spacing="2">ROLE</text>
+  <text x="410" y="278" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">GymManager</text>
+
+  
+  <path d="M 168 210 Q 230 210 292 245" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+  <path d="M 168 310 Q 230 310 292 275" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  
+  <rect x="585" y="195" width="190" height="50" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="680" y="227" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Edit Hours</text>
+
+  
+  <rect x="585" y="275" width="190" height="50" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="680" y="307" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Manage Staff</text>
+
+  
+  <path d="M 522 245 Q 550 235 577 225" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+  <path d="M 522 275 Q 550 285 577 295" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-2" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">The Authorization Boundary</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">AuthN proves identity</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">AuthZ controls access at the edge</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408b5940475d76870cea4/drafts/0a34fa8d4f4e4e93857565928aa1d5e0/images/s1-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s1-block-3"><div data-el-id="s1-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Dependency factory</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s1-block-3-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1"># Conceptual implementation of the glue logic</span>
+<span class="cl" data-line="2">def check_access(roles: List[str]):</span>
+<span class="cl" data-line="3">    def dependency(current_user: User = Depends(get_current_user)):</span>
+<span class="cl" data-line="4">        if current_user.role not in roles:</span>
+<span class="cl" data-line="5">            raise HTTPException(status_code=403, detail="Insufficient permissions")</span>
+<span class="cl" data-line="6">        return current_user</span>
+<span class="cl" data-line="7">    return dependency</span></code></pre></div></div></div></div><div class="scene-footer"><span>1 &nbsp;introduction to rbac</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Applying RBAC in FastAPI</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Declare role checks in route signatures to guard endpoints.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+    <marker id="arrow-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="180" width="180" height="150" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="140" cy="230" r="22" fill="#0f172a"></circle>
+  <circle cx="140" cy="222" r="9" fill="#ffffff"></circle>
+  <path d="M 125 244 A 15 15 0 0 1 155 244 Z" fill="#ffffff"></path>
+  <text x="140" y="285" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">JWT Identity</text>
+  <text x="140" y="310" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">User + Role</text>
+
+  
+  <line x1="230" y1="255" x2="300" y2="255" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="310" y="145" width="230" height="220" rx="20" fill="#f1f5f9" stroke="#4f46e5" stroke-width="3"></rect>
+  <rect x="345" y="170" width="160" height="40" rx="20" fill="#4f46e5"></rect>
+  <text x="425" y="196" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">check_access</text>
+  
+  <rect x="340" y="235" width="170" height="38" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="425" y="260" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#4f46e5">roles=[...]</text>
+
+  <text x="425" y="325" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Role Check</text>
+
+  
+  <path d="M 425 365 L 425 435" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-bad)"></path>
+  <rect x="360" y="445" width="130" height="40" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="425" y="471" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">403 Denied</text>
+
+  
+  <line x1="540" y1="255" x2="610" y2="255" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-good)"></line>
+
+  
+  <rect x="620" y="180" width="160" height="150" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect>
+  <rect x="655" y="210" width="90" height="40" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></rect>
+  <text x="700" y="236" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">ALLOW</text>
+  <text x="700" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Route Logic</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Role-guarded endpoint</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">@router.post("/users", response_model=UserResponse)</span>
+<span class="cl" data-line="2">async def create_admin_user(</span>
+<span class="cl" data-line="3">    payload: CreateUserRequest,</span>
+<span class="cl" data-line="4">    admin: User = Depends(check_access(roles=["SuperAdmin"]))</span>
+<span class="cl" data-line="5">):</span>
+<span class="cl" data-line="6">    return await admin_user_svc.create_user(payload)</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Multi-Role Route Access</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">@router.put("/locations/{location_id}")</span>
+<span class="cl" data-line="2">async def update_location(</span>
+<span class="cl" data-line="3">    location_id: UUID,</span>
+<span class="cl" data-line="4">    payload: LocationUpdateSchema,</span>
+<span class="cl" data-line="5">    current_user: User = Depends(check_access(roles=["SuperAdmin", "GymOwner"]))</span>
+<span class="cl" data-line="6">):</span>
+<span class="cl" data-line="7">    return await location_svc.update_location(location_id, payload)</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-3"><div data-el-id="s2-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Fail-Fast Security Gateway</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8"></path>
+    </marker>
+    <marker id="arrow-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"></path>
+    </marker>
+    <marker id="arrow-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  <rect x="25" y="170" width="125" height="160" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="88" y="224" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Request</text>
+  <rect x="58" y="250" width="60" height="34" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect>
+  <text x="88" y="274" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">JWT</text>
+
+  <line x1="150" y1="250" x2="185" y2="250" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  <rect x="190" y="170" width="155" height="160" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="267" y="224" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Auth</text>
+  <rect x="198" y="250" width="138" height="36" rx="8" fill="#e2e8f0"></rect>
+  <text x="267" y="275" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#475569">User Identity</text>
+
+  <line x1="345" y1="250" x2="380" y2="250" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  <rect x="385" y="140" width="205" height="220" rx="20" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <path d="M 487 162 L 503 170 L 503 187 C 503 200 487 208 487 208 C 487 208 471 200 471 187 L 471 170 Z" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"></path>
+  <text x="487" y="246" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">check_access</text>
+  <text x="487" y="284" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">verify role</text>
+
+  <text x="615" y="218" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">Pass</text>
+  <line x1="590" y1="250" x2="640" y2="250" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-good)"></line>
+
+  <rect x="645" y="170" width="145" height="160" rx="16" fill="#ecfdf5" stroke="#10b981" stroke-width="2.5"></rect>
+  <text x="717" y="235" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#065f46">API Route</text>
+  <text x="717" y="275" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#059669">Executes</text>
+
+  <line x1="487" y1="360" x2="487" y2="418" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-bad)"></line>
+  <text x="506" y="396" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">Fail</text>
+  <rect x="402" y="424" width="170" height="52" rx="12" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="487" y="457" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#dc2626">403 Forbidden</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;applying rbac in fastapi</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Trade-offs and Constraints</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Fast and auditable security requires trade-offs in fine-grained control.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="60" y="80" width="310" height="350" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect><rect x="84" y="104" width="150" height="38" rx="19" fill="#ecfdf5"></rect><text x="159" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#047857">Strengths</text><circle cx="100" cy="210" r="12" fill="#10b981"></circle><text x="126" y="217" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">O(1) Speed</text><circle cx="100" cy="300" r="12" fill="#10b981"></circle><text x="126" y="307" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Auditability</text><line x1="370" y1="255" x2="450" y2="255" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"></line><circle cx="410" cy="255" r="22" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></circle><text x="410" y="262" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#64748b">vs</text><rect x="450" y="80" width="310" height="350" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect><rect x="474" y="104" width="160" height="38" rx="19" fill="#fffbeb"></rect><text x="554" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">Trade-offs</text><circle cx="490" cy="210" r="12" fill="#f59e0b"></circle><text x="516" y="217" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Ownership Logic</text><circle cx="490" cy="300" r="12" fill="#f59e0b"></circle><text x="516" y="307" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Token Staleness</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Ownership Boundary</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr-indigo" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arr-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"></path>
+    </marker>
+  </defs>
+
+  
+  <circle cx="85" cy="205" r="30" fill="#0f172a"></circle>
+  <path d="M 45 275 a 40 40 0 0 1 80 0 Z" fill="#0f172a"></path>
+  <rect x="15" y="295" width="140" height="42" rx="21" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="85" y="323" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">GymOwner</text>
+
+  
+  <line x1="165" y1="260" x2="225" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-indigo)"></line>
+
+  
+  <rect x="235" y="150" width="240" height="220" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="355" y="200" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">RBAC Check</text>
+  <rect x="248" y="225" width="214" height="48" rx="24" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <path d="M 262 249 l 5 5 l 11 -11" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="290" y="256" text-anchor="start" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#065f46">Role Allowed</text>
+  <text x="355" y="325" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">No ownership</text>
+
+  
+  <line x1="485" y1="260" x2="525" y2="260" stroke="#f59e0b" stroke-width="3" marker-end="url(#arr-amber)"></line>
+
+  
+  <rect x="535" y="150" width="260" height="220" rx="16" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="665" y="200" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Service Layer</text>
+  <rect x="550" y="225" width="230" height="48" rx="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="665" y="256" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">Ownership Check</text>
+  <text x="665" y="325" text-anchor="middle" font-family="monospace" font-size="20" fill="#0f172a">gym.owner == user</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-2" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Declarative RBAC</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">O(1) in-memory check</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Visible in Depends()</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#94a3b8"></path>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="130" width="200" height="240" rx="14" fill="#ffffff" stroke="#f59e0b" stroke-width="2"></rect>
+  <rect x="50" y="130" width="200" height="42" rx="14" fill="#fef3c7"></rect>
+  <rect x="50" y="160" width="200" height="12" fill="#fef3c7"></rect>
+  <text x="150" y="158" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">JWT Claims</text>
+  <text x="74" y="215" font-family="monospace" font-size="20" fill="#64748b">user_id: 42</text>
+  <rect x="68" y="240" width="164" height="42" rx="8" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.5"></rect>
+  <text x="150" y="268" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#4f46e5">role: GymOwner</text>
+  <text x="150" y="325" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">pre-computed</text>
+
+  
+  <line x1="250" y1="250" x2="310" y2="250" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow-gray)"></line>
+
+  
+  <rect x="318" y="110" width="224" height="280" rx="20" fill="#f8fafc" stroke="#c7d2fe" stroke-width="3"></rect>
+  <text x="430" y="155" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#4f46e5">Depends()</text>
+  <rect x="350" y="185" width="160" height="74" rx="14" fill="#4f46e5"></rect>
+  <text x="430" y="235" text-anchor="middle" font-family="Inter, sans-serif" font-size="36" font-weight="800" fill="#ffffff">O(1)</text>
+  <text x="430" y="300" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">in-memory check</text>
+  <text x="430" y="340" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">zero DB queries</text>
+
+  
+  <line x1="542" y1="250" x2="598" y2="250" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"></line>
+
+  
+  <rect x="606" y="130" width="164" height="240" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <path d="M688 175 v45 h-20 v-45 z" fill="none" stroke="#10b981" stroke-width="3"></path>
+  <circle cx="682" cy="198" r="3" fill="#10b981"></circle>
+  <text x="688" y="260" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#065f46">Route</text>
+  <text x="688" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Granted</text>
+  <text x="688" y="335" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">~0ms latency</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-3" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Tokens preserve issued roles until expiration.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408b5940475d76870cea4/drafts/0a34fa8d4f4e4e93857565928aa1d5e0/images/s3-block-3-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene" data-scene-for="s3-block-4"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-4" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Roles decouple identity from permissions; checks fail fast at the edge.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-4-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-primary" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,1 L6,4 L0,7 Z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-dark" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,1 L6,4 L0,7 Z" fill="#0f172a"></path>
+    </marker>
+    <marker id="arrow-good" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,1 L6,4 L0,7 Z" fill="#10b981"></path>
+    </marker>
+    <marker id="arrow-bad" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,1 L6,4 L0,7 Z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="40" y="35" width="740" height="195" rx="16" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"></rect>
+  <text x="65" y="68" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#64748b" letter-spacing="1">RBAC MODEL</text>
+
+  
+  <rect x="65" y="85" width="190" height="125" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="160" y="138" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Identity</text>
+  <text x="160" y="172" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">User ID</text>
+
+  
+  <line x1="255" y1="147" x2="310" y2="147" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></line>
+
+  
+  <rect x="315" y="80" width="190" height="135" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <rect x="395" y="92" width="30" height="6" rx="3" fill="#4f46e5"></rect>
+  <text x="410" y="138" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Role</text>
+  <text x="410" y="172" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#6366f1">Intermediary</text>
+
+  
+  <line x1="505" y1="147" x2="560" y2="147" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></line>
+
+  
+  <rect x="565" y="85" width="190" height="125" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="660" y="138" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Permissions</text>
+  <text x="660" y="172" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Allowed Scope</text>
+
+  
+  <rect x="40" y="255" width="740" height="235" rx="16" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"></rect>
+  <text x="65" y="288" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#64748b" letter-spacing="1">API EDGE</text>
+
+  
+  <rect x="65" y="305" width="170" height="95" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="150" y="362" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Request</text>
+
+  
+  <line x1="235" y1="352" x2="290" y2="352" stroke="#0f172a" stroke-width="3" marker-end="url(#arrow-dark)"></line>
+
+  
+  <rect x="295" y="300" width="230" height="105" rx="12" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="410" y="345" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#4f46e5">check_access()</text>
+  <text x="410" y="378" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Role Guard</text>
+
+  
+  <line x1="525" y1="352" x2="580" y2="352" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-good)"></line>
+  <rect x="585" y="305" width="170" height="95" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="670" y="346" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">Service</text>
+  <text x="670" y="374" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">Logic</text>
+
+  
+  <line x1="410" y1="405" x2="410" y2="435" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-bad)"></line>
+  <rect x="315" y="440" width="190" height="36" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="410" y="465" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">403 Fail-Fast</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;trade-offs and constraints</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">Introduction to RBAC</p><p class="text-slate-500 text-sm mt-0.5">RBAC uses token claims to guard routes before execution.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Applying RBAC in FastAPI</p><p class="text-slate-500 text-sm mt-0.5">Declare role checks in route signatures to guard endpoints.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Trade-offs and Constraints</p><p class="text-slate-500 text-sm mt-0.5">Fast and auditable security requires trade-offs in fine-grained control.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

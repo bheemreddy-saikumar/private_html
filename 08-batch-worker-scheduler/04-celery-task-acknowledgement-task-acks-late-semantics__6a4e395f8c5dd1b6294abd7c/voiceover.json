@@ -1,0 +1,103 @@
+{
+  "skill_id": "6a4408b2e15b997d713c4b8f",
+  "skill_name": "Batch Worker & Scheduler",
+  "topic_id": "6a4e395f8c5dd1b6294abd7c",
+  "topic_name": "Celery Task Acknowledgement: `task_acks_late` Semantics",
+  "topic_track": "project",
+  "content_version": 12,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4e395f8c5dd1b6294abd7c/g10/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4e395f8c5dd1b6294abd7c/g12/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 12,
+  "voiceover_data": {
+    "topic_name": "Celery Task Acknowledgement: `task_acks_late` Semantics",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-understanding-the-ack-mechanism",
+        "section_number": 1,
+        "title": "Understanding the Ack Mechanism",
+        "narration": "Now that we have seen how a single batch worker, running one task at a time, and a per-booking credited flag keep the no-show job from repeating work, we need to ensure tasks are not silently dropped if a worker crashes mid-execution. Let us look at how the worker confirms a job is finished. When a worker picks up a job, it sends a task acknowledgement, or ack for short, back to the broker, the middleman that holds the queue of waiting jobs. This receipt tells the broker it can safely delete the task. Celery's default is an early ack, where the worker confirms the task the moment it receives it, before any code actually runs. If a worker crashes with an early ack, the job is lost, because the broker deleted it as soon as it was handed out. The fix is late acknowledgement, a setting that delays the receipt until after the task logic finishes successfully. If the process dies before that, the broker keeps the task and redelivers it. That moves a system from a fragile setup to at-least-once delivery. G M S intends this: every batch and email task carries a late-ack flag. But the flag uses the name of Celery's global setting instead of the per-task option, so Celery ignores it and G M S still acknowledges early. The key idea is that a task should only be acknowledged once its work is genuinely complete.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we have seen how a single batch worker, running one task at a time, and a per-booking credited flag keep the no-show job from repeating work, we need to ensure tasks are not silently dropped if a worker crashes mid-execution. Let us look at how the worker confirms a job is finished."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "When a worker picks up a job, it sends a task acknowledgement, or ack for short, back to the broker, the middleman that holds the queue of waiting jobs. This receipt tells the broker it can safely delete the task. Celery's default is an early ack, where the worker confirms the task the moment it receives it, before any code actually runs."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "If a worker crashes with an early ack, the job is lost, because the broker deleted it as soon as it was handed out. The fix is late acknowledgement, a setting that delays the receipt until after the task logic finishes successfully."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "If the process dies before that, the broker keeps the task and redelivers it. That moves a system from a fragile setup to at-least-once delivery. G M S intends this: every batch and email task carries a late-ack flag. But the flag uses the name of Celery's global setting instead of the per-task option, so Celery ignores it and G M S still acknowledges early. The key idea is that a task should only be acknowledged once its work is genuinely complete."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-delivery-guarantees-and-tradeoffs",
+        "section_number": 2,
+        "title": "Delivery Guarantees and Tradeoffs",
+        "narration": "These acknowledgement settings change our system guarantees, shifting us from a simple but risky process to a durable one. Early ack leads to at-most-once delivery, meaning a task runs no more than once, but a crash can lose it. Late ack leads to at-least-once delivery, where every task eventually runs, even if failures make it run more than once. G M S aims for durability, so it chose late ack, although, as we just saw, that choice does not take effect yet. However, as we established when designing our asynchronous architecture, late acknowledgement accepts the risk of duplicate tasks in exchange for durability. Since a crashed worker leaves the job in the broker, a new worker will eventually pick it up again. This means our tasks must be idempotent, meaning the property that running an operation repeatedly produces the same outcome as running it once. Reliability requires consistency. The key idea is that late acknowledgments guarantee task completion at the cost of potential duplicate executions.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "These acknowledgement settings change our system guarantees, shifting us from a simple but risky process to a durable one."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Early ack leads to at-most-once delivery, meaning a task runs no more than once, but a crash can lose it. Late ack leads to at-least-once delivery, where every task eventually runs, even if failures make it run more than once. G M S aims for durability, so it chose late ack, although, as we just saw, that choice does not take effect yet."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "However, as we established when designing our asynchronous architecture, late acknowledgement accepts the risk of duplicate tasks in exchange for durability. Since a crashed worker leaves the job in the broker, a new worker will eventually pick it up again."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "This means our tasks must be idempotent, meaning the property that running an operation repeatedly produces the same outcome as running it once. Reliability requires consistency. The key idea is that late acknowledgments guarantee task completion at the cost of potential duplicate executions."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-the-idempotency-solution",
+        "section_number": 3,
+        "title": "The Idempotency Solution",
+        "narration": "Since duplicate runs become possible with late acknowledgement, we must build guards into our logic to safely ignore repeated attempts. In G M S, we use a two-layered defense to ensure idempotency. First, when searching for work, we only select items that have not yet been marked as processed. This prevents us from even attempting to handle a job that another worker successfully completed before it crashed. We filter out the finished work at the very start. Second, we update the status of each processed item immediately rather than waiting for the entire batch to finish. This incremental commit ensures that if a crash occurs, we never repeat the progress we already saved, and the next scheduled run picks up only what is left. The single one-task batch worker protects against overlapping runs, while these guards protect against mid-run crashes, whatever the ack setting. Assume every task runs twice, guard every side effect, and commit progress incrementally. The key idea is that idempotency guards keep our system safe during retries. With the late-ack semantics and crash-safety rules established, we can now look at the concrete business logic and database updates that power the credit no-shows routine.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Since duplicate runs become possible with late acknowledgement, we must build guards into our logic to safely ignore repeated attempts."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "In G M S, we use a two-layered defense to ensure idempotency. First, when searching for work, we only select items that have not yet been marked as processed. This prevents us from even attempting to handle a job that another worker successfully completed before it crashed. We filter out the finished work at the very start."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Second, we update the status of each processed item immediately rather than waiting for the entire batch to finish. This incremental commit ensures that if a crash occurs, we never repeat the progress we already saved, and the next scheduled run picks up only what is left. The single one-task batch worker protects against overlapping runs, while these guards protect against mid-run crashes, whatever the ack setting."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Assume every task runs twice, guard every side effect, and commit progress incrementally. The key idea is that idempotency guards keep our system safe during retries. With the late-ack semantics and crash-safety rules established, we can now look at the concrete business logic and database updates that power the credit no-shows routine."
+          }
+        ]
+      }
+    ]
+  }
+}

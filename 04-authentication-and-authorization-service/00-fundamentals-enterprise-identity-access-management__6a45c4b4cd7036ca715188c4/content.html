@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundamentals Enterprise Identity & Access Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; }
+        .glass-header { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226,232,240,0.8); }
+        .nav-link { transition: all 0.2s ease; padding: 0.4em 0.75em; border-radius: 0.375em; }
+        .nav-link.active { background-color: #4f46e5 !important; color: white !important; font-weight: 600; }
+        .bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; }
+        .bento-card:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); transform: translateY(-4px); }
+        .reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        /* Mobile overrides */
+        @media (max-width: 768px) {
+          .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+          section { margin-bottom: 1.5rem !important; }
+          section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+          section [class*="rounded-[3rem]"] { padding: 1.5rem !important; border-radius: 1.5rem !important; }
+          .mobile-nav-panel { display: none; }
+          .mobile-nav-panel.open { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem; background: white; border-bottom: 1px solid rgba(226,232,240,0.8); }
+        }
+        @media (min-width: 769px) {
+          .mobile-nav-toggle, .mobile-nav-panel { display: none !important; }
+        }
+    </style>
+<style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */section.slide-active.il-dim [data-el-id]:not(.il-spot){transition:opacity .4s ease,filter .4s ease,transform .4s ease,box-shadow .4s ease;opacity:.42;filter:brightness(.85) saturate(.88);}section.slide-active.il-dim [data-el-id].il-spot{opacity:1 !important;filter:brightness(1.08) saturate(1.12) !important;border-radius:16px;position:relative;z-index:30;box-shadow:0 0 0 2px rgba(99,102,241,.6),0 0 0 6px rgba(99,102,241,.14),0 18px 40px -14px rgba(15,23,42,.45),0 0 28px 4px rgba(99,102,241,.3);animation:ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,ilSpotPulse 2.4s ease-in-out .5s infinite;}section.slide-active.il-dim [data-el-id$="-title"].il-spot{padding-left:14px;}section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot){overflow:visible !important;}@keyframes ilSpotIn{0%{transform:scale(.99);}60%{transform:scale(1.045);}100%{transform:scale(1.03);}}@keyframes ilSpotPulse{0%,100%{transform:scale(1.03);box-shadow:0 0 0 2px rgba(99,102,241,.55),0 0 0 6px rgba(99,102,241,.12),0 18px 40px -14px rgba(15,23,42,.45),0 0 26px 4px rgba(99,102,241,.26);}50%{transform:scale(1.038);box-shadow:0 0 0 3px rgba(99,102,241,.82),0 0 0 11px rgba(99,102,241,.1),0 24px 50px -14px rgba(15,23,42,.5),0 0 46px 12px rgba(99,102,241,.5);}}</style></head>
+<body>
+    <header class="sticky top-0 z-50 glass-header">
+        <div class="max-w-6xl mx-auto px-6 flex justify-between items-center py-3">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg text-white font-bold flex items-center justify-center text-sm">I</div>
+                <span class="uppercase text-xs font-semibold tracking-widest">Enterprise IAM</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-2">
+                <a href="#section-1" data-section="section-1" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Security Bedrock</a>
+                <a href="#section-2" data-section="section-2" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">IAM Flow</a>
+                <a href="#section-3" data-section="section-3" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Centralization</a>
+                <a href="#section-4" data-section="section-4" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Boundaries</a>
+                <a href="#section-5" data-section="section-5" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Components</a>
+            </nav>
+            <button class="mobile-nav-toggle md:hidden inline-flex items-center justify-center w-9 h-9 rounded-md text-slate-700 hover:bg-slate-100" aria-label="Toggle menu" onclick="document.querySelector('.mobile-nav-panel').classList.toggle('open')">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="mobile-nav-panel absolute left-0 right-0 top-full">
+                <a href="#section-1" data-section="section-1" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Security Bedrock</a>
+                <a href="#section-2" data-section="section-2" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">IAM Flow</a>
+                <a href="#section-3" data-section="section-3" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Centralization</a>
+                <a href="#section-4" data-section="section-4" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Boundaries</a>
+                <a href="#section-5" data-section="section-5" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Components</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-32 pb-0 max-w-6xl mx-auto px-6">
+        <div class="text-center mb-24">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Enterprise IAM</span>
+            <h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">
+                Fundamentals Enterprise Identity & Access Management
+            </h1>
+            <p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">
+                Understanding the core principles and workflows of Identity and Access Management in enterprise environments.
+            </p>
+        </div>
+
+        <section id="section-1" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Security Bedrock</span>
+                <h2 data-el-id="s1-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">IAM: The Security Bedrock</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Identity and Access Management (IAM) is a crucial security framework ensuring that only the right entities access the right resources at the right time for the right reasons.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s1-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">IAM is a Framework</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Not a single feature, but a comprehensive set of policies and technologies.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Dictates how users and services interact with system resources.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Ensures correct entities access appropriate resources, at opportune moments, for legitimate purposes.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s1-block-2" class="content-block py-1">
+                                <p class="text-sm font-semibold text-slate-800 mb-1.5">Key Distinctions</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Authentication (AuthN):** Verifies *who* you are.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Authorization (AuthR):** Determines *what* you can do after identity is verified.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div class="w-full max-w-sm">
+                            <div class="flex flex-col gap-3">
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Authentication (AuthN)</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Verifies the identity of a user or system attempting to access a resource. Answers "Who are you?".</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Authorization (AuthR)</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Determines what actions an authenticated user is allowed to perform on a resource. Answers "What can you do?".</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-2" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">IAM Flow</span>
+                <h2 data-el-id="s2-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">The Standard IAM Flow</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">A typical IAM flow involves a client initiating a request, undergoing authentication, receiving an identity assertion, and then undergoing authorization against defined policies.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s2-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">IAM Request Lifecycle</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>1. **Identification Request:** Client presents identifying attributes (username, client_id).</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>2. **Challenge & Authentication:** System verifies identity via password, MFA, or signature.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>3. **Identity Assertion:** Upon success, a digitally signed token confirms authenticated identity (e.g., 'user_id: 123').</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>4. **Policy Evaluation & Authorization:** Assertion is checked against access control policies for requested resource/action.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>5. **Access Grant or Denial:** Request is permitted or denied (e.g., HTTP 403).</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div class="w-full max-w-sm text-center">
+                            <div class="flex flex-col items-center space-y-4">
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">1</div>
+                                    <div class="step-title font-bold text-slate-900">Identification</div>
+                                    <div class="step-description text-sm text-slate-600">Client presents attributes</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">2</div>
+                                    <div class="step-title font-bold text-slate-900">Authentication</div>
+                                    <div class="step-description text-sm text-slate-600">System verifies identity</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">3</div>
+                                    <div class="step-title font-bold text-slate-900">Assertion</div>
+                                    <div class="step-description text-sm text-slate-600">Identity token issued</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">4</div>
+                                    <div class="step-title font-bold text-slate-900">Authorization</div>
+                                    <div class="step-description text-sm text-slate-600">Policies checked</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">5</div>
+                                    <div class="step-title font-bold text-slate-900">Access</div>
+                                    <div class="step-description text-sm text-slate-600">Grant or deny</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-3" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Centralization</span>
+                <h2 data-el-id="s3-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">Why Centralize IAM?</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Centralized IAM is critical for enterprise systems to maintain a single source of truth, enable effective auditing for compliance, and enforce the principle of least privilege.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s3-block-1" class="content-block grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">Single Source of Truth</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Provides a unified view of identities and their access rights across the organization.</p>
+                                </div>
+                                <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">Audit & Compliance</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Simplifies tracking who accessed what, when, facilitating compliance with regulations.</p>
+                                </div>
+                                <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">Least Privilege</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Enables granular control, ensuring users only have the minimum necessary permissions.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div class="w-full max-w-sm text-center">
+                            <div class="flex flex-col gap-3">
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Unified Identity</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Centralized management reduces complexity and ensures consistency.</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Simplified Auditing</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Easier to track access logs for compliance and security reviews.</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Effective Least Privilege</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Granular permission assignment minimizes exposure to threats.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-4" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Boundaries</span>
+                <h2 data-el-id="s4-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">IAM System Boundaries</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">IAM acts as a gatekeeper at the service perimeter for initial validation and within individual services for fine-grained, business-specific authorization.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s4-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">IAM Interaction Points</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Perimeter:** API Gateway or dedicated Auth service validates identity assertions (tokens).</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Service Layer:** Individual microservices enforce specific, business-driven authorization rules (e.g., manager role for specific actions).</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s4-block-2" class="content-block bg-indigo-50 border-l-4 border-indigo-500 rounded-r-xl p-4">
+                                <p class="text-slate-800 text-base font-medium leading-relaxed">While Pydantic ensures data integrity, IAM enforces access control integrity.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-2 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div data-el-id="s4-visual-1" style="max-height:420px;overflow:auto;display:flex;align-items:center;justify-content:center;width:100%;"><pre class="mermaid" style="width:100%;min-width:100%;">%%{init: {'theme':'neutral','themeVariables':{'fontSize':'16px','nodeTextSize':'16px'},'flowchart':{'nodeSpacing':50,'rankSpacing':45,'padding':16,'wrappingWidth':220}}}%%
+graph LR
+  A[Client] --> B[API Gateway/Auth Service]
+  B -- Token Validation --> C[Microservice]
+  C -- Specific AuthR --> D[Resource]</pre></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-5" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Components</span>
+                <h2 data-el-id="s5-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">IAM Components & Revocation</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Effective enterprise IAM relies on defining principals, resources, actions, and policies, while also addressing the critical challenge of timely access revocation.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s5-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Core IAM Components</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Principal:** Entity requesting access (user or service)</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Resource:** Data or service being accessed</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Action:** Operation intended by the principal</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Policy:** Rule governing Principal-Resource-Action interaction</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s5-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Revocation Challenge</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Disabling access for de-provisioned users or compromised keys is difficult in distributed systems.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Mechanisms like token expiration and dynamic revocation lists are needed.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Access denials must propagate in near real-time.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-2 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div data-el-id="s5-visual-1" class="overflow-x-auto rounded-xl"><style>.vis-table table{width:100%;border-collapse:collapse}.vis-table th{background:#f1f5f9;border:1px solid #e2e8f0;padding:8px 12px;text-align:left;font-size:13px;font-weight:600;color:#475569}.vis-table td{border:1px solid #e2e8f0;padding:8px 12px;font-size:13px;color:#334155}.vis-table tr:hover td{background:#f8fafc}.bg-slate-900 .vis-table th{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.1);color:#e2e8f0}.bg-slate-900 .vis-table td{border-color:rgba(255,255,255,0.1);color:#cbd5e1}.bg-slate-900 .vis-table tr:hover td{background:rgba(255,255,255,0.05)}</style><div class="vis-table"><table><thead><tr><th>Component</th><th>Description</th><th>Example</th></tr></thead><tbody><tr><td>Principal</td><td>The entity (user or service) requesting access.</td><td>A Gym Member, an Admin user, or a background service.</td></tr><tr><td>Resource</td><td>The data, object, or service being accessed.</td><td>A specific `Location` record, a `Billing` report.</td></tr><tr><td>Action</td><td>The operation the principal intends to perform.</td><td>`GET`, `POST`, `DELETE`, `UPDATE`.</td></tr><tr><td>Policy</td><td>The rule that governs the interaction between a Principal and a Resource for a given Action.</td><td>"Only users with `role:manager` can `delete` a `location`."</td></tr></tbody></table></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="max-w-5xl mx-auto px-6 mb-24">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span>
+            <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-2">Key Takeaways</h2>
+            <p class="text-slate-500 mb-8 max-w-2xl">Effective Enterprise IAM is a foundational security practice that balances usability with robust control, ensuring authorized access and enabling compliance through centralized management and timely revocation.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Security Bedrock</p>
+                        <p class="text-slate-500 text-sm mt-0.5">IAM verifies who can do what, across all systems.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">IAM Flow</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Standard flow: Identity Request → AuthN → Assertion → AuthR → Access.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Centralization</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Centralized IAM simplifies auditing, enforces least privilege, and acts as SSoT.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">System Boundaries</p>
+                        <p class="text-slate-500 text-sm mt-0.5">IAM operates at the perimeter and within services for granular control.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">5</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Components & Revocation</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Define Principals, Resources, Actions, Policies; manage revocation effectively.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="py-8 text-center text-slate-500 text-sm">
+        <p>Generated on: <span id="gen-timestamp"></span></p>
+        <p>Generated by Altgan</p>
+    </footer>
+
+    <script>
+        // 1. Initialize first nav link as active on page load
+        const firstNavLink = document.querySelector('.nav-link[data-section="section-1"]');
+        if (firstNavLink) firstNavLink.classList.add('active');
+
+        // 2. Nav highlighting based on visible section (Intersection Observer)
+        const navObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+                    const sectionId = entry.target.id;
+                    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                    const activeLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+                    if (activeLink) activeLink.classList.add('active');
+                }
+            });
+        }, { threshold: 0.5, rootMargin: '0px 0px -50% 0px' });
+        document.querySelectorAll('section[id^="section-"]').forEach(sec => navObserver.observe(sec));
+
+        // 3. Reveal animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // 4. Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' }); });
+        });
+
+        // 5. Timestamp
+        document.getElementById('gen-timestamp').textContent = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // 6. Copy to clipboard (if code blocks exist) - Not used in this example
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const code = btn.closest('.code-wrapper').querySelector('code').textContent;
+                navigator.clipboard.writeText(code);
+                btn.textContent = 'Copied!';
+                btn.classList.add('bg-emerald-600');
+                setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('bg-emerald-600'); }, 2000);
+            });
+        });
+
+        // 7. Animated metric bars on scroll - Not used in this example
+        const barObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.width = entry.target.dataset.target;
+                }
+            });
+        }, { threshold: 0.3 });
+        document.querySelectorAll('.metric-bar').forEach(bar => barObserver.observe(bar));
+
+        // Custom JS for interactive elements
+        function toggleMode(checkbox) {
+            const parent = checkbox.closest('.bento-card') || checkbox.closest('section');
+            if (checkbox.checked) {
+                // Enable "Advanced" mode visuals/styles
+                parent.querySelectorAll('.basic-view').forEach(el => el.classList.add('hidden'));
+                parent.querySelectorAll('.advanced-view').forEach(el => el.classList.remove('hidden'));
+            } else {
+                // Enable "Basic" mode visuals/styles
+                parent.querySelectorAll('.advanced-view').forEach(el => el.classList.add('hidden'));
+                parent.querySelectorAll('.basic-view').forEach(el => el.classList.remove('hidden'));
+            }
+        }
+
+        function switchTab(tabId, btn) {
+            const parent = btn.closest('.bento-card') || btn.closest('section');
+            parent.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            parent.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('bg-slate-100', 'text-slate-600'); });
+            parent.querySelector('#' + tabId).classList.remove('hidden');
+            btn.classList.remove('bg-slate-100', 'text-slate-600');
+            btn.classList.add('bg-indigo-600', 'text-white');
+        }
+        
+        // Add custom styles for expanded cards if needed (used in section 1)
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .bento-card .expanded p[class*="hidden"] {
+                display: block !important;
+            }
+            .bento-card .expanded svg {
+                transform: rotate(180deg);
+            }
+            .step-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .step-circle {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.9rem;
+                box-shadow: 0 4px 8px rgba(79, 70, 229, 0.2);
+            }
+            .step-title { font-size: 0.95rem; margin-top: 0.5rem; }
+            .step-description { font-size: 0.85rem; max-width: 150px; }
+            .step-connector { margin-top: -8px; margin-bottom: -8px; } /* Adjust for vertical spacing */
+        `;
+        document.head.appendChild(style);
+
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:"neutral"});document.addEventListener("DOMContentLoaded",function(){  setTimeout(function(){    document.querySelectorAll("pre.mermaid svg").forEach(function(svg){      svg.removeAttribute("height");      svg.removeAttribute("width");      svg.style.width="100%";      svg.style.maxWidth="100%";      svg.style.height="auto";    });  },500);});</script></body>
+</html>

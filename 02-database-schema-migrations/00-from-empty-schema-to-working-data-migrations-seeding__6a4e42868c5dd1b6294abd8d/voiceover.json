@@ -1,0 +1,131 @@
+{
+  "skill_id": "6a4408afe15b997d713c4b89",
+  "skill_name": "Database Schema & Migrations",
+  "topic_id": "6a4e42868c5dd1b6294abd8d",
+  "topic_name": "From Empty Schema to Working Data: Migrations & Seeding",
+  "topic_track": "project",
+  "content_version": 14,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4e42868c5dd1b6294abd8d/g8/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4e42868c5dd1b6294abd8d/g14/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 14,
+  "voiceover_data": {
+    "topic_name": "From Empty Schema to Working Data: Migrations & Seeding",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-migrations-and-seeding-the-database-contract",
+        "section_number": 1,
+        "title": "Migrations and Seeding: The Database Contract",
+        "narration": "Now that we have traced how a request travels through all four rooms down to the O R M model, we need to examine what actually backs those models: the database schema itself, and how we change it safely. This topic introduces our professional workflow for managing database changes: Migrations and Seeding. In the early days of our Gym Management System, managing the database was simple. You'd write a CREATE TABLE statement, run it manually, and move on. But as we scaled to seven microservices and multiple developers, this manual approach became a major bottleneck. We'll explain how we evolved to a robust Migrations and Seeding workflow using a tool called db mate. In our microservices setup, the database schema is the critical contract all services must respect. If one service expects a column that another hasn't created yet, the system breaks. We keep all database changes in one shared place to ensure every service sees the same version of the truth. Migrations keep the schema in sync across environments, and Seeding makes those environments usable. So, the key idea is: Migrations and Seeding keep our schema consistent and our environments functional.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we have traced how a request travels through all four rooms down to the O R M model, we need to examine what actually backs those models: the database schema itself, and how we change it safely."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This topic introduces our professional workflow for managing database changes: Migrations and Seeding. In the early days of our Gym Management System, managing the database was simple. You'd write a CREATE TABLE statement, run it manually, and move on."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "But as we scaled to seven microservices and multiple developers, this manual approach became a major bottleneck. We'll explain how we evolved to a robust Migrations and Seeding workflow using a tool called db mate."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "In our microservices setup, the database schema is the critical contract all services must respect. If one service expects a column that another hasn't created yet, the system breaks. We keep all database changes in one shared place to ensure every service sees the same version of the truth."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "Migrations keep the schema in sync across environments, and Seeding makes those environments usable. So, the key idea is: Migrations and Seeding keep our schema consistent and our environments functional."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-migrations-version-control-for-schema",
+        "section_number": 2,
+        "title": "Migrations: Version Control for Schema",
+        "narration": "So, we've established that a synchronized schema is vital. Now let's dive into Migrations, which act as version control for your database structure. We use db mate because it treats schema changes as immutable, versioned artifacts. Instead of manually running ALTER TABLE statements, you create a migration file. Every schema change lives in one shared migrations location. A typical file includes a timestamp for ordering, a ticket ID for traceability, and plain sequel. When you run db mate up, it checks a schema migrations table. If a migration file isn't recorded there, db mate runs it and logs its success. If it's already present, it's skipped. This eliminates the anxiety of wondering if a change has already been applied to production. So the key idea is: db mate prevents schema drift by treating migrations as immutable, versioned artifacts.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So, we've established that a synchronized schema is vital. Now let's dive into Migrations, which act as version control for your database structure."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We use db mate because it treats schema changes as immutable, versioned artifacts. Instead of manually running ALTER TABLE statements, you create a migration file. Every schema change lives in one shared migrations location. A typical file includes a timestamp for ordering, a ticket ID for traceability, and plain sequel."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "When you run db mate up, it checks a schema migrations table. If a migration file isn't recorded there, db mate runs it and logs its success. If it's already present, it's skipped. This eliminates the anxiety of wondering if a change has already been applied to production. So the key idea is: db mate prevents schema drift by treating migrations as immutable, versioned artifacts."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-seeding-populating-the-database",
+        "section_number": 3,
+        "title": "Seeding: Populating the Database",
+        "narration": "A migrated database is an empty shell. Seeding fills this shell with essential data, making the database truly functional for development and testing. A correctly migrated database is still an empty shell. For a new developer, this means they can't test login flows, view billing history, or trigger emails. Seeding solves this by populating the database with realistic starter data. In G M S, one starter data file is our official seed. MySQL loads it automatically the very first time the database starts. It populates your local environment with a sample gym, members, memberships, plans, and even a demo login, ensuring everyone works against the same baseline. So the key idea is: Seeding provides the baseline data that makes a migrated database immediately usable.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "A migrated database is an empty shell. Seeding fills this shell with essential data, making the database truly functional for development and testing."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "A correctly migrated database is still an empty shell. For a new developer, this means they can't test login flows, view billing history, or trigger emails. Seeding solves this by populating the database with realistic starter data."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "In G M S, one starter data file is our official seed. MySQL loads it automatically the very first time the database starts."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "It populates your local environment with a sample gym, members, memberships, plans, and even a demo login, ensuring everyone works against the same baseline. So the key idea is: Seeding provides the baseline data that makes a migrated database immediately usable."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-production-critical-decisions-and-workflow",
+        "section_number": 4,
+        "title": "Production Critical Decisions and Workflow",
+        "narration": "Finally, let's review the key engineering decisions and the critical production workflow that ensure our database remains reliable. We made specific choices: DB mate over Alembic for its sequel-first approach, a single shared migration location to prevent schema drift, and static real data seeds instead of random fakes. Each decision has trade-offs, like potential staleness with static data, but they align with our need for transparent, performant sequel. Crucially, we treat the database as production-critical, enforcing a \"one-way\" rule. Never alter schema manually; this creates drift and leads to deployment crashes. Migrations are additive; if we must drop a column, it's a two-phase process. This disciplined approach ensures stability and prevents unexpected issues. So the key idea is that database schema changes and initial data are managed through version-controlled, repeatable processes. Next, we will put this workflow into practice in Generating Migration Files with DB mate to write and run timestamped sequel migration files.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let's review the key engineering decisions and the critical production workflow that ensure our database remains reliable."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "We made specific choices: DB mate over Alembic for its sequel-first approach, a single shared migration location to prevent schema drift, and static real data seeds instead of random fakes. Each decision has trade-offs, like potential staleness with static data, but they align with our need for transparent, performant sequel."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Crucially, we treat the database as production-critical, enforcing a \"one-way\" rule. Never alter schema manually; this creates drift and leads to deployment crashes. Migrations are additive; if we must drop a column, it's a two-phase process. This disciplined approach ensures stability and prevents unexpected issues."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "So the key idea is that database schema changes and initial data are managed through version-controlled, repeatable processes. Next, we will put this workflow into practice in Generating Migration Files with DB mate to write and run timestamped sequel migration files."
+          }
+        ]
+      }
+    ]
+  }
+}

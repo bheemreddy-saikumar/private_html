@@ -1,0 +1,121 @@
+{
+  "skill_id": "6a79de290420646179386285",
+  "skill_name": "Plans and Classes Service",
+  "topic_id": "6a79dec90420646179386287",
+  "topic_name": "Service Boundary and Rationale",
+  "topic_track": "project",
+  "content_version": 11,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a79dec90420646179386287/g9/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a79dec90420646179386287/g11/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 11,
+  "voiceover_data": {
+    "topic_name": "Service Boundary and Rationale",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-why-plans-and-classes-stay-together",
+        "section_number": 1,
+        "title": "Why Plans and Classes Stay Together",
+        "narration": "Having established that Plans and Classes acts as a thin service focused strictly on judgment rather than data persistence, we must now answer the harder architectural question: why draw the boundary around plans and classes together while pushing memberships into a separate service? A common mistake in building distributed systems is separating parts based solely on their labels. In G M S, keeping plans and classes together is a performance strategy. When a user books a class, we must verify eligibility immediately. If these were separate services, every booking attempt would require a network call, introducing latency and the risk of partial failures. We keep them in one service because they are inseparable at the moment of a request. This happens on what we call the hot path, the performance-critical sequence that runs every time a user clicks a button. Minimizing network hops here ensures the system remains fast and reliable. The key idea is that optimizing for the hot path often dictates where your service boundaries should fall.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Having established that Plans and Classes acts as a thin service focused strictly on judgment rather than data persistence, we must now answer the harder architectural question: why draw the boundary around plans and classes together while pushing memberships into a separate service?"
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "A common mistake in building distributed systems is separating parts based solely on their labels. In G M S, keeping plans and classes together is a performance strategy. When a user books a class, we must verify eligibility immediately. If these were separate services, every booking attempt would require a network call, introducing latency and the risk of partial failures."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "We keep them in one service because they are inseparable at the moment of a request. This happens on what we call the hot path, the performance-critical sequence that runs every time a user clicks a button."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Minimizing network hops here ensures the system remains fast and reliable. The key idea is that optimizing for the hot path often dictates where your service boundaries should fall."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-why-memberships-live-somewhere-else",
+        "section_number": 2,
+        "title": "Why Memberships Live Somewhere Else",
+        "narration": "So if plans and classes are grouped by their functional dependency, why are memberships managed in a completely different area? Service ownership should follow change cycles, meaning how often, and for what business reasons, a feature needs to be updated. The Members Service handles personal details and payment history, while the Plans and Classes Service manages the catalogue and the schedule. Since payment logic rarely changes when yoga schedules are updated, these domains belong in separate services to allow independent development. So the key idea is that services should be separated by their reason for changing.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So if plans and classes are grouped by their functional dependency, why are memberships managed in a completely different area?"
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Service ownership should follow change cycles, meaning how often, and for what business reasons, a feature needs to be updated. The Members Service handles personal details and payment history, while the Plans and Classes Service manages the catalogue and the schedule."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Since payment logic rarely changes when yoga schedules are updated, these domains belong in separate services to allow independent development. So the key idea is that services should be separated by their reason for changing."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-the-shared-write-bill",
+        "section_number": 3,
+        "title": "The Shared Write Bill",
+        "narration": "While these boundaries help organize our development, our reliance on a single database creates an architectural compromise. In G M S, we utilize the shared database pattern, where multiple services read and write to one central sequel database. This creates a shared write, which is an architectural friction point where distinct services update the same data field. For example, booking a class takes one session off a session-pack membership's remaining count, and a background job that runs twice a day gives a session back when a member did not show up. Both write the same column directly. It is a cost we pay to keep the system simple and transactional. So the key idea is that shared writes are a trade-off for simplicity.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "While these boundaries help organize our development, our reliance on a single database creates an architectural compromise."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "In G M S, we utilize the shared database pattern, where multiple services read and write to one central sequel database. This creates a shared write, which is an architectural friction point where distinct services update the same data field."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "For example, booking a class takes one session off a session-pack membership's remaining count, and a background job that runs twice a day gives a session back when a member did not show up. Both write the same column directly. It is a cost we pay to keep the system simple and transactional. So the key idea is that shared writes are a trade-off for simplicity."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-the-engineering-rule-of-thumb",
+        "section_number": 4,
+        "title": "The Engineering Rule of Thumb",
+        "narration": "To guide your own architectural decisions, there are two primary questions to ask before drawing a boundary. First, does the split place a network call on the request path? If a user must wait for two services to talk, rethink the boundary. Second, do the two things change for different reasons? If the answer is yes, they are already separate domains. Following these rules helps keep your system maintainable. With this boundary and its shared-write compromise established, we turn next to trace how a live booking call moves through our service directories. The key idea is that minimizing latency and respecting domain isolation are the two pillars of a robust boundary: always align your services with how the data is actually used.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "To guide your own architectural decisions, there are two primary questions to ask before drawing a boundary."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "First, does the split place a network call on the request path? If a user must wait for two services to talk, rethink the boundary. Second, do the two things change for different reasons?"
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "If the answer is yes, they are already separate domains. Following these rules helps keep your system maintainable. With this boundary and its shared-write compromise established, we turn next to trace how a live booking call moves through our service directories."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "The key idea is that minimizing latency and respecting domain isolation are the two pillars of a robust boundary: always align your services with how the data is actually used."
+          }
+        ]
+      }
+    ]
+  }
+}

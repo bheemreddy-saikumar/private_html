@@ -1,0 +1,166 @@
+{
+  "skill_id": "6a55b84f4eac614f602a2293",
+  "skill_name": "Shared Library and Core Models",
+  "topic_id": "6a55bb578c5dd1b6294abdfa",
+  "topic_name": "Shared Authentication and Authorization Logic",
+  "topic_track": "project",
+  "content_version": 13,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a55bb578c5dd1b6294abdfa/g9/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a55bb578c5dd1b6294abdfa/g13/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 13,
+  "voiceover_data": {
+    "topic_name": "Shared Authentication and Authorization Logic",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-centralized-auth-and-authz",
+        "section_number": 1,
+        "title": "Centralized Auth and AuthZ",
+        "narration": "With our configuration centralized and settings like SECRET KEY reliably loaded across the fleet, we can put that shared secret to work securing our A P I endpoints. Today, we'll explore how GMS achieves consistent security across all its services by centralizing authentication and authorization logic within the G M S shared library. Every service in the GMS fleet guards its endpoints, but how do we ensure that, for example, modifying a member in the Members Service uses the exact same definition of \"is this person allowed to do this?\" as generating a sales report in the Reports Service? In a microservice environment, letting each service answer that question independently is dangerous. GMS solves this by centralizing both Authentication, determining who you are, and Authorization, what you can do, in the G M S shared library. When building a distributed system, you have two main ways to verify identity tokens. Asymmetric signing, like RS256, where a private key signs and a public key verifies, is great if services are owned by different teams. Symmetric signing, H S two fifty six, uses a single SECRET KEY for both signing and verification. GMS chooses Symmetric H S two fifty six because every service already has access to the SECRET KEY through the G M S shared library. This is the simplest, fastest approach for a single team that trusts all of its own services. The trade-off here is that any service *could* technically mint a fake token. However, in our \"one team, one deploy\" model, that risk is purely theoretical. So the key idea is that GMS centralizes authentication and authorization in the G M S shared library for consistent security across all services.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "With our configuration centralized and settings like SECRET KEY reliably loaded across the fleet, we can put that shared secret to work securing our A P I endpoints."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Today, we'll explore how GMS achieves consistent security across all its services by centralizing authentication and authorization logic within the G M S shared library. Every service in the GMS fleet guards its endpoints, but how do we ensure that, for example, modifying a member in the Members Service uses the exact same definition of \"is this person allowed to do this?\" as generating a sales report in the Reports Service?"
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "In a microservice environment, letting each service answer that question independently is dangerous. GMS solves this by centralizing both Authentication, determining who you are, and Authorization, what you can do, in the G M S shared library."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "When building a distributed system, you have two main ways to verify identity tokens. Asymmetric signing, like RS256, where a private key signs and a public key verifies, is great if services are owned by different teams."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "Symmetric signing, H S two fifty six, uses a single SECRET KEY for both signing and verification. GMS chooses Symmetric H S two fifty six because every service already has access to the SECRET KEY through the G M S shared library. This is the simplest, fastest approach for a single team that trusts all of its own services."
+          },
+          {
+            "el_id": "s1-block-5",
+            "type": "block",
+            "text": "The trade-off here is that any service *could* technically mint a fake token. However, in our \"one team, one deploy\" model, that risk is purely theoretical. So the key idea is that GMS centralizes authentication and authorization in the G M S shared library for consistent security across all services."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-stateless-jwts-and-multi-use-secrets",
+        "section_number": 2,
+        "title": "Stateless JWTs and Multi-Use Secrets",
+        "narration": "Now that we've established centralized security, let's dive into how authentication actually works using stateless J W Ts, and explore the \"odd\" choice of using one secret for multiple signing mechanisms. When a user logs in, the auth admin service uses the G M S shared library to create an access token: a stateless JSON Web Token, or J W T. Key architectural decisions here are per-role expiry, meaning token lifetimes are data-driven and vary by role, and statelessness. We avoid a database lookup on every A P I call because the token's signature, checked via the SECRET KEY, proves its validity. The impersonator claim is also baked in, allowing staff to act as members while preserving an audit trail. Identity in GMS isn't just about A P I calls; it's also about email links and verification codes. Instead of forcing J W T to do everything, we use the right tool for each job, all derived from the same SECRET KEY. For A P I sessions, we use J W Ts. For email verification codes, we generate a four-digit code by mixing the SECRET KEY with the user's email, allowing verification without a database. For clickable links, like confirming an account, we use a signed, time-limited link. This creates a tamper-proof string appended to a U R L, using a separate secret ingredient, so these tokens can't be confused with J W Ts. So the key idea is using stateless J W Ts for A P I access and other crypto primitives like TOTP and timed serializers for different identity verification needs, all secured by a single shared secret.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we've established centralized security, let's dive into how authentication actually works using stateless J W Ts, and explore the \"odd\" choice of using one secret for multiple signing mechanisms."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "When a user logs in, the auth admin service uses the G M S shared library to create an access token: a stateless JSON Web Token, or J W T. Key architectural decisions here are per-role expiry, meaning token lifetimes are data-driven and vary by role, and statelessness."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "We avoid a database lookup on every A P I call because the token's signature, checked via the SECRET KEY, proves its validity. The impersonator claim is also baked in, allowing staff to act as members while preserving an audit trail."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Identity in GMS isn't just about A P I calls; it's also about email links and verification codes. Instead of forcing J W T to do everything, we use the right tool for each job, all derived from the same SECRET KEY. For A P I sessions, we use J W Ts."
+          },
+          {
+            "el_id": "s2-block-4",
+            "type": "block",
+            "text": "For email verification codes, we generate a four-digit code by mixing the SECRET KEY with the user's email, allowing verification without a database."
+          },
+          {
+            "el_id": "s2-block-5",
+            "type": "block",
+            "text": "For clickable links, like confirming an account, we use a signed, time-limited link. This creates a tamper-proof string appended to a U R L, using a separate secret ingredient, so these tokens can't be confused with J W Ts."
+          },
+          {
+            "el_id": "s2-block-6",
+            "type": "block",
+            "text": "So the key idea is using stateless J W Ts for A P I access and other crypto primitives like TOTP and timed serializers for different identity verification needs, all secured by a single shared secret."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-rbac-and-multi-tenancy-gates",
+        "section_number": 3,
+        "title": "RBAC and Multi-Tenancy Gates",
+        "narration": "With authentication covered, let's shift focus to authorization, specifically Role-Based Access Control and our Multi-Tenancy Gate, both implemented within the G M S shared library. Authentication proves who a user is, but authorization decides if they're allowed to access a specific endpoint. In GMS, this is handled by one shared access check in the G M S shared library, which every FastAPI endpoint plugs into. Services simply declare required roles, like OWNER, in their endpoint definitions. This access check then runs through four distinct gates to ensure the request is valid and permitted. The first gate extracts and decodes the J W T. The second loads the user's full record and keeps it for the rest of the request. The third verifies that the user's role matches the required roles for the endpoint. If these checks pass, the fourth gate acts as our Multi-Tenancy Gate. This check location access gate ensures a user can only access data for the specific gym or location they are associated with, preventing a manager at Gym A from viewing members at Gym B. This rigorous, layered approach to authorization, implemented once in the G M S shared library, ensures security consistency across the entire GMS fleet. So the key idea is that authorization is handled by a multi-stage pipeline in the G M S shared library, enforcing RBAC and multi-tenancy to ensure users only access permitted resources.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "With authentication covered, let's shift focus to authorization, specifically Role-Based Access Control and our Multi-Tenancy Gate, both implemented within the G M S shared library."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Authentication proves who a user is, but authorization decides if they're allowed to access a specific endpoint. In GMS, this is handled by one shared access check in the G M S shared library, which every FastAPI endpoint plugs into. Services simply declare required roles, like OWNER, in their endpoint definitions. This access check then runs through four distinct gates to ensure the request is valid and permitted."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "The first gate extracts and decodes the J W T. The second loads the user's full record and keeps it for the rest of the request. The third verifies that the user's role matches the required roles for the endpoint. If these checks pass, the fourth gate acts as our Multi-Tenancy Gate."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "This check location access gate ensures a user can only access data for the specific gym or location they are associated with, preventing a manager at Gym A from viewing members at Gym B."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "This rigorous, layered approach to authorization, implemented once in the G M S shared library, ensures security consistency across the entire GMS fleet. So the key idea is that authorization is handled by a multi-stage pipeline in the G M S shared library, enforcing RBAC and multi-tenancy to ensure users only access permitted resources."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-engineering-trade-offs-and-system-connections",
+        "section_number": 4,
+        "title": "Engineering Trade-offs and System Connections",
+        "narration": "Finally, let's discuss the engineering trade-offs inherent in this shared security model and how it all connects to other core components of the GMS system. By centralizing authentication and authorization logic in the G M S shared library, GMS gains security consistency. If a security rule needs tightening, it's changed in one place and inherited by all services on the next deploy, preventing \"Auth Drift.\" The cost? If the shared SECRET KEY is compromised in any service, an attacker could mint fake tokens. This is why the signal to move to asymmetric signing, R S two fifty six, is when a service is managed by a different team or runs on separate infrastructure. This shared logic acts as the \"glue\" for the entire system. It consumes configuration like the SECRET KEY, relies on common models like User and Role, makes the current user available to the rest of the request, and raises shared errors that return a standard JSON response to the frontend. This tightly integrated approach ensures every part of the system adheres to the same security standards. So the key idea is that centralized auth logic provides security consistency at the cost of a single point of compromise, but integrates deeply with config, models, and exceptions. With our synchronous H T T P endpoints secured and gated by shared auth logic, we turn to background workloads: integrating services with asynchronous task queues in Celery and Redis.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let's discuss the engineering trade-offs inherent in this shared security model and how it all connects to other core components of the GMS system."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "By centralizing authentication and authorization logic in the G M S shared library, GMS gains security consistency. If a security rule needs tightening, it's changed in one place and inherited by all services on the next deploy, preventing \"Auth Drift.\" The cost?"
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "If the shared SECRET KEY is compromised in any service, an attacker could mint fake tokens. This is why the signal to move to asymmetric signing, R S two fifty six, is when a service is managed by a different team or runs on separate infrastructure."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "This shared logic acts as the \"glue\" for the entire system. It consumes configuration like the SECRET KEY, relies on common models like User and Role, makes the current user available to the rest of the request, and raises shared errors that return a standard JSON response to the frontend. This tightly integrated approach ensures every part of the system adheres to the same security standards."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "So the key idea is that centralized auth logic provides security consistency at the cost of a single point of compromise, but integrates deeply with config, models, and exceptions. With our synchronous H T T P endpoints secured and gated by shared auth logic, we turn to background workloads: integrating services with asynchronous task queues in Celery and Redis."
+          }
+        ]
+      }
+    ]
+  }
+}

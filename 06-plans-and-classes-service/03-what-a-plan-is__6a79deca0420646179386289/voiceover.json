@@ -1,0 +1,103 @@
+{
+  "skill_id": "6a79de290420646179386285",
+  "skill_name": "Plans and Classes Service",
+  "topic_id": "6a79deca0420646179386289",
+  "topic_name": "What a Plan Is",
+  "topic_track": "project",
+  "content_version": 12,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a79deca0420646179386289/g10/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a79deca0420646179386289/g12/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 12,
+  "voiceover_data": {
+    "topic_name": "What a Plan Is",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-plan-as-a-product-template",
+        "section_number": 1,
+        "title": "The Plan as a Product Template",
+        "narration": "After tracing how requests move from our endpoints down to the database models, we can now look at the core domain entity of the catalog: the Plan model. In G M S, a Plan acts as the master template that defines what a product is, including its price, limits, and rules. It is kept completely separate from the person buying it. Recalling the catalog versus contract rule, we maintain a strict divide: the Plan is the catalog template, while a Membership is the specific, time-bound customer contract that binds a person to those rules. A single Plan row might be shared by hundreds of users, but it only describes the product, never the individual purchaser. By reinforcing the service boundary we drew earlier to decouple what is for sale from who bought it, we ensure that catalog changes do not accidentally corrupt active user agreements. A Plan is purely the template, not the purchase. Separating the template from the contract keeps our catalog operations safe from user-specific changes.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "After tracing how requests move from our endpoints down to the database models, we can now look at the core domain entity of the catalog: the Plan model."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In G M S, a Plan acts as the master template that defines what a product is, including its price, limits, and rules. It is kept completely separate from the person buying it. Recalling the catalog versus contract rule, we maintain a strict divide: the Plan is the catalog template, while a Membership is the specific, time-bound customer contract that binds a person to those rules."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "A single Plan row might be shared by hundreds of users, but it only describes the product, never the individual purchaser. By reinforcing the service boundary we drew earlier to decouple what is for sale from who bought it, we ensure that catalog changes do not accidentally corrupt active user agreements."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "A Plan is purely the template, not the purchase. Separating the template from the contract keeps our catalog operations safe from user-specific changes."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-four-axes-of-a-plan",
+        "section_number": 2,
+        "title": "The Four Axes of a Plan",
+        "narration": "Now that we understand the Plan as a template, let us break down the dozens of fields it contains into four functional categories. First is the billing type. This is the payment structure rule that dictates whether access is a recurring subscription, a one-off fixed period, a punch card of consumable credits, or free. This choice is vital because it determines how our systems treat usage, distinguishing between simple time-gated access and session packs that are consumed as the member attends classes. Second, plans define limits or eligibility rules, like weekly caps or total session counts. Be careful with that session counter: in the Plan model, it is the total entitlement given at purchase, whereas in the Membership, it represents the remaining balance. Third, plans are tagged with a training type, such as large group, semi-private, or personal training, which describes the product; whether a member can book a given class is decided by the plans linked to that class or its access groups. Finally, we define where and when a plan works through location mapping, total duration, and current status. A critical status here is grandfathered, a retired product tier that is closed to new customers but remains active and valid for members who already purchased it. These four axes structure the product, not the individual.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we understand the Plan as a template, let us break down the dozens of fields it contains into four functional categories."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "First is the billing type. This is the payment structure rule that dictates whether access is a recurring subscription, a one-off fixed period, a punch card of consumable credits, or free. This choice is vital because it determines how our systems treat usage, distinguishing between simple time-gated access and session packs that are consumed as the member attends classes."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Second, plans define limits or eligibility rules, like weekly caps or total session counts. Be careful with that session counter: in the Plan model, it is the total entitlement given at purchase, whereas in the Membership, it represents the remaining balance. Third, plans are tagged with a training type, such as large group, semi-private, or personal training, which describes the product; whether a member can book a given class is decided by the plans linked to that class or its access groups."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Finally, we define where and when a plan works through location mapping, total duration, and current status. A critical status here is grandfathered, a retired product tier that is closed to new customers but remains active and valid for members who already purchased it. These four axes structure the product, not the individual."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-implementing-flexible-business-rules",
+        "section_number": 3,
+        "title": "Implementing Flexible Business Rules",
+        "narration": "With the Plan structure defined, we must ensure these complex requirements are enforced securely when information enters the system. We handle this variability with one typed request schema shared by every kind of plan. A subscription needs different details than a consumable credit pack, and the schema documents which fields belong to which billing type, but nothing checks them: the service copies every field onto the plan as sent. A stricter design would add a validation rule for each billing type. Operational logic also relies on these definitions to manage the lifecycle of our offerings. When plans are listed, the status is worked out as Cancelled, Grandfathered, or Active, so the screens can hide old plans from new sales while keeping them valid for legacy members. Knowing what a plan sells sets up how plans connect to access groups to control room and session entry. By validating input schemas and using status flags for lifecycle management, we maintain strict control over both what a plan offers and who can purchase it.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "With the Plan structure defined, we must ensure these complex requirements are enforced securely when information enters the system."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "We handle this variability with one typed request schema shared by every kind of plan. A subscription needs different details than a consumable credit pack, and the schema documents which fields belong to which billing type, but nothing checks them: the service copies every field onto the plan as sent. A stricter design would add a validation rule for each billing type."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Operational logic also relies on these definitions to manage the lifecycle of our offerings. When plans are listed, the status is worked out as Cancelled, Grandfathered, or Active, so the screens can hide old plans from new sales while keeping them valid for legacy members."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Knowing what a plan sells sets up how plans connect to access groups to control room and session entry. By validating input schemas and using status flags for lifecycle management, we maintain strict control over both what a plan offers and who can purchase it."
+          }
+        ]
+      }
+    ]
+  }
+}

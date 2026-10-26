@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Migration Script Structure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; }
+        .glass-header { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226,232,240,0.8); }
+        .nav-link { transition: all 0.2s ease; padding: 0.4em 0.75em; border-radius: 0.375em; }
+        .nav-link.active { background-color: #4f46e5 !important; color: white !important; font-weight: 600; }
+        .bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; }
+        .bento-card:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); transform: translateY(-4px); }
+        .reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 768px) {
+            .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+            section { margin-bottom: 1.5rem !important; }
+            section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+            section [class*="rounded-[3rem]"] { padding: 1.5rem !important; border-radius: 1.5rem !important; }
+            .mobile-nav-panel { display: none; }
+            .mobile-nav-panel.open { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem; background: white; border-bottom: 1px solid rgba(226,232,240,0.8); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        }
+        @media (min-width: 769px) {
+            .mobile-nav-toggle, .mobile-nav-panel { display: none !important; }
+        }
+
+        .content-block { transition: transform 0.2s ease; }
+        .acc-icon { transition: transform 0.3s ease; }
+    </style>
+<style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */section.slide-active.il-dim [data-el-id]:not(.il-spot){transition:opacity .4s ease,filter .4s ease,transform .4s ease,box-shadow .4s ease;opacity:.42;filter:brightness(.85) saturate(.88);}section.slide-active.il-dim [data-el-id].il-spot{opacity:1 !important;filter:brightness(1.08) saturate(1.12) !important;border-radius:16px;position:relative;z-index:30;box-shadow:0 0 0 2px rgba(99,102,241,.6),0 0 0 6px rgba(99,102,241,.14),0 18px 40px -14px rgba(15,23,42,.45),0 0 28px 4px rgba(99,102,241,.3);animation:ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,ilSpotPulse 2.4s ease-in-out .5s infinite;}section.slide-active.il-dim [data-el-id$="-title"].il-spot{padding-left:14px;}section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot){overflow:visible !important;}@keyframes ilSpotIn{0%{transform:scale(.99);}60%{transform:scale(1.045);}100%{transform:scale(1.03);}}@keyframes ilSpotPulse{0%,100%{transform:scale(1.03);box-shadow:0 0 0 2px rgba(99,102,241,.55),0 0 0 6px rgba(99,102,241,.12),0 18px 40px -14px rgba(15,23,42,.45),0 0 26px 4px rgba(99,102,241,.26);}50%{transform:scale(1.038);box-shadow:0 0 0 3px rgba(99,102,241,.82),0 0 0 11px rgba(99,102,241,.1),0 24px 50px -14px rgba(15,23,42,.5),0 0 46px 12px rgba(99,102,241,.5);}}</style></head>
+<body>
+
+    <!-- Header -->
+    <header class="glass-header fixed top-0 w-full z-50">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg text-white flex items-center justify-center font-bold">U</div>
+                <span class="uppercase text-xs font-semibold tracking-widest text-slate-900 hidden sm:block">Migration Structure</span>
+            </div>
+            
+            <nav class="hidden md:flex items-center gap-2">
+                <a href="#section-1" data-section="section-1" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Basics</a>
+                <a href="#section-2" data-section="section-2" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Up Block</a>
+                <a href="#section-3" data-section="section-3" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Down Block</a>
+                <a href="#section-4" data-section="section-4" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Best Practices</a>
+                <a href="#section-5" data-section="section-5" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Trade-offs</a>
+            </nav>
+
+            <button class="mobile-nav-toggle md:hidden inline-flex items-center justify-center w-9 h-9 rounded-md text-slate-700 hover:bg-slate-100" onclick="document.querySelector('.mobile-nav-panel').classList.toggle('open')">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </div>
+        <div class="mobile-nav-panel absolute left-0 right-0 top-full">
+            <a href="#section-1" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm font-medium text-slate-500 p-3 border-b border-slate-50">Basics</a>
+            <a href="#section-2" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm font-medium text-slate-500 p-3 border-b border-slate-50">Up Block</a>
+            <a href="#section-3" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm font-medium text-slate-500 p-3 border-b border-slate-50">Down Block</a>
+            <a href="#section-4" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm font-medium text-slate-500 p-3 border-b border-slate-50">Best Practices</a>
+            <a href="#section-5" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm font-medium text-slate-500 p-3">Trade-offs</a>
+        </div>
+    </header>
+
+    <main class="pt-32 pb-0 max-w-6xl mx-auto px-6">
+        <!-- Hero -->
+        <div class="text-center mb-24 reveal">
+            <span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Intermediate Engineering Module</span>
+            <h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">
+                Understanding Migration Scripts
+            </h1>
+            <p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">
+                Mastering the structure of `.sql` files for reliable database schema evolution.
+            </p>
+        </div>
+
+        <!-- Section 1: Migration Basics -->
+        <section id="section-1" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Migration Basics</span>
+                <h2 data-el-id="s1-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">Foundations of SQL Migrations</h2>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-base leading-relaxed italic">SQL migration files are structured with up and down sections to manage database schema evolution systematically.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <div data-el-id="s1-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Purpose of Migration Scripts</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Version control system for database schema.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Handle orchestration and versioning logic.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Represent discrete, immutable steps in evolution.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s1-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Standard Structure</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Bifurcated into migrate:up and migrate:down blocks.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Markers indicate application or reversion commands.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-6 flex flex-col gap-3 items-center justify-center" style="max-height:480px;overflow:hidden;">
+                        <div onclick="toggleAccordion('acc-1')" class="w-full cursor-pointer border border-slate-200 bg-white rounded-xl p-4 hover:border-indigo-300 transition-all">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-semibold text-slate-900 text-sm">Version Control Logic</h4>
+                                <svg id="acc-1-icon" class="acc-icon w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                            <div id="acc-1" class="hidden mt-3 text-slate-600 text-sm">Treats DB changes like Git commits: each file is a unique, trackable point in time.</div>
+                        </div>
+                        <div onclick="toggleAccordion('acc-2')" class="w-full cursor-pointer border border-slate-200 bg-white rounded-xl p-4 hover:border-indigo-300 transition-all">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-semibold text-slate-900 text-sm">The Bifurcation Rule</h4>
+                                <svg id="acc-2-icon" class="acc-icon w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                            <div id="acc-2" class="hidden mt-3 text-slate-600 text-sm">Every forward change (up) requires an explicit reverse instruction (down) for recovery.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: migrate:up Block -->
+        <section id="section-2" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Up Block</span>
+                <h2 data-el-id="s2-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">Advancing the Schema</h2>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-base leading-relaxed italic">The migrate:up section defines the DDL and DML needed to advance the database schema to version n+1.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <div data-el-id="s2-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Function of `migrate:up`</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Transforms the database from version n to n+1.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Used for creating tables and establishing indexes.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s2-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Key Responsibilities</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Schema alterations: Adding columns, managing constraints.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Data migrations: Transforming data for new structures.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <pre data-el-id="s2-visual-1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-sql">-- migrate:up
+CREATE TABLE gym_locations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_gym_locations_gym_id ON gym_locations(gym_id);</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: migrate:down Block (DARK SECTION) -->
+        <section id="section-3" class="mb-12 reveal">
+            <div class="bg-slate-900 rounded-[3rem] p-12 md:p-24 text-white relative overflow-hidden">
+                <div class="absolute -top-32 -left-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-[120px]"></div>
+                <div class="relative z-10">
+                    <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Down Block</span>
+                    <h2 data-el-id="s3-title" class="text-xl md:text-2xl font-bold tracking-tight mb-6">Reverting Changes Safely</h2>
+                    
+                    <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                        <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                            <div class="bg-white/5 rounded-xl border border-white/10 p-5">
+                                <p class="text-slate-300 text-base leading-relaxed italic">The migrate:down section contains the inverse operations of migrate:up, enabling the database to return to its previous state.</p>
+                            </div>
+                            <div class="space-y-3">
+                                <div data-el-id="s3-block-1" class="content-block bg-white/5 rounded-xl border border-white/10 p-4">
+                                    <p class="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Purpose of `migrate:down`</p>
+                                    <ul class="space-y-1.5">
+                                        <li class="flex items-start text-slate-200 text-sm leading-relaxed"><span class="text-indigo-400 mr-2">›</span>Returns the database to its exact prior state.</li>
+                                        <li class="flex items-start text-slate-200 text-sm leading-relaxed"><span class="text-indigo-400 mr-2">›</span>Critical for local branch switching and recovery.</li>
+                                    </ul>
+                                </div>
+                                <div data-el-id="s3-block-2" class="content-block bg-white/5 rounded-xl border border-white/10 p-4">
+                                    <p class="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Practical Constraints</p>
+                                    <ul class="space-y-1.5">
+                                        <li class="flex items-start text-slate-200 text-sm leading-relaxed"><span class="text-indigo-400 mr-2">›</span>Destructive risk: Potential data loss on item drops.</li>
+                                        <li class="flex items-start text-slate-200 text-sm leading-relaxed"><span class="text-indigo-400 mr-2">›</span>Order of operations: Must reverse the "up" sequence.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-white/5 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                            <pre data-el-id="s3-visual-1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-sql">-- migrate:down
+DROP TABLE IF EXISTS gym_locations;</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Best Practices -->
+        <section id="section-4" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Best Practices</span>
+                <h2 data-el-id="s4-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">Reliability & Best Practices</h2>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Migrations must adhere to idempotency and immutability to ensure reliable CI/CD pipelines across all environments.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <div data-el-id="s4-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Data Manipulation (DML)</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Used for one-time "backfilling" of required data.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Wrap in transactions for atomic safety.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s4-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Structural Hygiene</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Idempotency: Use `IF NOT EXISTS` clauses.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Immutability: Never edit a deployed file.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-6 flex items-center justify-center" style="max-height:480px;overflow:hidden;">
+                        <div class="w-full space-y-4">
+                            <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-slate-200">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">1</div>
+                                <div class="flex-grow">
+                                    <p class="text-xs font-bold text-slate-900">Idempotency</p>
+                                    <div class="w-full h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                        <div class="metric-bar h-full bg-emerald-500" data-target="100%" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-slate-200">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">2</div>
+                                <div class="flex-grow">
+                                    <p class="text-xs font-bold text-slate-900">Immutability</p>
+                                    <div class="w-full h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                        <div class="metric-bar h-full bg-indigo-500" data-target="100%" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-slate-200">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">3</div>
+                                <div class="flex-grow">
+                                    <p class="text-xs font-bold text-slate-900">Determinism</p>
+                                    <div class="w-full h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                        <div class="metric-bar h-full bg-blue-500" data-target="100%" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Trade-offs -->
+        <section id="section-5" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Trade-offs</span>
+                <h2 data-el-id="s5-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">Speed vs. Integrity</h2>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Balancing deployment speed with data integrity often requires 'online DDL' techniques to minimize production downtime.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <div data-el-id="s5-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Online DDL Patterns</p>
+                                <ul class="space-y-1">
+                                    <li class="flex items-start text-slate-700 text-xs"><span class="text-indigo-500 mr-2">›</span>Add nullable columns first.</li>
+                                    <li class="flex items-start text-slate-700 text-xs"><span class="text-indigo-500 mr-2">›</span>Backfill in small batches to avoid locks.</li>
+                                    <li class="flex items-start text-slate-700 text-xs"><span class="text-indigo-500 mr-2">›</span>Apply constraints only after population.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s5-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-1">Comparison</p>
+                                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                    <div class="bg-white p-2 rounded border border-slate-200"><span class="font-bold">UP:</span> Adds, Alters, Inserts. Low Data Risk.</div>
+                                    <div class="bg-white p-2 rounded border border-slate-200"><span class="font-bold">DOWN:</span> Drops, Deletes. High Data Risk.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div data-el-id="s5-visual-1" class="overflow-x-auto rounded-xl"><style>.vis-table table{width:100%;border-collapse:collapse}.vis-table th{background:#f1f5f9;border:1px solid #e2e8f0;padding:8px 12px;text-align:left;font-size:13px;font-weight:600;color:#475569}.vis-table td{border:1px solid #e2e8f0;padding:8px 12px;font-size:13px;color:#334155}.vis-table tr:hover td{background:#f8fafc}.bg-slate-900 .vis-table th{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.1);color:#e2e8f0}.bg-slate-900 .vis-table td{border-color:rgba(255,255,255,0.1);color:#cbd5e1}.bg-slate-900 .vis-table tr:hover td{background:rgba(255,255,255,0.05)}</style><div class="vis-table"><table><thead><tr><th>Feature</th><th>`migrate:up`</th><th>`migrate:down`</th></tr></thead><tbody><tr><td>Purpose</td><td>Applies changes/upgrades schema.</td><td>Reverts changes/rollbacks schema.</td></tr><tr><td>Common SQL</td><td><code>CREATE</code>, <code>ALTER</code>, <code>INSERT</code>.</td><td><code>DROP</code>, <code>DELETE</code>.</td></tr><tr><td>Execution</td><td>Runs during deployment or <code>up</code> command.</td><td>Runs during rollback or <code>down</code> command.</td></tr><tr><td>Data Risk</td><td>Usually low (adding/expanding).</td><td>High (potential data loss on drop).</td></tr></tbody></table></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recap -->
+        <div class="max-w-5xl mx-auto px-6 mb-24 reveal">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span>
+            <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-2">Key Takeaways</h2>
+            <p class="text-slate-500 mb-8 max-w-2xl">A structured migration workflow ensures that database evolution is trackable, reversible, and production-safe.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Basics</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Migrations act as a version control system for database schema evolution.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Up Block</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Defines the DDL and DML to advance schema to the next version.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Down Block</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Provides the inverse operation to revert the database to its prior state.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Reliability</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Safety comes from idempotency, immutability, and deterministic SQL functions.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="py-12 border-t border-slate-200 text-center">
+        <p id="gen-timestamp" class="text-slate-500 text-sm mb-1"></p>
+        <p class="text-slate-400 text-xs uppercase tracking-widest font-semibold">Generated by Altgan</p>
+    </footer>
+
+    <script>
+        // 1. Initialize first nav link
+        const firstNavLink = document.querySelector('.nav-link[data-section="section-1"]');
+        if (firstNavLink) firstNavLink.classList.add('active');
+
+        // 2. Nav highlighting
+        const navObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+                    const sectionId = entry.target.id;
+                    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                    const activeLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+                    if (activeLink) activeLink.classList.add('active');
+                }
+            });
+        }, { threshold: 0.4, rootMargin: '0px 0px -40% 0px' });
+        document.querySelectorAll('section[id^="section-"]').forEach(sec => navObserver.observe(sec));
+
+        // 3. Reveal animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // 4. Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => { 
+                e.preventDefault(); 
+                const target = document.querySelector(a.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth' }); 
+            });
+        });
+
+        // 5. Timestamp
+        document.getElementById('gen-timestamp').textContent = "Generated on: " + new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // 6. Metric bars
+        const barObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.width = entry.target.dataset.target;
+                }
+            });
+        }, { threshold: 0.3 });
+        document.querySelectorAll('.metric-bar').forEach(bar => barObserver.observe(bar));
+
+        // Interactive Helpers
+        function toggleAccordion(id) {
+            const body = document.getElementById(id);
+            const icon = document.getElementById(id + '-icon');
+            body.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        }
+    </script>
+</body>
+</html>

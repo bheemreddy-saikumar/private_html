@@ -1,0 +1,563 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Invoice &amp; Invoice Line Item Data Models</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Invoice &amp; Invoice Line Item Data Models</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Invoice &amp; Invoice Line Item Data Models</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Invoice and Invoice Item Architecture</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Invoices group transactions; items record individual charges.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="180" y="40" width="460" height="440" rx="18" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect><rect x="204" y="64" width="412" height="60" rx="10" fill="#eef2ff"></rect><text x="228" y="102" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Invoice</text><rect x="204" y="152" width="412" height="76" rx="12" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2"></rect><text x="228" y="198" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Signup Fee</text><text x="592" y="198" text-anchor="end" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">$50</text><rect x="204" y="248" width="412" height="76" rx="12" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2"></rect><text x="228" y="294" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">First Month</text><text x="592" y="294" text-anchor="end" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">$45</text><line x1="204" y1="356" x2="616" y2="356" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></line><text x="228" y="408" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#64748b">Total</text><text x="592" y="408" text-anchor="end" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">$95</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-1" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Invoice Header</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Parent container for billing</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Tracks member, status &amp; type</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="100" y="40" width="620" height="440" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect><rect x="102" y="42" width="616" height="66" rx="14" fill="#eef2ff"></rect><text x="130" y="84" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Invoice</text><text x="226" y="84" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Header Container</text><rect x="560" y="56" width="134" height="38" rx="19" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect><text x="627" y="81" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">Pending</text><rect x="130" y="130" width="168" height="74" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="146" y="158" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Member</text><text x="146" y="188" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">#cus_8492</text><rect x="318" y="130" width="180" height="74" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="334" y="158" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Location</text><text x="334" y="188" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Downtown</text><rect x="518" y="130" width="172" height="74" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect><text x="534" y="158" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Type</text><text x="534" y="188" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Membership</text><line x1="130" y1="230" x2="690" y2="230" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"></line><text x="130" y="266" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Nested Line Items (InvoiceItem)</text><rect x="130" y="286" width="560" height="70" rx="10" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="2"></rect><text x="154" y="329" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Signup Fee</text><text x="664" y="329" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">$50.00</text><rect x="130" y="372" width="560" height="70" rx="10" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="2"></rect><text x="154" y="415" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">First Month Pro-rate</text><text x="664" y="415" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">$45.00</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Invoice Item Breakdown</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  
+  <rect x="50" y="40" width="720" height="440" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  
+  
+  <rect x="80" y="65" width="120" height="38" rx="19" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.5"></rect>
+  <text x="140" y="91" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">Invoice</text>
+  <text x="220" y="91" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Header: Member • Status</text>
+
+  
+  <rect x="80" y="125" width="660" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"></rect>
+  <text x="105" y="160" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Signup Fee</text>
+  <text x="715" y="160" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">$50.00</text>
+
+  
+  <rect x="80" y="205" width="660" height="245" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="105" y="244" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Invoice Item</text>
+
+  
+  
+  <rect x="105" y="270" width="110" height="150" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="160" y="312" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Base</text>
+  <text x="160" y="365" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#0f172a">$50</text>
+
+  
+  <text x="232" y="352" text-anchor="middle" font-family="Inter, sans-serif" font-size="30" font-weight="700" fill="#64748b">−</text>
+
+  
+  <rect x="250" y="270" width="115" height="150" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"></rect>
+  <text x="307" y="312" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#ef4444">Discount</text>
+  <text x="307" y="365" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#ef4444">$10</text>
+
+  
+  <text x="382" y="352" text-anchor="middle" font-family="Inter, sans-serif" font-size="30" font-weight="700" fill="#64748b">+</text>
+
+  
+  <rect x="400" y="270" width="105" height="150" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="452" y="312" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Tax</text>
+  <text x="452" y="365" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#0f172a">$5</text>
+
+  
+  <text x="522" y="352" text-anchor="middle" font-family="Inter, sans-serif" font-size="30" font-weight="700" fill="#4f46e5">=</text>
+
+  
+  <rect x="540" y="270" width="175" height="150" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="627" y="312" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Total Amount</text>
+  <text x="627" y="368" text-anchor="middle" font-family="Inter, sans-serif" font-size="34" font-weight="800" fill="#4f46e5">$45</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-3"><div data-el-id="s1-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">One Event, Multiple Charges</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="200" width="230" height="120" rx="16" fill="#f8fafc" stroke="#64748b" stroke-width="2"></rect>
+  <rect x="105" y="218" width="140" height="30" rx="15" fill="#e2e8f0"></rect>
+  <text x="175" y="240" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">TRIGGER</text>
+  <text x="175" y="286" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Member Signup</text>
+
+  
+  <line x1="290" y1="260" x2="380" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="390" y="65" width="370" height="390" rx="20" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+
+  
+  <text x="425" y="118" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">Invoice</text>
+  <rect x="655" y="96" width="80" height="30" rx="8" fill="#eef2ff"></rect>
+  <text x="695" y="118" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">#1042</text>
+  <line x1="415" y1="145" x2="735" y2="145" stroke="#cbd5e1" stroke-width="1.5"></line>
+
+  
+  <rect x="415" y="170" width="320" height="80" rx="12" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2"></rect>
+  <rect x="415" y="170" width="8" height="80" rx="4" fill="#4f46e5"></rect>
+  <text x="440" y="218" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Signup Fee</text>
+  <text x="710" y="218" text-anchor="end" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">$50</text>
+
+  
+  <rect x="415" y="270" width="320" height="80" rx="12" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2"></rect>
+  <rect x="415" y="270" width="8" height="80" rx="4" fill="#4f46e5"></rect>
+  <text x="440" y="318" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Pro-rated Month</text>
+  <text x="710" y="318" text-anchor="end" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">$45</text>
+
+  
+  <line x1="415" y1="375" x2="735" y2="375" stroke="#cbd5e1" stroke-width="1.5"></line>
+  <text x="440" y="420" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Total Due</text>
+  <text x="710" y="420" text-anchor="end" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">$95</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-4"><div data-el-id="s1-block-4" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Granular Line Items</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-4-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <rect x="180" y="50" width="460" height="400" rx="18" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <path d="M 180,68 A 18,18 0 0,1 198,50 L 622,50 A 18,18 0 0,1 640,68 L 640,125 L 180,125 Z" fill="#4f46e5"></path>
+  <text x="215" y="98" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#ffffff">Invoice</text>
+  <text x="605" y="98" text-anchor="end" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#c7d2fe">$95 Total</text>
+  
+  <rect x="210" y="155" width="400" height="90" rx="12" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="2.5"></rect>
+  <text x="245" y="210" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Signup Fee</text>
+  <text x="575" y="210" text-anchor="end" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">$50</text>
+  
+  <rect x="210" y="265" width="400" height="90" rx="12" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="2.5"></rect>
+  <text x="245" y="320" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Pro-rated Month</text>
+  <text x="575" y="320" text-anchor="end" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">$45</text>
+  
+  <text x="410" y="405" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">Separate financial events</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;invoice and invoice item architecture</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Invoice Generation and Key Logic</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Four business triggers drive all automated and manual invoice generation.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <g id="triggers">
+    
+    <rect x="70" y="75" width="200" height="54" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="98" cy="102" r="6" fill="#4f46e5"></circle>
+    <text x="116" y="109" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Signup</text>
+
+    
+    <rect x="70" y="165" width="200" height="54" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="98" cy="192" r="6" fill="#4f46e5"></circle>
+    <text x="116" y="199" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Recurring</text>
+
+    
+    <rect x="70" y="255" width="200" height="54" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="98" cy="282" r="6" fill="#4f46e5"></circle>
+    <text x="116" y="289" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Manual Fee</text>
+
+    
+    <rect x="70" y="345" width="200" height="54" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="98" cy="372" r="6" fill="#4f46e5"></circle>
+    <text x="116" y="379" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Split Payment</text>
+  </g>
+
+  
+  <path d="M 270 102 C 375 102, 385 190, 474 190" fill="none" stroke="#818cf8" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+  <path d="M 270 192 C 360 192, 395 210, 474 210" fill="none" stroke="#818cf8" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+  <path d="M 270 282 C 360 282, 395 230, 474 230" fill="none" stroke="#818cf8" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+  <path d="M 270 372 C 375 372, 385 250, 474 250" fill="none" stroke="#818cf8" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  
+  <g id="invoice-target">
+    <rect x="480" y="75" width="270" height="324" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+    <path d="M 480 91 A 16 16 0 0 1 496 75 L 734 75 A 16 16 0 0 1 750 91 L 750 135 L 480 135 Z" fill="#4f46e5"></path>
+    <text x="615" y="113" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Invoice</text>
+
+    
+    <rect x="504" y="155" width="222" height="46" rx="8" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect>
+    <text x="522" y="184" font-family="Inter, sans-serif" font-size="20" fill="#4f46e5">Line Items</text>
+
+    
+    <rect x="504" y="215" width="222" height="46" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"></rect>
+    <text x="522" y="244" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Due Date</text>
+
+    
+    <rect x="504" y="285" width="222" height="54" rx="8" fill="#f1f5f9"></rect>
+    <text x="522" y="319" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Total</text>
+    <text x="706" y="319" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">$95.00</text>
+  </g>
+
+  
+  <text x="410" y="465" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">All triggers flow into dynamic invoice generation</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="70" width="310" height="90" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="82" cy="110" r="8" fill="#4f46e5"></circle>
+  <path d="M 72 126 C 72 119 76 117 82 117 C 88 117 92 119 92 126" stroke="#4f46e5" stroke-width="2.5" fill="none"></path>
+  <line x1="97" y1="106" x2="97" y2="114" stroke="#10b981" stroke-width="2"></line>
+  <line x1="93" y1="110" x2="101" y2="110" stroke="#10b981" stroke-width="2"></line>
+  <text x="116" y="123" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Membership Signup</text>
+
+  
+  <rect x="50" y="200" width="310" height="90" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <path d="M 76 245 A 11 11 0 1 1 80 254" fill="none" stroke="#4f46e5" stroke-width="2.5"></path>
+  <polyline points="74,255 81,255 80,248" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+  <text x="116" y="253" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Recurring Billing</text>
+
+  
+  <rect x="50" y="330" width="310" height="90" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="75" y="367" width="16" height="20" rx="3" fill="none" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <line x1="79" y1="373" x2="87" y2="373" stroke="#4f46e5" stroke-width="2"></line>
+  <line x1="79" y1="379" x2="87" y2="379" stroke="#4f46e5" stroke-width="2"></line>
+  <text x="116" y="383" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Manual Charges</text>
+
+  
+  <path d="M 360 115 C 420 115, 430 176, 484 176" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  <path d="M 360 245 L 484 245" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  <path d="M 360 375 C 420 375, 430 316, 484 316" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  
+  <rect x="490" y="70" width="280" height="350" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+
+  
+  <rect x="506" y="86" width="248" height="46" rx="8" fill="#4f46e5"></rect>
+  <text x="630" y="117" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Invoice</text>
+
+  
+  <rect x="506" y="152" width="248" height="48" rx="8" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="524" y="183" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">$50</text>
+  <text x="578" y="183" font-family="Inter, sans-serif" font-size="20" fill="#0f172a">Signup</text>
+
+  
+  <rect x="506" y="222" width="248" height="48" rx="8" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="524" y="253" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">$45</text>
+  <text x="578" y="253" font-family="Inter, sans-serif" font-size="20" fill="#0f172a">Plan</text>
+
+  
+  <rect x="506" y="292" width="248" height="48" rx="8" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="524" y="323" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">$15</text>
+  <text x="578" y="323" font-family="Inter, sans-serif" font-size="20" fill="#0f172a">Late Fee</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Dynamic Total Calculation</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1"># From gms_be/gmsshared/src/models/invoice.py</span>
+<span class="cl" data-line="2">@property</span>
+<span class="cl" data-line="3">def total_amount(self):</span>
+<span class="cl" data-line="4">    return sum([item.total_amount for item in self.invoice_items </span>
+<span class="cl" data-line="5">                if item.invoice_item_status_type_id != InvoiceItemStatusTypeEnum.CANCELLED.value])</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-3"><div data-el-id="s2-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Dynamic Due Date</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-3-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1"># From gms_be/gmsshared/src/models/invoice.py</span>
+<span class="cl" data-line="2">@property</span>
+<span class="cl" data-line="3">def due_date(self):</span>
+<span class="cl" data-line="4">    items_with_due_date = [item for item in self.invoice_items if item.due_date is not None]</span>
+<span class="cl" data-line="5">    if not items_with_due_date:</span>
+<span class="cl" data-line="6">        return None</span>
+<span class="cl" data-line="7">    return max(items_with_due_date, key=lambda item: item.due_date).due_date</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-4"><div data-el-id="s2-block-4" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Dynamic Total Calculation</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-4-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="140" y="35" width="540" height="450" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect><rect x="140" y="35" width="540" height="60" rx="16" fill="#f1f5f9"></rect><rect x="140" y="75" width="540" height="20" fill="#f1f5f9"></rect><text x="175" y="74" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Invoice</text><rect x="170" y="115" width="480" height="64" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect><text x="195" y="154" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Signup Fee</text><text x="625" y="154" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">+ $50.00</text><rect x="170" y="195" width="480" height="64" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect><text x="195" y="234" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">First Month</text><text x="625" y="234" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">+ $45.00</text><rect x="170" y="275" width="480" height="64" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 4"></rect><text x="195" y="314" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#94a3b8">Locker Fee</text><rect x="330" y="291" width="124" height="34" rx="8" fill="#fee2e2"></rect><text x="392" y="315" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">Cancelled</text><text x="625" y="314" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#94a3b8">$15.00</text><line x1="555" y1="308" x2="630" y2="308" stroke="#ef4444" stroke-width="2.5"></line><line x1="170" y1="360" x2="650" y2="360" stroke="#cbd5e1" stroke-width="2"></line><rect x="170" y="380" width="480" height="74" rx="12" fill="#0f172a"></rect><text x="200" y="426" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#ffffff">Dynamic Total</text><text x="625" y="428" text-anchor="end" font-family="Inter, sans-serif" font-size="32" font-weight="700" fill="#10b981">$95.00</text></svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;invoice generation and key logic</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Handling Complexities and Trade-offs</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Audit integrity demands freeze shifts, immutable totals, and voiding over deletion.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  
+  <rect x="40" y="80" width="220" height="350" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="150" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Freeze Shift</text>
+  
+  
+  <line x1="65" y1="230" x2="235" y2="230" stroke="#cbd5e1" stroke-width="3"></line>
+  <circle cx="90" cy="230" r="7" fill="#4f46e5"></circle>
+  <rect x="110" y="206" width="60" height="24" rx="12" fill="#c7d2fe"></rect>
+  <text x="140" y="223" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">+14d</text>
+  <path d="M 175 230 L 225 230" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></path>
+  <circle cx="225" cy="230" r="7" fill="#4f46e5"></circle>
+  <text x="150" y="370" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">defers billing</text>
+
+  
+  <rect x="300" y="80" width="220" height="350" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="410" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Locked Totals</text>
+  
+  
+  <rect x="330" y="200" width="160" height="56" rx="10" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  
+  <rect x="348" y="226" width="22" height="18" rx="3" fill="#4f46e5"></rect>
+  <path d="M 353 226 V 219 A 6 6 0 0 1 365 219 V 226" fill="none" stroke="#4f46e5" stroke-width="3"></path>
+  <text x="430" y="236" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">$95.00</text>
+  <text x="410" y="370" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">persisted item</text>
+
+  
+  <rect x="560" y="80" width="220" height="350" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="670" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Void Ledger</text>
+  
+  
+  <rect x="600" y="195" width="140" height="36" rx="8" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="670" y="220" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">VOID</text>
+  <path d="M 670 236 L 670 270" stroke="#0f172a" stroke-width="3" marker-end="url(#arrow-dark)"></path>
+  
+  
+  <ellipse cx="670" cy="275" rx="34" ry="10" fill="#ffffff" stroke="#0f172a" stroke-width="2"></ellipse>
+  <path d="M 636 275 v 24 a 34 10 0 0 0 68 0 v -24" fill="#ffffff" stroke="#0f172a" stroke-width="2"></path>
+  
+  <text x="670" y="370" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">never delete</text>
+
+  <defs>
+    <marker id="arrow-primary" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arrow-dark" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#0f172a"></path>
+    </marker>
+  </defs>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Freeze Adjustment</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"></path>
+    </marker>
+  </defs>
+
+  
+  <line x1="80" y1="270" x2="740" y2="270" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"></line>
+
+  
+  <circle cx="140" cy="270" r="10" fill="#4f46e5"></circle>
+  <text x="140" y="225" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Last Invoice</text>
+  <text x="140" y="315" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Day 0</text>
+
+  
+  <rect x="250" y="242" width="160" height="56" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2" stroke-dasharray="6 4"></rect>
+  <text x="330" y="277" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#475569">14d Freeze</text>
+
+  
+  <line x1="470" y1="210" x2="470" y2="330" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"></line>
+  <circle cx="470" cy="270" r="8" fill="#cbd5e1"></circle>
+  <text x="470" y="190" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#94a3b8">Scheduled</text>
+  <text x="470" y="360" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#94a3b8">Day 30</text>
+
+  
+  <path d="M 485 248 C 525 195, 610 195, 650 248" fill="none" stroke="#f59e0b" stroke-width="3" marker-end="url(#arrow)"></path>
+  <rect x="536" y="174" width="74" height="34" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect>
+  <text x="573" y="198" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#d97706">+14d</text>
+
+  
+  <circle cx="670" cy="270" r="20" fill="#c7d2fe" opacity="0.6">
+    <animate attributeName="r" values="18;24;18" dur="2.5s" repeatCount="indefinite"></animate>
+  </circle>
+  <circle cx="670" cy="270" r="11" fill="#4f46e5"></circle>
+  <line x1="670" y1="148" x2="670" y2="250" stroke="#4f46e5" stroke-width="2" stroke-dasharray="4 4"></line>
+  <rect x="580" y="76" width="180" height="72" rx="12" fill="#4f46e5"></rect>
+  <text x="670" y="106" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Next Invoice</text>
+  <text x="670" y="132" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#c7d2fe">Day 44</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Persisted Item Totals</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <rect x="60" y="60" width="380" height="400" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="96" y="112" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Invoice</text>
+  
+  <rect x="280" y="82" width="136" height="42" rx="21" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="348" y="110" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Dynamic</text>
+
+  <rect x="90" y="152" width="320" height="84" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="120" y="202" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">$50 Fee</text>
+
+  <rect x="90" y="260" width="320" height="150" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <rect x="116" y="292" width="180" height="48" rx="10" fill="#4f46e5"></rect>
+  <text x="206" y="324" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">$45 Locked</text>
+  
+  <path d="M 334 306 a 8 8 0 0 1 16 0 v 6 h -16 z" fill="none" stroke="#4f46e5" stroke-width="2.5"></path>
+  <rect x="328" y="312" width="28" height="22" rx="4" fill="#4f46e5"></rect>
+  <circle cx="342" cy="321" r="3" fill="#ffffff"></circle>
+
+  <rect x="510" y="152" width="250" height="110" rx="14" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="635" y="198" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#b45309">Future Tax</text>
+  <text x="635" y="234" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#d97706">+2% Rate</text>
+
+  <line x1="510" y1="290" x2="435" y2="330" stroke="#ef4444" stroke-width="3" stroke-dasharray="8 6"></line>
+  
+  <circle cx="435" cy="330" r="16" fill="#fee2e2" stroke="#ef4444" stroke-width="2.5"></circle>
+  <line x1="427" y1="322" x2="443" y2="338" stroke="#ef4444" stroke-width="2.5"></line>
+  <line x1="443" y1="322" x2="427" y2="338" stroke="#ef4444" stroke-width="2.5"></line>
+
+  <rect x="510" y="300" width="250" height="80" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="635" y="350" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Audit Intact</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div data-el-id="s3-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">The Void Pattern</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="70" y="80" width="300" height="340" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="100" y="130" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Invoice #1042</text>
+
+  
+  <rect x="100" y="160" width="105" height="38" rx="19" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="152" y="186" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">VOID</text>
+
+  
+  <rect x="100" y="230" width="240" height="80" rx="10" fill="#f8fafc" stroke="#e2e8f0"></rect>
+  <text x="120" y="264" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">void_by</text>
+  <text x="120" y="294" font-family="Inter, sans-serif" font-size="20" fill="#64748b">void_datetime</text>
+
+  
+  <line x1="370" y1="250" x2="480" y2="250" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow)"></line>
+  <text x="425" y="230" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">triggers</text>
+
+  
+  <path d="M 495 130 A 110 25 0 0 0 715 130 V 350 A 110 25 0 0 1 495 350 Z" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"></path>
+  <ellipse cx="605" cy="130" rx="110" ry="25" fill="#f1f5f9" stroke="#0f172a" stroke-width="2.5"></ellipse>
+  <text x="605" y="137" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Ledger</text>
+
+  
+  <path d="M 495 230 A 110 25 0 0 0 715 230" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"></path>
+  <text x="605" y="195" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Original Charge</text>
+  <text x="605" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Void Reversal</text>
+
+  
+  <text x="605" y="415" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Immutable History</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-4"><div data-el-id="s3-block-4" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Obligation to Settlement</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-4-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="90" width="320" height="340" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <rect x="60" y="90" width="320" height="56" rx="16" fill="#eef2ff"></rect>
+  <rect x="60" y="130" width="320" height="16" fill="#eef2ff"></rect>
+  <text x="220" y="126" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Obligation</text>
+
+  
+  <rect x="86" y="168" width="268" height="60" rx="10" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="2"></rect>
+  <text x="110" y="205" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">$50 Signup</text>
+
+  
+  <rect x="86" y="244" width="268" height="60" rx="10" fill="#f1f5f9" stroke="#c7d2fe" stroke-width="2"></rect>
+  <text x="110" y="281" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">$45 Pro-rate</text>
+
+  
+  <line x1="86" y1="324" x2="354" y2="324" stroke="#cbd5e1" stroke-width="2"></line>
+  <text x="220" y="372" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Total: $95</text>
+
+  
+  <text x="425" y="236" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">settles</text>
+  <line x1="396" y1="260" x2="454" y2="260" stroke="#4f46e5" stroke-width="4" marker-end="url(#arrow)"></line>
+  <circle cx="400" cy="260" r="5" fill="#4f46e5">
+    <animate attributeName="cx" values="400;448;400" dur="2.4s" repeatCount="indefinite"></animate>
+  </circle>
+
+  
+  <rect x="470" y="90" width="290" height="340" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="615" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Settlement</text>
+
+  
+  <rect x="510" y="180" width="210" height="60" rx="30" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="615" y="218" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#4f46e5">Payment: $95</text>
+
+  
+  <rect x="525" y="274" width="180" height="54" rx="27" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="615" y="309" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#10b981">Reconciled</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;handling complexities and trade-offs</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">Invoice and Invoice Item Architecture</p><p class="text-slate-500 text-sm mt-0.5">Invoices group transactions; items record individual charges.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Invoice Generation and Key Logic</p><p class="text-slate-500 text-sm mt-0.5">Four business triggers drive all automated and manual invoice generation.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Handling Complexities and Trade-offs</p><p class="text-slate-500 text-sm mt-0.5">Audit integrity demands freeze shifts, immutable totals, and voiding over deletion.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

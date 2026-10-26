@@ -1,0 +1,136 @@
+{
+  "skill_id": "6a4408afe15b997d713c4b89",
+  "skill_name": "Database Schema & Migrations",
+  "topic_id": "6a4408b6e15b997d713c4ba0",
+  "topic_name": "Running Alembic Migrations in Production",
+  "topic_track": "theory",
+  "content_version": 1,
+  "html_url": null,
+  "preview_url": null,
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 1,
+  "voiceover_data": {
+    "topic_name": "Running Alembic Migrations in Production",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-production-migrations-high-stakes",
+        "section_number": 1,
+        "title": "Production Migrations: High Stakes",
+        "narration": "Okay, now that we've covered how migration scripts work with their up and down blocks, we need to talk about what happens when these migrations actually run against live databases, especially with real customer traffic involved. In production, database migrations are the highest-risk phase of any deployment, demanding a shift from developer convenience to absolute operational safety. The core goal in production is to apply schema changes without causing outages, corrupting data, or locking critical tables for too long. This means we need to move beyond just typing 'alembic upgrade head'. We need a more solid, automated process. We'll look at how to get migrations into your C I/C D pipeline, how to use strategies for zero downtime, and how to set up important operational safeguards. So, remember, production migrations are all about prioritizing operational safety.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Okay, now that we've covered how migration scripts work with their up and down blocks, we need to talk about what happens when these migrations actually run against live databases, especially with real customer traffic involved."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In production, database migrations are the highest-risk phase of any deployment, demanding a shift from developer convenience to absolute operational safety. The core goal in production is to apply schema changes without causing outages, corrupting data, or locking critical tables for too long."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "This means we need to move beyond just typing 'alembic upgrade head'. We need a more solid, automated process. We'll look at how to get migrations into your C I/C D pipeline, how to use strategies for zero downtime, and how to set up important operational safeguards. So, remember, production migrations are all about prioritizing operational safety."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-ci-cd-integration-is-key",
+        "section_number": 2,
+        "title": "CI/CD Integration is Key",
+        "narration": "So, we know production migrations carry risk. The first step to lower that risk is to stop treating migrations as a manual task. Instead, make them an automated part of your deployment pipeline, with checks in place. Always bundle your migrations with your application code and version them together. A common production setup is to build a Docker image that already includes the latest migration scripts. Then, before the new application code even starts running, a special one-off container runs the Alembic upgrade command to apply any necessary schema changes. Only after that migration step is successful does your orchestration system, like Kubernetes or ECS, start its rolling update of the A P I services. This makes sure your application code and database schema are always in sync. The command you see here is how you'd run 'alembic upgrade head' from inside a container, pointing to your configuration file. This automated, step-by-step approach is key for safe production deployments. So, the main idea is to weave migrations into your automated deployment pipeline.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So, we know production migrations carry risk."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "The first step to lower that risk is to stop treating migrations as a manual task. Instead, make them an automated part of your deployment pipeline, with checks in place. Always bundle your migrations with your application code and version them together. A common production setup is to build a Docker image that already includes the latest migration scripts."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Then, before the new application code even starts running, a special one-off container runs the Alembic upgrade command to apply any necessary schema changes. Only after that migration step is successful does your orchestration system, like Kubernetes or ECS, start its rolling update of the A P I services."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "This makes sure your application code and database schema are always in sync. The command you see here is how you'd run 'alembic upgrade head' from inside a container, pointing to your configuration file. This automated, step-by-step approach is key for safe production deployments. So, the main idea is to weave migrations into your automated deployment pipeline."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-strategies-for-zero-downtime",
+        "section_number": 3,
+        "title": "Strategies for Zero Downtime",
+        "narration": "The main challenge during migrations is the version gap \n\n– the period where old and new code or schemas temporarily coexist. To avoid downtime, migrations must be backward compatible. This often involves a multi-stage approach, like the expand and contract pattern. Instead of renaming or deleting columns directly, use a phased approach. First, add the new column. The old code ignores it, but the new code writes to both. Then, backfill data from the old to the new column. Next, update the code to read only from the new column. Finally, after a period of safe operation, remove the old column. This gradual transition minimizes risk. Another crucial point is avoiding table locks, especially on large tables, because they can bring your application to a halt. When creating indexes, it's best to use 'CREATE INDEX CONCURRENTLY' in Postgres; this allows reads and writes to keep happening. If you're adding columns with defaults, do it in stages: first add a nullable column, then apply the default or not-null constraint in a separate step. So, the key takeaway is to use multi-stage, backward-compatible changes and concurrent operations to prevent downtime.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "The main challenge during migrations is the version gap \n\n– the period where old and new code or schemas temporarily coexist. To avoid downtime, migrations must be backward compatible."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "This often involves a multi-stage approach, like the expand and contract pattern. Instead of renaming or deleting columns directly, use a phased approach. First, add the new column. The old code ignores it, but the new code writes to both."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Then, backfill data from the old to the new column. Next, update the code to read only from the new column. Finally, after a period of safe operation, remove the old column. This gradual transition minimizes risk."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Another crucial point is avoiding table locks, especially on large tables, because they can bring your application to a halt. When creating indexes, it's best to use 'CREATE INDEX CONCURRENTLY' in Postgres; this allows reads and writes to keep happening."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "If you're adding columns with defaults, do it in stages: first add a nullable column, then apply the default or not-null constraint in a separate step. So, the key takeaway is to use multi-stage, backward-compatible changes and concurrent operations to prevent downtime."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-rollbacks-and-operational-guardrails",
+        "section_number": 4,
+        "title": "Rollbacks and Operational Guardrails",
+        "narration": "While migration scripts have 'migrate:down' or 'downgrade' paths, rolling back in production is rarely a simple command. Destructive changes like dropping columns mean data is gone, and a schema rollback with new code running will likely crash your application. This is why the 'forward' rollback, or 'roll forward' strategy, is often preferred. In a roll-forward approach, you fix production issues by deploying a new migration rather than reverting. To ensure stability, implement operational guardrails: ensure transactional D D L support for atomic migrations, set 'lock timeout' in environment dot py to fail fast if locks are held too long, and break large data migrations into smaller batches. Crucially, always have recent automated backups before running any migrations. Finally, robust monitoring and visibility are essential. Configure your environment dot py to log the specific migration ID being applied. This helps in diagnosing issues if a migration stalls, allowing you to identify the exact sequel statement causing the problem. So, the key idea is to automate migrations, prioritize backward compatibility, manage locks carefully, and prefer rolling forward over complex rollbacks. With these strategies in place, you can confidently manage your database schema changes in production. So, the main idea is to use automation, backward compatibility, careful lock management, and a roll-forward approach for safe production deployments.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "While migration scripts have 'migrate:down' or 'downgrade' paths, rolling back in production is rarely a simple command."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Destructive changes like dropping columns mean data is gone, and a schema rollback with new code running will likely crash your application. This is why the 'forward' rollback, or 'roll forward' strategy, is often preferred. In a roll-forward approach, you fix production issues by deploying a new migration rather than reverting."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "To ensure stability, implement operational guardrails: ensure transactional D D L support for atomic migrations, set 'lock timeout' in environment dot py to fail fast if locks are held too long, and break large data migrations into smaller batches. Crucially, always have recent automated backups before running any migrations."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "Finally, robust monitoring and visibility are essential. Configure your environment dot py to log the specific migration ID being applied. This helps in diagnosing issues if a migration stalls, allowing you to identify the exact sequel statement causing the problem. So, the key idea is to automate migrations, prioritize backward compatibility, manage locks carefully, and prefer rolling forward over complex rollbacks."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "With these strategies in place, you can confidently manage your database schema changes in production. So, the main idea is to use automation, backward compatibility, careful lock management, and a roll-forward approach for safe production deployments."
+          }
+        ]
+      }
+    ]
+  }
+}

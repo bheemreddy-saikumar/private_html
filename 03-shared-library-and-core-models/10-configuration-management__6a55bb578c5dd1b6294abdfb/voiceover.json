@@ -1,0 +1,108 @@
+{
+  "skill_id": "6a55b84f4eac614f602a2293",
+  "skill_name": "Shared Library and Core Models",
+  "topic_id": "6a55bb578c5dd1b6294abdfb",
+  "topic_name": "Configuration Management",
+  "topic_track": "project",
+  "content_version": 17,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a55bb578c5dd1b6294abdfb/g8/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a55bb578c5dd1b6294abdfb/g17/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 17,
+  "voiceover_data": {
+    "topic_name": "Configuration Management",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-12-factor-app-environment-configuration",
+        "section_number": 1,
+        "title": "12-Factor App: Environment Configuration",
+        "narration": "Now that we've standardized our A P I response envelopes and exception formats, let's establish a uniform way to inject critical operational settings like database URIs, broker endpoints, and secret keys across our entire fleet. Every shared component, from database layers to authentication logic, requires external values like database URIs, secret keys, or broker connection strings to function. We avoid the nightmare of managing numerous configuration files by using a single, shared configuration surface, forcing the entire fleet to agree on environment settings. We adhere to the twelve-factor app principle: configuration lives in the environment, not in the code. This means the exact same Docker image can run in development, staging, and production, with only the environment variables changing. In our project, this is centralized in the shared library. The core of this is a single settings definition for the entire fleet. Every process, whether it's the auth service, members service, or batch worker, reads the same configuration object. It defines every setting the fleet needs and pulls each one from environment variables. So the key idea is that one shared settings definition, used by every process, manages the fleet's settings.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we've standardized our A P I response envelopes and exception formats, let's establish a uniform way to inject critical operational settings like database URIs, broker endpoints, and secret keys across our entire fleet."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Every shared component, from database layers to authentication logic, requires external values like database URIs, secret keys, or broker connection strings to function. We avoid the nightmare of managing numerous configuration files by using a single, shared configuration surface, forcing the entire fleet to agree on environment settings."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "We adhere to the twelve-factor app principle: configuration lives in the environment, not in the code. This means the exact same Docker image can run in development, staging, and production, with only the environment variables changing. In our project, this is centralized in the shared library."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "The core of this is a single settings definition for the entire fleet. Every process, whether it's the auth service, members service, or batch worker, reads the same configuration object. It defines every setting the fleet needs and pulls each one from environment variables. So the key idea is that one shared settings definition, used by every process, manages the fleet's settings."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-type-coercion-and-fail-fast-initialization",
+        "section_number": 2,
+        "title": "Type Coercion and Fail-Fast Initialization",
+        "narration": "Since environment variables are always strings, we must convert them to their intended types upon retrieval, and we do this with a fail-fast approach to catch errors early. Environment variables are always strings. If we need a number or a true-or-false value, we must convert it on startup. Some critical settings, like how strongly passwords are hashed, are deliberately given no default value at all. This is a deliberate design choice for fail-fast initialization. If one of those settings is missing, the conversion fails and the service stops immediately on startup. It's far better for a container to fail to start than to run with missing critical configuration. True-or-false settings need a little more care, because environment variables have no real true-or-false type. Text like 'True' or 'False' from the settings file has to be turned into a real true-or-false value, so that switches like database query logging are read correctly. So the key idea is that missing values trigger immediate failure rather than hidden errors later.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Since environment variables are always strings, we must convert them to their intended types upon retrieval, and we do this with a fail-fast approach to catch errors early."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Environment variables are always strings. If we need a number or a true-or-false value, we must convert it on startup. Some critical settings, like how strongly passwords are hashed, are deliberately given no default value at all."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "This is a deliberate design choice for fail-fast initialization. If one of those settings is missing, the conversion fails and the service stops immediately on startup. It's far better for a container to fail to start than to run with missing critical configuration."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "True-or-false settings need a little more care, because environment variables have no real true-or-false type. Text like 'True' or 'False' from the settings file has to be turned into a real true-or-false value, so that switches like database query logging are read correctly. So the key idea is that missing values trigger immediate failure rather than hidden errors later."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-trade-offs-documentation-and-evolution",
+        "section_number": 3,
+        "title": "Trade-offs, Documentation, and Evolution",
+        "narration": "This centralized configuration approach offers uniformity and portability but has trade-offs. We document requirements with a sample settings file and consider when to evolve this pattern. This setup has pros and cons. The primary advantage is uniformity: changing a key name once in the G M S shared library updates every service. It also offers portability, making the code environment-agnostic. The downside is that every service loads every setting, even ones it doesn't use, and every value arrives as text that has to be converted by hand. We keep a sample settings file in version control that lists every required setting, with no real secrets in it. Each developer copies it and fills in their own values. This serves as the contract for infrastructure setup, ensuring everyone knows what settings are needed. This pattern works well for a medium-sized fleet managed by one team. You might evolve away from it if security requirements demand a dedicated secret manager like AWS Secrets Manager, or if validation complexity grows, necessitating tools like Pydantic Settings for robust type-checking. So, the key idea is centralizing configuration in the environment using one shared settings definition, so the whole fleet stays consistent. Now, let's see how this configuration powers our shared authentication and authorization logic.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "This centralized configuration approach offers uniformity and portability but has trade-offs. We document requirements with a sample settings file and consider when to evolve this pattern."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "This setup has pros and cons. The primary advantage is uniformity: changing a key name once in the G M S shared library updates every service. It also offers portability, making the code environment-agnostic. The downside is that every service loads every setting, even ones it doesn't use, and every value arrives as text that has to be converted by hand."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "We keep a sample settings file in version control that lists every required setting, with no real secrets in it. Each developer copies it and fills in their own values. This serves as the contract for infrastructure setup, ensuring everyone knows what settings are needed."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "This pattern works well for a medium-sized fleet managed by one team. You might evolve away from it if security requirements demand a dedicated secret manager like AWS Secrets Manager, or if validation complexity grows, necessitating tools like Pydantic Settings for robust type-checking."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "So, the key idea is centralizing configuration in the environment using one shared settings definition, so the whole fleet stays consistent. Now, let's see how this configuration powers our shared authentication and authorization logic."
+          }
+        ]
+      }
+    ]
+  }
+}

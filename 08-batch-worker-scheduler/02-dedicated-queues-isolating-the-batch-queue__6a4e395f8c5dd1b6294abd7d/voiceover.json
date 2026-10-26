@@ -1,0 +1,93 @@
+{
+  "skill_id": "6a4408b2e15b997d713c4b8f",
+  "skill_name": "Batch Worker & Scheduler",
+  "topic_id": "6a4e395f8c5dd1b6294abd7d",
+  "topic_name": "Dedicated Queues: Isolating the `batch-queue`",
+  "topic_track": "project",
+  "content_version": 10,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4e395f8c5dd1b6294abd7d/g8/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4e395f8c5dd1b6294abd7d/g10/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 10,
+  "voiceover_data": {
+    "topic_name": "Dedicated Queues: Isolating the `batch-queue`",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-traffic-controller-task-routes",
+        "section_number": 1,
+        "title": "The Traffic Controller: Task Routes",
+        "narration": "Building on our asynchronous foundation, let's look at how to prevent workload starvation using dedicated queues and task routing. In G M S, we avoid the default queue trap, where every task lands in Celery's single built-in queue, by using task routing. Think of routing as a mail sorter for your background work. Instead of having every task compete in one line, this configuration acts as a lookup table that maps specific jobs to their own designated queues, keeping heavy and light tasks separate. This system ensures that heavy jobs, like credit no-shows, which gives a member back a session pack credit for a booked class they missed, have a private lane. It guarantees that high-priority requests, like password reset emails, aren't stuck waiting behind thousands of database updates. Memory anchor: dedicated queues prevent bottlenecks by giving each kind of workload its own path. The key idea is isolating workloads to maintain speed.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Building on our asynchronous foundation, let's look at how to prevent workload starvation using dedicated queues and task routing."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In G M S, we avoid the default queue trap, where every task lands in Celery's single built-in queue, by using task routing. Think of routing as a mail sorter for your background work. Instead of having every task compete in one line, this configuration acts as a lookup table that maps specific jobs to their own designated queues, keeping heavy and light tasks separate."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "This system ensures that heavy jobs, like credit no-shows, which gives a member back a session pack credit for a booked class they missed, have a private lane. It guarantees that high-priority requests, like password reset emails, aren't stuck waiting behind thousands of database updates. Memory anchor: dedicated queues prevent bottlenecks by giving each kind of workload its own path. The key idea is isolating workloads to maintain speed."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-why-the-environment-prefix-matters",
+        "section_number": 2,
+        "title": "Why the Environment Prefix Matters",
+        "narration": "Once you isolate your task lanes, you must ensure they stay strictly within their intended operational boundaries. We use environment prefixing, which means starting every queue name with its deployment tier, such as test or prod, taken from configuration. If environments ever share one broker, this prevents a developer's local worker from accidentally stealing a production task. By pinning each queue to its specific environment, we ensure that only the correct workers ever touch their intended messages. This strategy is essential for protecting data integrity and operational stability. It creates a clear wall between testing and production environments, even when they share the same physical infrastructure. Memory anchor: environment prefixes create strict lanes. The key idea is using unique naming tags to guarantee that every task reaches the correct, intended worker instance.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Once you isolate your task lanes, you must ensure they stay strictly within their intended operational boundaries."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We use environment prefixing, which means starting every queue name with its deployment tier, such as test or prod, taken from configuration. If environments ever share one broker, this prevents a developer's local worker from accidentally stealing a production task. By pinning each queue to its specific environment, we ensure that only the correct workers ever touch their intended messages."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "This strategy is essential for protecting data integrity and operational stability. It creates a clear wall between testing and production environments, even when they share the same physical infrastructure. Memory anchor: environment prefixes create strict lanes. The key idea is using unique naming tags to guarantee that every task reaches the correct, intended worker instance."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-engineering-trade-offs-decisions",
+        "section_number": 3,
+        "title": "Engineering Trade-offs & Decisions",
+        "narration": "Beyond simple organization, dedicated queues fundamentally change how we manage our system's scalability and its resilience to failures. Separating workloads gives us finer control. We can shut down our heavy processing workers for maintenance, for example, without interrupting urgent email delivery. We also gain a clear blast radius, which is an operational boundary ensuring a crash in one task category cannot spill over and take down the entire application. It keeps your core business functions alive. Isolation also opens the door to automated scaling tools that watch queue length. In general, when queues are isolated, you only scale the specific workers under actual load, which saves resources. G M S today runs one fixed container per worker, but its separate lines keep that option open. Memory anchor: independent queues enable independent scaling. The key idea is that isolation provides both resilience and cost efficiency. This clear separation prepares us to look at how the worker fleet and the scheduler scale in very different ways.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Beyond simple organization, dedicated queues fundamentally change how we manage our system's scalability and its resilience to failures."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Separating workloads gives us finer control. We can shut down our heavy processing workers for maintenance, for example, without interrupting urgent email delivery. We also gain a clear blast radius, which is an operational boundary ensuring a crash in one task category cannot spill over and take down the entire application. It keeps your core business functions alive."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Isolation also opens the door to automated scaling tools that watch queue length. In general, when queues are isolated, you only scale the specific workers under actual load, which saves resources. G M S today runs one fixed container per worker, but its separate lines keep that option open."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Memory anchor: independent queues enable independent scaling. The key idea is that isolation provides both resilience and cost efficiency. This clear separation prepares us to look at how the worker fleet and the scheduler scale in very different ways."
+          }
+        ]
+      }
+    ]
+  }
+}

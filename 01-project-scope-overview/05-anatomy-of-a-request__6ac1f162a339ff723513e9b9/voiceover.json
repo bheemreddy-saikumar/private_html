@@ -1,0 +1,57 @@
+{
+  "skill_id": "6a459de3940475d76870cf45",
+  "skill_name": "Project Scope & Overview",
+  "topic_id": "6ac1f162a339ff723513e9b9",
+  "topic_name": "Anatomy of a Request",
+  "topic_track": "project",
+  "content_version": 14,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6ac1f162a339ff723513e9b9/g12/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6ac1f162a339ff723513e9b9/g14/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 14,
+  "voiceover_data": {
+    "topic_name": "Anatomy of a Request",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-four-rooms-request-architecture",
+        "section_number": 1,
+        "title": "The Four Rooms: Request Architecture",
+        "narration": "Okay, now that we've looked at the big picture, from your browser all the way down to the database, let's dive into a single service and see how a request moves through it, internally. We call this the \"Four Rooms\" architecture. It's a rigid path where each room has a specific job, which keeps our system solid and easy to maintain. Every service in our system, no matter if it's handling payments or user signups, uses the same internal setup. This architecture uses distinct layers, each with its own job. Keeping strict boundaries between these layers means that a change in one area, like the database, won't accidentally break something in another, like our public A P I contract. Imagine a request to create a new membership. It hits the Endpoint first. This is the public-facing part that matches the U R L, checks your login, and then passes the data along without doing any heavy lifting. Then, it goes through the D T O. Think of this as a bouncer – a structured schema that checks the incoming data and removes any sensitive internal fields. After that, it moves to the Service layer, and finally, it interacts with the O R M Model. This model is like the service's memory; it's a Python class that mirrors a database table, letting us work with database rows as regular objects. Then, a response is put together. We'll break down each of these four rooms, starting with the Endpoint, which is essentially the main door into the service. So the key idea is that requests follow a disciplined path through four distinct layers, ensuring modularity and preventing unintended side effects. This structured approach, where strict boundaries prevent changes in one area from breaking another, is fundamental to building resilient microservices.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Okay, now that we've looked at the big picture, from your browser all the way down to the database, let's dive into a single service and see how a request moves through it, internally."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "We call this the \"Four Rooms\" architecture. It's a rigid path where each room has a specific job, which keeps our system solid and easy to maintain. Every service in our system, no matter if it's handling payments or user signups, uses the same internal setup."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "This architecture uses distinct layers, each with its own job. Keeping strict boundaries between these layers means that a change in one area, like the database, won't accidentally break something in another, like our public A P I contract."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Imagine a request to create a new membership. It hits the Endpoint first. This is the public-facing part that matches the U R L, checks your login, and then passes the data along without doing any heavy lifting. Then, it goes through the D T O. Think of this as a bouncer – a structured schema that checks the incoming data and removes any sensitive internal fields."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "After that, it moves to the Service layer, and finally, it interacts with the O R M Model. This model is like the service's memory; it's a Python class that mirrors a database table, letting us work with database rows as regular objects. Then, a response is put together. We'll break down each of these four rooms, starting with the Endpoint, which is essentially the main door into the service."
+          },
+          {
+            "el_id": "s1-block-5",
+            "type": "block",
+            "text": "So the key idea is that requests follow a disciplined path through four distinct layers, ensuring modularity and preventing unintended side effects. This structured approach, where strict boundaries prevent changes in one area from breaking another, is fundamental to building resilient microservices."
+          }
+        ]
+      }
+    ]
+  }
+}

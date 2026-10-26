@@ -1,0 +1,111 @@
+{
+  "skill_id": "6a79de290420646179386285",
+  "skill_name": "Plans and Classes Service",
+  "topic_id": "6a79decb042064617938628c",
+  "topic_name": "One-Off vs Recurring Classes",
+  "topic_track": "project",
+  "content_version": 12,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a79decb042064617938628c/g10/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a79decb042064617938628c/g12/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 12,
+  "voiceover_data": {
+    "topic_name": "One-Off vs Recurring Classes",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-modeling-time-with-recurring-boolean",
+        "section_number": 1,
+        "title": "Modeling Time with Recurring Boolean",
+        "narration": "Now that we have built the management endpoints for plans and access groups, we will turn to the schedule itself, handling classes that meet once versus those that repeat week after week. In G M S, we model time as either a single event or a rule that generates many events. We use a single yes-or-no switch, called a boolean, to tell them apart. If that switch is off, the start and end times represent one specific, isolated session. If it is on, the system treats the start time as the first occurrence in a sequence. When we turn this switch on, the system activates additional fields: the days of the week the class repeats on, a weekly frequency, and an optional end date. This lets us project a schedule into the future automatically. The core idea is simple: a single switch determines how the system interprets those time fields. So the key idea is using a boolean switch to define class recurrence.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we have built the management endpoints for plans and access groups, we will turn to the schedule itself, handling classes that meet once versus those that repeat week after week."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In G M S, we model time as either a single event or a rule that generates many events. We use a single yes-or-no switch, called a boolean, to tell them apart. If that switch is off, the start and end times represent one specific, isolated session. If it is on, the system treats the start time as the first occurrence in a sequence."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "When we turn this switch on, the system activates additional fields: the days of the week the class repeats on, a weekly frequency, and an optional end date. This lets us project a schedule into the future automatically. The core idea is simple: a single switch determines how the system interprets those time fields. So the key idea is using a boolean switch to define class recurrence."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-pattern-vs-the-instances",
+        "section_number": 2,
+        "title": "The Pattern vs. The Instances",
+        "narration": "We handle recurrence efficiently by separating the master rule from individual sessions, which keeps our database clean. As we first noted when designing our database schema, recurring classes are stored as a single rule rather than fifty-two separate rows a year. We represent a series, not a session. By calculating specific dates on the fly at runtime, we can schedule with no end date, and a change saved to the rule reaches every future session it generates in one step. This pattern versus instances concept means we store the logic, not the calendar entries themselves. Storing only the rule avoids data duplication and ensures consistent information for every class occurrence. So the key idea is that one rule represents an entire series of classes.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "We handle recurrence efficiently by separating the master rule from individual sessions, which keeps our database clean."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "As we first noted when designing our database schema, recurring classes are stored as a single rule rather than fifty-two separate rows a year. We represent a series, not a session. By calculating specific dates on the fly at runtime, we can schedule with no end date, and a change saved to the rule reaches every future session it generates in one step."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "This pattern versus instances concept means we store the logic, not the calendar entries themselves. Storing only the rule avoids data duplication and ensures consistent information for every class occurrence. So the key idea is that one rule represents an entire series of classes."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-managing-bookings-and-exceptions",
+        "section_number": 3,
+        "title": "Managing Bookings and Exceptions",
+        "narration": "Since recurring classes do not have rows for every session, we need a special way to track specific bookings and handle schedule changes. To reserve a spot for a session without a row, we use a composite occurrence key, which is just pairing the parent class identifier with a specific date and time. This lets a member book a slot that is calculated dynamically rather than stored in a table. It is central to our booking logic because we must uniquely identify every session. Sometimes we need to skip a day, like for a holiday, without deleting the whole series. We use an exclusion list of dates, which tells the system to ignore specific occurrences. This adheres to industry standards for calendar systems, keeping the recurring rule intact while cleanly carving out unavailable time. So the key idea is using paired identifiers and exclusion lists to manage non-existent rows.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Since recurring classes do not have rows for every session, we need a special way to track specific bookings and handle schedule changes."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "To reserve a spot for a session without a row, we use a composite occurrence key, which is just pairing the parent class identifier with a specific date and time. This lets a member book a slot that is calculated dynamically rather than stored in a table. It is central to our booking logic because we must uniquely identify every session."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Sometimes we need to skip a day, like for a holiday, without deleting the whole series. We use an exclusion list of dates, which tells the system to ignore specific occurrences. This adheres to industry standards for calendar systems, keeping the recurring rule intact while cleanly carving out unavailable time. So the key idea is using paired identifiers and exclusion lists to manage non-existent rows."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-editing-logic-and-orphaned-bookings",
+        "section_number": 4,
+        "title": "Editing Logic and Orphaned Bookings",
+        "narration": "Editing recurring classes requires careful handling to prevent issues like orphaned bookings, where reservations point to invalid sessions. When staff edit a recurring class, they can change only this event, or this and all following events; deleting adds a third choice, all events. Updating just one event creates a new, non-recurring record while marking the original instance as excluded. This flexibility is powerful, but it can lead to an orphaned booking, where a member's reservation points to a slot that the series no longer generates. We must handle an orphaned booking, a reservation left pointing to a calendar slot that no longer exists, by triggering alerts or re-booking steps. With recurrence modeling and exclusion mechanics established, next we will build the service logic for creating and scheduling classes. So the key idea is that editing recurring classes requires careful synchronization to avoid orphaned bookings.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Editing recurring classes requires careful handling to prevent issues like orphaned bookings, where reservations point to invalid sessions."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "When staff edit a recurring class, they can change only this event, or this and all following events; deleting adds a third choice, all events. Updating just one event creates a new, non-recurring record while marking the original instance as excluded. This flexibility is powerful, but it can lead to an orphaned booking, where a member's reservation points to a slot that the series no longer generates."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "We must handle an orphaned booking, a reservation left pointing to a calendar slot that no longer exists, by triggering alerts or re-booking steps. With recurrence modeling and exclusion mechanics established, next we will build the service logic for creating and scheduling classes. So the key idea is that editing recurring classes requires careful synchronization to avoid orphaned bookings."
+          }
+        ]
+      }
+    ]
+  }
+}

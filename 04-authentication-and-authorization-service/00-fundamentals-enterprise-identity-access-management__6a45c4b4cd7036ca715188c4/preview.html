@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundamentals Enterprise Identity & Access Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; }
+        .glass-header { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226,232,240,0.8); }
+        .nav-link { transition: all 0.2s ease; padding: 0.4em 0.75em; border-radius: 0.375em; }
+        .nav-link.active { background-color: #4f46e5 !important; color: white !important; font-weight: 600; }
+        .bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; }
+        .bento-card:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); transform: translateY(-4px); }
+        .reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        /* Mobile overrides */
+        @media (max-width: 768px) {
+          .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+          section { margin-bottom: 1.5rem !important; }
+          section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+          section [class*="rounded-[3rem]"] { padding: 1.5rem !important; border-radius: 1.5rem !important; }
+          .mobile-nav-panel { display: none; }
+          .mobile-nav-panel.open { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem; background: white; border-bottom: 1px solid rgba(226,232,240,0.8); }
+        }
+        @media (min-width: 769px) {
+          .mobile-nav-toggle, .mobile-nav-panel { display: none !important; }
+        }
+    </style>
+<style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */section.slide-active.il-dim [data-el-id]:not(.il-spot){transition:opacity .4s ease,filter .4s ease,transform .4s ease,box-shadow .4s ease;opacity:.42;filter:brightness(.85) saturate(.88);}section.slide-active.il-dim [data-el-id].il-spot{opacity:1 !important;filter:brightness(1.08) saturate(1.12) !important;border-radius:16px;position:relative;z-index:30;box-shadow:0 0 0 2px rgba(99,102,241,.6),0 0 0 6px rgba(99,102,241,.14),0 18px 40px -14px rgba(15,23,42,.45),0 0 28px 4px rgba(99,102,241,.3);animation:ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,ilSpotPulse 2.4s ease-in-out .5s infinite;}section.slide-active.il-dim [data-el-id$="-title"].il-spot{padding-left:14px;}section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot){overflow:visible !important;}@keyframes ilSpotIn{0%{transform:scale(.99);}60%{transform:scale(1.045);}100%{transform:scale(1.03);}}@keyframes ilSpotPulse{0%,100%{transform:scale(1.03);box-shadow:0 0 0 2px rgba(99,102,241,.55),0 0 0 6px rgba(99,102,241,.12),0 18px 40px -14px rgba(15,23,42,.45),0 0 26px 4px rgba(99,102,241,.26);}50%{transform:scale(1.038);box-shadow:0 0 0 3px rgba(99,102,241,.82),0 0 0 11px rgba(99,102,241,.1),0 24px 50px -14px rgba(15,23,42,.5),0 0 46px 12px rgba(99,102,241,.5);}}</style>
+<style>
+html.preview-mode { scroll-snap-type: none !important; }
+html.preview-mode, html.preview-mode body { overflow: hidden !important; height: 100vh !important; }
+html.preview-mode main { overflow: hidden !important; }
+/* Hide the in-flow, non-section content of <main> (hero/title block, metric cards,
+   footer) so it never flashes through during the gap between slide transitions.
+   Sections themselves are left to the show/hide rules below. */
+html.preview-mode main > *:not(section) { display: none !important; }
+/* Un-IDed <section>s are hidden by default; if one is the deck hero it gets tagged
+   .il-native-cover (below), whose higher-specificity rule shows it before playback. */
+html.preview-mode main > section:not([id^="section-"]) { display: none !important; }
+html.preview-mode section[id^="section-"] { display: none !important; }
+html.preview-mode section[id^="section-"].slide-active {
+    display: flex !important; flex-direction: column !important; position: fixed !important;
+    top: 64px !important; left: 0 !important; right: 0 !important; bottom: 80px !important;
+    width: 100% !important; max-width: 100% !important; min-height: calc(100vh - 144px) !important;
+    z-index: 100 !important; background: #f4f7fb !important; padding: 16px 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+html.preview-mode section[id^="section-"].slide-active > * { max-width: 100% !important; box-sizing: border-box !important; }
+html.preview-mode section[id^="section-"].slide-active .bento-card {
+    flex: 1 !important; min-height: 600px !important; display: flex !important; flex-direction: column !important;
+}
+html.preview-mode .hero-section, html.preview-mode .metric-cards, html.preview-mode footer { display: none !important; }
+
+/* Cover / thumbnail — use the deck's OWN hero (first non-section block in <main>,
+   tagged .il-native-cover by JS). Shown as the canvas BEFORE playback; hidden once
+   playback starts so playback begins on the first voice-over slide. The high
+   specificity here beats the `main > *` flash-hide rules above. */
+html.preview-mode .il-native-cover {
+    display: flex !important; flex-direction: column !important; justify-content: center !important;
+    position: fixed !important; top: 64px !important; left: 0 !important; right: 0 !important; bottom: 80px !important;
+    z-index: 120 !important; background: #f4f7fb !important; padding: 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+html.preview-mode.playback-started .il-native-cover { display: none !important; }
+
+/* Outro / end-card — a trailing non-section block (e.g. the summary/metric cards)
+   that has no narration. Hidden during playback; shown as a static end screen (like
+   the cover, but at the end) once playback finishes. */
+html.preview-mode .il-outro.il-show {
+    display: flex !important; flex-direction: column !important; justify-content: center !important;
+    position: fixed !important; top: 64px !important; left: 0 !important; right: 0 !important; bottom: 80px !important;
+    z-index: 120 !important; background: #f4f7fb !important; padding: 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+
+/* Top-nav links: only the ACTIVE section's link looks highlighted. The generated
+   header styles the last link as a permanent indigo pill — neutralize any non-active
+   link so it doesn't look "selected" on every slide. The .nav-link.active rule keeps
+   the current link filled. */
+html.preview-mode .nav-link:not(.active) {
+    background-color: transparent !important;
+    background-image: none !important;
+    color: #64748b !important;
+    box-shadow: none !important;
+}
+
+/* Recede the non-highlighted elements (colour-agnostic opacity + a touch darker)
+   so the spotlit one stands apart. NOTE: kept in sync with
+   html_generation_service._FOCUS_CSS (baked into generated HTML). */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+/* Spotlight — a modern focus treatment: a spring "pop-in" when the highlight
+   lands on a new element, then a breathing accent ring + colored glow that pulls
+   the eye to whatever is being narrated right now. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the spotlight box hugs the first letter — give it a
+   little breathing room on the left when highlighted. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* The slide's column/layout containers use overflow-hidden (to fit one screen),
+   which clips the highlighted element's scale + glow ring at the left/right edges.
+   Reveal overflow ONLY on the clipping ancestor that actually holds the spotlit
+   element, so its overflowing edges stay visible without affecting other slides. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+/* Spring pop-in: a slight overshoot so the eye snaps to the new element. */
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+/* Breathing ring + glow: the accent ring thickens and the glow swells/recedes,
+   with a subtle scale, so the highlight feels alive and keeps drawing focus. */
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+/* Laser pointer — transient dot. */
+#ilLaser {
+    position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(244,63,94,.95) 0%, rgba(244,63,94,.35) 60%, transparent 70%);
+    box-shadow: 0 0 12px 4px rgba(244,63,94,.55); pointer-events: none; opacity: 0;
+    transition: opacity .2s ease, left .25s ease, top .25s ease; z-index: 10000;
+}
+/* Player chrome — matches TopicAudioPlayer aesthetic. */
+/* Self-contained dark-glass media bar — guaranteed contrast over ANY deck theme
+   (the learner renders the deck in its native colors, so the bar must not depend
+   on the slide background). */
+.audio-player-container {
+    position: fixed; bottom: 0; left: 0; right: 0; background: rgba(17,24,39,.94); border-top: 1px solid rgba(255,255,255,.10);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    box-shadow: 0 -4px 18px -8px rgba(0,0,0,.5); padding: 12px 16px; display: flex; align-items: center;
+    justify-content: center; gap: 12px; z-index: 9999; color: #e5e7eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; flex-wrap: nowrap;
+}
+.audio-player-container button {
+    background: rgba(255,255,255,.08); border: none; color: #f1f5f9; width: 36px; height: 36px; border-radius: 8px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; flex-shrink: 0;
+}
+.audio-player-container button:hover { background: rgba(255,255,255,.18); color: #fff; }
+.audio-player-container button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+.audio-player-container button.play-btn { width: 44px; height: 44px; border-radius: 50%; background: #6366f1; color: #fff; }
+.audio-player-container button.play-btn:hover { background: #4f46e5; color: #fff; }
+.audio-progress-container { flex: 1; min-width: 0; max-width: 460px; display: flex; flex-direction: column; gap: 4px; }
+.audio-progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,.18); border-radius: 999px; cursor: pointer; overflow: hidden; }
+.audio-progress-fill { height: 100%; background: #818cf8; width: 0%; transition: width .1s; }
+.audio-time { display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+.audio-section-info { color: #cbd5e1; font-size: 12px; font-weight: 500; min-width: 120px; text-align: center; }
+/* Subtitles / captions — self-contained, high-contrast so they stay readable over dark OR light slides. */
+#ilCaptions {
+    position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); max-width: min(880px, 92vw);
+    background: rgba(15,23,42,.86); color: #fff; padding: 8px 16px; border-radius: 10px; font-size: 15px;
+    line-height: 1.45; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9);
+    box-shadow: 0 4px 20px -6px rgba(0,0,0,.5); z-index: 9998; pointer-events: none;
+}
+#ilCaptions:empty, #ilCaptions.cap-off { display: none; }
+/* CC + speed pill are text buttons, not the 36px icon buttons — override the fixed size. */
+.audio-player-container .cc-btn, .audio-player-container .audio-speed-toggle { width: auto; height: auto; }
+/* CC toggle */
+.cc-btn {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); color: #e5e7eb; padding: 4px 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; border-radius: 6px; cursor: pointer; transition: all .15s;
+    flex-shrink: 0;
+}
+.cc-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+.cc-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+/* Speed popover pill */
+.audio-speed { position: relative; flex-shrink: 0; }
+.audio-speed-toggle {
+    display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22);
+    color: #e5e7eb; padding: 4px 8px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer;
+    transition: all .15s; min-width: 48px; justify-content: center; font-variant-numeric: tabular-nums;
+}
+.audio-speed-toggle:hover { background: rgba(255,255,255,.18); color: #fff; }
+.audio-speed-menu {
+    display: none; position: absolute; bottom: calc(100% + 8px); right: 0; background: #111827; border: 1px solid #374151;
+    border-radius: 10px; box-shadow: 0 8px 24px -8px rgba(0,0,0,.5); padding: 3px 0; min-width: 0; width: max-content; z-index: 10001; overflow: hidden;
+}
+.audio-speed-menu.open { display: block; }
+.audio-speed-item {
+    display: block; width: 100%; text-align: center; background: transparent; border: none; color: #e5e7eb;
+    padding: 6px 6px; font-size: 12px; font-weight: 500; border-radius: 0; cursor: pointer; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* Speed items are <button>s inside .audio-player-container, so the generic
+   `.audio-player-container button` rule (36px, 8px radius) out-specifies the
+   plain `.audio-speed-item` class. Scope these here to actually win: full-width
+   uniform rows, auto height, square corners. */
+.audio-player-container .audio-speed-item { width: 100%; height: auto; border-radius: 0; background: transparent; }
+.audio-player-container .audio-speed-item:hover { background: #374151; }
+.audio-player-container .audio-speed-item.active { background: #3730a3; color: #fff; font-weight: 600; }
+@media (max-width: 640px) {
+    .audio-player-container { flex-wrap: wrap; padding: 10px 12px; gap: 8px; justify-content: space-between; }
+    .audio-section-info { display: none; }
+    .audio-progress-container { order: 99; flex: 1 0 100%; max-width: none; }
+    #ilCaptions { bottom: 120px; font-size: 13px; padding: 6px 12px; }
+    /* Mobile: let the slide be its natural height so the slide heading isn't
+       pushed off-screen. The desktop 600px card min-height + full-viewport
+       slide min-height make the single-column phone layout far taller than the
+       viewport, scrolling the heading above the fold. */
+    html.preview-mode section[id^="section-"].slide-active { min-height: 0 !important; padding: 14px 14px !important; }
+    html.preview-mode section[id^="section-"].slide-active .bento-card { min-height: auto !important; }
+    html.preview-mode main > section:not([id^="section-"]) { min-height: 0 !important; }
+}
+</style>
+</head>
+<body>
+    <header class="sticky top-0 z-50 glass-header">
+        <div class="max-w-6xl mx-auto px-6 flex justify-between items-center py-3">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg text-white font-bold flex items-center justify-center text-sm">I</div>
+                <span class="uppercase text-xs font-semibold tracking-widest">Enterprise IAM</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-2">
+                <a href="#section-1" data-section="section-1" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Security Bedrock</a>
+                <a href="#section-2" data-section="section-2" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">IAM Flow</a>
+                <a href="#section-3" data-section="section-3" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Centralization</a>
+                <a href="#section-4" data-section="section-4" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Boundaries</a>
+                <a href="#section-5" data-section="section-5" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Components</a>
+            </nav>
+            <button class="mobile-nav-toggle md:hidden inline-flex items-center justify-center w-9 h-9 rounded-md text-slate-700 hover:bg-slate-100" aria-label="Toggle menu" onclick="document.querySelector('.mobile-nav-panel').classList.toggle('open')">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="mobile-nav-panel absolute left-0 right-0 top-full">
+                <a href="#section-1" data-section="section-1" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Security Bedrock</a>
+                <a href="#section-2" data-section="section-2" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">IAM Flow</a>
+                <a href="#section-3" data-section="section-3" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Centralization</a>
+                <a href="#section-4" data-section="section-4" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Boundaries</a>
+                <a href="#section-5" data-section="section-5" class="nav-link" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')">Components</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-32 pb-0 max-w-6xl mx-auto px-6">
+        <div class="text-center mb-24">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Enterprise IAM</span>
+            <h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">
+                Fundamentals Enterprise Identity & Access Management
+            </h1>
+            <p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">
+                Understanding the core principles and workflows of Identity and Access Management in enterprise environments.
+            </p>
+        </div>
+
+        <section id="section-1" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Security Bedrock</span>
+                <h2 data-el-id="s1-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">IAM: The Security Bedrock</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Identity and Access Management (IAM) is a crucial security framework ensuring that only the right entities access the right resources at the right time for the right reasons.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s1-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">IAM is a Framework</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Not a single feature, but a comprehensive set of policies and technologies.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Dictates how users and services interact with system resources.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Ensures correct entities access appropriate resources, at opportune moments, for legitimate purposes.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s1-block-2" class="content-block py-1">
+                                <p class="text-sm font-semibold text-slate-800 mb-1.5">Key Distinctions</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Authentication (AuthN):** Verifies *who* you are.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Authorization (AuthR):** Determines *what* you can do after identity is verified.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div class="w-full max-w-sm">
+                            <div class="flex flex-col gap-3">
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Authentication (AuthN)</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Verifies the identity of a user or system attempting to access a resource. Answers "Who are you?".</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Authorization (AuthR)</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Determines what actions an authenticated user is allowed to perform on a resource. Answers "What can you do?".</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-2" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">IAM Flow</span>
+                <h2 data-el-id="s2-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">The Standard IAM Flow</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">A typical IAM flow involves a client initiating a request, undergoing authentication, receiving an identity assertion, and then undergoing authorization against defined policies.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s2-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">IAM Request Lifecycle</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>1. **Identification Request:** Client presents identifying attributes (username, client_id).</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>2. **Challenge & Authentication:** System verifies identity via password, MFA, or signature.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>3. **Identity Assertion:** Upon success, a digitally signed token confirms authenticated identity (e.g., 'user_id: 123').</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>4. **Policy Evaluation & Authorization:** Assertion is checked against access control policies for requested resource/action.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>5. **Access Grant or Denial:** Request is permitted or denied (e.g., HTTP 403).</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div class="w-full max-w-sm text-center">
+                            <div class="flex flex-col items-center space-y-4">
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">1</div>
+                                    <div class="step-title font-bold text-slate-900">Identification</div>
+                                    <div class="step-description text-sm text-slate-600">Client presents attributes</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">2</div>
+                                    <div class="step-title font-bold text-slate-900">Authentication</div>
+                                    <div class="step-description text-sm text-slate-600">System verifies identity</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">3</div>
+                                    <div class="step-title font-bold text-slate-900">Assertion</div>
+                                    <div class="step-description text-sm text-slate-600">Identity token issued</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">4</div>
+                                    <div class="step-title font-bold text-slate-900">Authorization</div>
+                                    <div class="step-description text-sm text-slate-600">Policies checked</div>
+                                </div>
+                                <div class="step-connector h-8 w-0.5 bg-indigo-300"></div>
+                                <div class="step-container">
+                                    <div class="step-circle bg-indigo-600 text-white">5</div>
+                                    <div class="step-title font-bold text-slate-900">Access</div>
+                                    <div class="step-description text-sm text-slate-600">Grant or deny</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-3" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Centralization</span>
+                <h2 data-el-id="s3-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">Why Centralize IAM?</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Centralized IAM is critical for enterprise systems to maintain a single source of truth, enable effective auditing for compliance, and enforce the principle of least privilege.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s3-block-1" class="content-block grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">Single Source of Truth</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Provides a unified view of identities and their access rights across the organization.</p>
+                                </div>
+                                <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">Audit & Compliance</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Simplifies tracking who accessed what, when, facilitating compliance with regulations.</p>
+                                </div>
+                                <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">Least Privilege</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Enables granular control, ensuring users only have the minimum necessary permissions.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-4 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div class="w-full max-w-sm text-center">
+                            <div class="flex flex-col gap-3">
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Unified Identity</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Centralized management reduces complexity and ensures consistency.</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Simplified Auditing</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Easier to track access logs for compliance and security reviews.</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow cursor-pointer" onclick="this.classList.toggle('expanded')">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="font-bold text-slate-900 text-sm">Effective Least Privilege</h4>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mt-2 hidden">Granular permission assignment minimizes exposure to threats.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-4" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Boundaries</span>
+                <h2 data-el-id="s4-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">IAM System Boundaries</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">IAM acts as a gatekeeper at the service perimeter for initial validation and within individual services for fine-grained, business-specific authorization.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s4-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">IAM Interaction Points</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Perimeter:** API Gateway or dedicated Auth service validates identity assertions (tokens).</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Service Layer:** Individual microservices enforce specific, business-driven authorization rules (e.g., manager role for specific actions).</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s4-block-2" class="content-block bg-indigo-50 border-l-4 border-indigo-500 rounded-r-xl p-4">
+                                <p class="text-slate-800 text-base font-medium leading-relaxed">While Pydantic ensures data integrity, IAM enforces access control integrity.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-2 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div data-el-id="s4-visual-1" style="max-height:420px;overflow:auto;display:flex;align-items:center;justify-content:center;width:100%;"><pre class="mermaid" style="width:100%;min-width:100%;">%%{init: {'theme':'neutral','themeVariables':{'fontSize':'16px','nodeTextSize':'16px'},'flowchart':{'nodeSpacing':50,'rankSpacing':45,'padding':16,'wrappingWidth':220}}}%%
+graph LR
+  A[Client] --> B[API Gateway/Auth Service]
+  B -- Token Validation --> C[Microservice]
+  C -- Specific AuthR --> D[Resource]</pre></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-5" class="mb-12 reveal">
+            <div class="bento-card p-8 flex flex-col justify-center min-h-[600px]">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Components</span>
+                <h2 data-el-id="s5-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-3">IAM Components & Revocation</h2>
+                
+                <div class="flex flex-col md:flex-row gap-4 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-2 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Effective enterprise IAM relies on defining principals, resources, actions, and policies, while also addressing the critical challenge of timely access revocation.</p>
+                        </div>
+                        <div class="space-y-2 py-4">
+                            <div data-el-id="s5-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Core IAM Components</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Principal:** Entity requesting access (user or service)</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Resource:** Data or service being accessed</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Action:** Operation intended by the principal</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>**Policy:** Rule governing Principal-Resource-Action interaction</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s5-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Revocation Challenge</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Disabling access for de-provisioned users or compromised keys is difficult in distributed systems.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Mechanisms like token expiration and dynamic revocation lists are needed.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Access denials must propagate in near real-time.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-2 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div data-el-id="s5-visual-1" class="overflow-x-auto rounded-xl"><style>.vis-table table{width:100%;border-collapse:collapse}.vis-table th{background:#f1f5f9;border:1px solid #e2e8f0;padding:8px 12px;text-align:left;font-size:13px;font-weight:600;color:#475569}.vis-table td{border:1px solid #e2e8f0;padding:8px 12px;font-size:13px;color:#334155}.vis-table tr:hover td{background:#f8fafc}.bg-slate-900 .vis-table th{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.1);color:#e2e8f0}.bg-slate-900 .vis-table td{border-color:rgba(255,255,255,0.1);color:#cbd5e1}.bg-slate-900 .vis-table tr:hover td{background:rgba(255,255,255,0.05)}</style><div class="vis-table"><table><thead><tr><th>Component</th><th>Description</th><th>Example</th></tr></thead><tbody><tr><td>Principal</td><td>The entity (user or service) requesting access.</td><td>A Gym Member, an Admin user, or a background service.</td></tr><tr><td>Resource</td><td>The data, object, or service being accessed.</td><td>A specific `Location` record, a `Billing` report.</td></tr><tr><td>Action</td><td>The operation the principal intends to perform.</td><td>`GET`, `POST`, `DELETE`, `UPDATE`.</td></tr><tr><td>Policy</td><td>The rule that governs the interaction between a Principal and a Resource for a given Action.</td><td>"Only users with `role:manager` can `delete` a `location`."</td></tr></tbody></table></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="max-w-5xl mx-auto px-6 mb-24">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span>
+            <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-2">Key Takeaways</h2>
+            <p class="text-slate-500 mb-8 max-w-2xl">Effective Enterprise IAM is a foundational security practice that balances usability with robust control, ensuring authorized access and enabling compliance through centralized management and timely revocation.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Security Bedrock</p>
+                        <p class="text-slate-500 text-sm mt-0.5">IAM verifies who can do what, across all systems.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">IAM Flow</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Standard flow: Identity Request → AuthN → Assertion → AuthR → Access.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Centralization</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Centralized IAM simplifies auditing, enforces least privilege, and acts as SSoT.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">System Boundaries</p>
+                        <p class="text-slate-500 text-sm mt-0.5">IAM operates at the perimeter and within services for granular control.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">5</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Components & Revocation</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Define Principals, Resources, Actions, Policies; manage revocation effectively.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="py-8 text-center text-slate-500 text-sm">
+        <p>Generated on: <span id="gen-timestamp"></span></p>
+        <p>Generated by Altgan</p>
+    </footer>
+
+    <script>
+        // 1. Initialize first nav link as active on page load
+        const firstNavLink = document.querySelector('.nav-link[data-section="section-1"]');
+        if (firstNavLink) firstNavLink.classList.add('active');
+
+        // 2. Nav highlighting based on visible section (Intersection Observer)
+        const navObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+                    const sectionId = entry.target.id;
+                    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                    const activeLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+                    if (activeLink) activeLink.classList.add('active');
+                }
+            });
+        }, { threshold: 0.5, rootMargin: '0px 0px -50% 0px' });
+        document.querySelectorAll('section[id^="section-"]').forEach(sec => navObserver.observe(sec));
+
+        // 3. Reveal animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // 4. Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' }); });
+        });
+
+        // 5. Timestamp
+        document.getElementById('gen-timestamp').textContent = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // 6. Copy to clipboard (if code blocks exist) - Not used in this example
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const code = btn.closest('.code-wrapper').querySelector('code').textContent;
+                navigator.clipboard.writeText(code);
+                btn.textContent = 'Copied!';
+                btn.classList.add('bg-emerald-600');
+                setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('bg-emerald-600'); }, 2000);
+            });
+        });
+
+        // 7. Animated metric bars on scroll - Not used in this example
+        const barObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.width = entry.target.dataset.target;
+                }
+            });
+        }, { threshold: 0.3 });
+        document.querySelectorAll('.metric-bar').forEach(bar => barObserver.observe(bar));
+
+        // Custom JS for interactive elements
+        function toggleMode(checkbox) {
+            const parent = checkbox.closest('.bento-card') || checkbox.closest('section');
+            if (checkbox.checked) {
+                // Enable "Advanced" mode visuals/styles
+                parent.querySelectorAll('.basic-view').forEach(el => el.classList.add('hidden'));
+                parent.querySelectorAll('.advanced-view').forEach(el => el.classList.remove('hidden'));
+            } else {
+                // Enable "Basic" mode visuals/styles
+                parent.querySelectorAll('.advanced-view').forEach(el => el.classList.add('hidden'));
+                parent.querySelectorAll('.basic-view').forEach(el => el.classList.remove('hidden'));
+            }
+        }
+
+        function switchTab(tabId, btn) {
+            const parent = btn.closest('.bento-card') || btn.closest('section');
+            parent.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            parent.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('bg-slate-100', 'text-slate-600'); });
+            parent.querySelector('#' + tabId).classList.remove('hidden');
+            btn.classList.remove('bg-slate-100', 'text-slate-600');
+            btn.classList.add('bg-indigo-600', 'text-white');
+        }
+        
+        // Add custom styles for expanded cards if needed (used in section 1)
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .bento-card .expanded p[class*="hidden"] {
+                display: block !important;
+            }
+            .bento-card .expanded svg {
+                transform: rotate(180deg);
+            }
+            .step-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .step-circle {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.9rem;
+                box-shadow: 0 4px 8px rgba(79, 70, 229, 0.2);
+            }
+            .step-title { font-size: 0.95rem; margin-top: 0.5rem; }
+            .step-description { font-size: 0.85rem; max-width: 150px; }
+            .step-connector { margin-top: -8px; margin-bottom: -8px; } /* Adjust for vertical spacing */
+        `;
+        document.head.appendChild(style);
+
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:false,theme:"neutral"});document.addEventListener("DOMContentLoaded",function(){  setTimeout(function(){    document.querySelectorAll("pre.mermaid svg").forEach(function(svg){      svg.removeAttribute("height");      svg.removeAttribute("width");      svg.style.width="100%";      svg.style.maxWidth="100%";      svg.style.height="auto";    });  },500);});</script>
+<div id="ilLaser"></div>
+<div class="audio-player-container" id="audioPlayer">
+    <button onclick="prevSection()" title="Previous section" aria-label="Previous section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z"/></svg>
+    </button>
+    <button class="play-btn" onclick="togglePlay()" id="playBtn" title="Play/Pause" aria-label="Play / Pause">
+        <svg id="playIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pauseIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+    </button>
+    <button onclick="nextSection()" title="Next section" aria-label="Next section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2 0V6l6.5 6L8 18zM16 6v12h2V6h-2z"/></svg>
+    </button>
+    <div class="audio-progress-container">
+        <div class="audio-progress-bar" onclick="seekAudio(event)"><div class="audio-progress-fill" id="progressFill"></div></div>
+        <div class="audio-time"><span id="currentTime">0:00</span><span id="duration">0:00</span></div>
+    </div>
+    <div class="audio-section-info" id="sectionInfo">Press &#9654; to start</div>
+    <button type="button" class="cc-btn active" id="ccBtn" onclick="toggleCaptions()" title="Subtitles" aria-label="Toggle subtitles" aria-pressed="true">CC</button>
+    <div class="audio-speed" data-il-speed>
+        <button type="button" class="audio-speed-toggle" id="speedToggle" onclick="toggleSpeedMenu(event)" aria-haspopup="true" aria-expanded="false" title="Playback speed">
+            <span id="speedLabel">1&times;</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="audio-speed-menu" id="speedMenu" role="menu" aria-label="Playback speed">
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="0.75" onclick="setSpeed(0.75)">0.75&times;</button>
+            <button type="button" class="audio-speed-item active" role="menuitemradio" data-speed="1" onclick="setSpeed(1)">1&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="1.25" onclick="setSpeed(1.25)">1.25&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="1.5" onclick="setSpeed(1.5)">1.5&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="2" onclick="setSpeed(2)">2&times;</button>
+        </div>
+    </div>
+</div>
+<div id="ilCaptions" aria-live="polite"></div>
+<audio id="audioElement"></audio>
+
+<script>
+const timeline = [{"type": "spotlight", "sectionNumber": 1, "elementId": "s1-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "text": "Welcome to the Fundamentals of Enterprise Identity and Access Management! In this section, we'll get a handle on I A M, which is really the foundation for all secure systems out there.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-1-action-2.wav", "audioDurationMs": 10197}, {"type": "spotlight", "sectionNumber": 1, "elementId": "s1-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "text": "So, think of Identity and Access Management, or I A M, not as just one piece of software. It's more like a whole system \u2013 a set of rules, procedures, and technologies. Its main job is to carefully manage who gets to access what within your digital world. Essentially, it makes sure the right people, or even automated services, can get to the right information or systems, exactly when they need to, and for all the right reasons.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-1-action-4.wav", "audioDurationMs": 25642}, {"type": "spotlight", "sectionNumber": 1, "elementId": "s1-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "text": "Now, here's a key distinction to grasp: Authentication and Authorization. Authentication, or A U T H N, is all about proving you are who you say you are. Think passwords, or maybe that code from your phone. Authorization, or A U T H R, comes after you've proven your identity. It's about deciding what you're actually allowed to do. So, A U T H N verifies you, and A U T H R checks your permissions.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-1-action-6.wav", "audioDurationMs": 27178}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "text": "Okay, now that we've covered the basics, let's actually walk through how an I A M request typically works.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-2-action-2.wav", "audioDurationMs": 5418}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "text": "Usually, an I A M request starts when a client, like your web browser or some application, sends along some identifying info \u2013 maybe a username. Then, the system will challenge you to prove it's really you, perhaps with a password or a code. Once you're authenticated, the system gives you a digitally signed token, like a badge, confirming your identity. You then show this badge to the resource you want to access. That resource checks its rules to see if your badge grants you entry. If not, you'll likely get a 'Forbidden' message.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-2-action-4.wav", "audioDurationMs": 30506}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "text": "We've looked at the general process. Now, let's talk about why it's so important to have this all centralized in a business setting.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-3-action-2.wav", "audioDurationMs": 7210}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "text": "Centralizing I A M is really crucial for businesses. For starters, it creates one reliable place to know who has access to what, making things much easier to manage. It also makes auditing and proving compliance simpler because all access events are logged in one spot. And, importantly, it helps enforce the 'least privilege' principle \u2013 meaning people and services only get the minimum access they need. So, remember: centralization equals consistency, better tracking, and stronger security.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-3-action-4.wav", "audioDurationMs": 29397}, {"type": "spotlight", "sectionNumber": 4, "elementId": "s4-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 4, "elementId": null, "text": "We've covered the general flow and why centralizing is a good idea. Now, let's look at where I A M systems actually fit into the bigger picture.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-4-action-2.wav", "audioDurationMs": 8277}, {"type": "spotlight", "sectionNumber": 4, "elementId": "s4-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 4, "elementId": null, "text": "I A M touches several points in an enterprise system. At the edge, like with an API Gateway, it's validating those identity tokens you send. Once you're inside, requests go to individual microservices. Here, I A M enforces more specific rules \u2013 for example, making sure only someone with a 'manager' role can do a certain administrative task. It\u2019s a layered approach for security.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-4-action-4.wav", "audioDurationMs": 24106}, {"type": "spotlight", "sectionNumber": 4, "elementId": "s4-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 4, "elementId": null, "text": "It's also good to see how I A M works alongside other checks. You know how libraries like Pydantic make sure your data is correctly formatted? Well, I A M does something similar for access control \u2013 it ensures only the *right* people can even *try* to use that data in the first place.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-4-action-6.wav", "audioDurationMs": 15786}, {"type": "spotlight", "sectionNumber": 4, "elementId": "s4-visual-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 4, "elementId": null, "text": "This diagram really lays out the flow we've been describing. A client makes a request, the API Gateway or Authentication Service checks the token for that initial security screening. If it passes, the request goes to a Microservice, which then applies its own specific access rules before finally interacting with a Resource. It shows the whole path from authentication to detailed authorization.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-4-action-8.wav", "audioDurationMs": 22229}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "We've covered the flow and the different interaction points. Now, let's dive into the main pieces of I A M policies and how we handle revoking access.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-5-action-2.wav", "audioDurationMs": 8405}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "The core parts of any I A M setup are these: the 'Principal' \u2013 that's the entity asking for access, like a user. The 'Resource' \u2013 what they want to access, maybe a file or an API. The 'Action' \u2013 what they want to do, like 'read' or 'delete'. And the 'Policy' \u2013 that's the rule that says if the Principal can do that Action on that Resource.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-5-action-4.wav", "audioDurationMs": 19626}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "One of the trickier parts of I A M in big companies is revoking access. When someone leaves, or an account is compromised, you need to cut off their access quickly. In spread-out systems, this can be tough because information might be cached, or tokens might be valid for a long time. Good revocation often means using short-lived tokens, setting clear expiration times, and having ways to quickly update lists of who *shouldn't* have access anymore. So, the main takeaway is that removing access promptly is just as vital as granting it correctly. That wraps up our look at I A M fundamentals. You've now got a solid grasp of how to keep enterprise systems secure!", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-5-action-6.wav", "audioDurationMs": 37418}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-visual-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "Here in this table, you can see a clear breakdown of those core I A M components. On the left are the names: Principal, Resource, Action, and Policy. The middle column gives a quick definition, and the right side offers examples. For instance, a 'Gym Member' could be the Principal, a 'Billing report' the Resource, 'DELETE' the Action, and a Policy might specify that only 'managers' can perform that action.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-5-action-8.wav", "audioDurationMs": 22869}];
+const sectionAudio = {"1": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-1-action-6.wav", "2": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-2-action-4.wav", "3": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-3-action-4.wav", "4": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-4-action-8.wav", "5": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/audio/topics/6a45c4b4cd7036ca715188c4/g9/audio/section-5-action-8.wav"};
+const sectionCount = 5;
+const BLOCK_GAP_MS = 450;   // silent pause between per-block clips
+let playing = false;
+let playRate = 1;
+let currentSection = null;
+let firedCues = 0;
+let laserTimer = null;
+let fallbackTimer = null;
+let outroEl = null;
+let atOutro = false;
+
+const audioElement = document.getElementById('audioElement');
+const playIcon = document.getElementById('playIcon');
+const pauseIcon = document.getElementById('pauseIcon');
+const progressFill = document.getElementById('progressFill');
+const currentTimeEl = document.getElementById('currentTime');
+const durationEl = document.getElementById('duration');
+const sectionInfo = document.getElementById('sectionInfo');
+const laserEl = document.getElementById('ilLaser');
+let spotEl = null;   // the element currently spotlighted (for scroll re-tracking)
+
+document.documentElement.classList.add('preview-mode');
+
+// Mermaid: render per-slide (renders at 0px when display:none).
+if (typeof mermaid !== 'undefined') { mermaid.initialize({ startOnLoad: false, theme: 'neutral' }); }
+document.querySelectorAll('pre.mermaid').forEach(function(el) {
+    if (!el.getAttribute('data-mermaid-src')) { el.setAttribute('data-mermaid-src', el.textContent); }
+});
+const renderedMermaids = new Set();
+function renderMermaidInSection(sectionEl) {
+    if (!sectionEl || typeof mermaid === 'undefined') return;
+    sectionEl.querySelectorAll('pre.mermaid').forEach(function(el) {
+        const id = el.id || ('mermaid-' + Math.random().toString(36).substr(2, 9));
+        el.id = id;
+        if (renderedMermaids.has(id)) return;
+        const src = el.getAttribute('data-mermaid-src');
+        if (!src) return;
+        el.removeAttribute('data-processed'); el.innerHTML = ''; el.textContent = src;
+        renderedMermaids.add(id);
+        setTimeout(function() { mermaid.run({ nodes: [el] }); }, 50);
+    });
+}
+
+function formatTime(s) {
+    if (!isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+function setPlayIcon() { playIcon.style.display = 'block'; pauseIcon.style.display = 'none'; }
+function setPauseIcon() { playIcon.style.display = 'none'; pauseIcon.style.display = 'block'; }
+function markPlaybackStarted() { document.documentElement.classList.add('playback-started'); }
+
+// --- Subtitles / captions ------------------------------------------------
+// Per-block: the caption is the currently-narrated block's text. Self-contained
+// high-contrast bar (see #ilCaptions CSS) so it reads over dark or light slides.
+const captionsEl = document.getElementById('ilCaptions');
+const ccBtn = document.getElementById('ccBtn');
+let captionsOn = true;
+try { captionsOn = (localStorage.getItem('ilCaptions') || '1') !== '0'; } catch (e) {}
+let lastCaptionText = '';
+function renderCaption() {
+    if (!captionsEl) return;
+    if (captionsOn && lastCaptionText) {
+        captionsEl.textContent = lastCaptionText;
+        captionsEl.classList.remove('cap-off');
+    } else {
+        captionsEl.classList.add('cap-off');
+    }
+}
+function setCaption(text) { lastCaptionText = text || ''; renderCaption(); }
+function clearCaption() { lastCaptionText = ''; if (captionsEl) captionsEl.textContent = ''; }
+function syncCcBtn() {
+    if (!ccBtn) return;
+    ccBtn.classList.toggle('active', captionsOn);
+    ccBtn.setAttribute('aria-pressed', captionsOn ? 'true' : 'false');
+}
+function toggleCaptions() {
+    captionsOn = !captionsOn;
+    try { localStorage.setItem('ilCaptions', captionsOn ? '1' : '0'); } catch (e) {}
+    syncCcBtn();
+    renderCaption();
+}
+syncCcBtn();
+// Proportional (section-clip) mode: show the speech whose region currentTime is in.
+function applyCaptionFromCues(t, dur) {
+    const plan = currentPlan();
+    if (!plan || !plan.capCues || !plan.capCues.length || !dur) return;
+    let txt = '';
+    for (let i = 0; i < plan.capCues.length; i++) {
+        if (t >= plan.capCues[i].frac * dur) txt = plan.capCues[i].text; else break;
+    }
+    setCaption(txt);
+}
+
+function clearSpotlight() {
+    document.querySelectorAll('.il-dim').forEach(e => e.classList.remove('il-dim'));
+    document.querySelectorAll('.il-spot').forEach(e => e.classList.remove('il-spot'));
+    spotEl = null;
+}
+
+function showSlide(sectionNumber) {
+    hideOutro();
+    document.querySelectorAll('section[id^="section-"]').forEach(el => el.classList.remove('slide-active'));
+    clearSpotlight();
+    const sectionEl = document.getElementById('section-' + sectionNumber);
+    if (sectionEl) { sectionEl.classList.add('slide-active'); renderMermaidInSection(sectionEl); }
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const link = document.querySelector('.nav-link[data-section="section-' + sectionNumber + '"]');
+    if (link) link.classList.add('active');
+    sectionInfo.textContent = 'Section ' + sectionNumber + (sectionCount ? ' of ' + sectionCount : '');
+}
+
+function findEl(a) { return a.elementId ? document.querySelector('[data-el-id="' + a.elementId + '"]') : null; }
+
+function applySpotlight(a) {
+    const sec = document.getElementById('section-' + a.sectionNumber);
+    if (sec) sec.classList.add('il-dim');
+    document.querySelectorAll('.il-spot').forEach(e => e.classList.remove('il-spot'));
+    const el = findEl(a);
+    if (el) {
+        el.classList.add('il-spot');
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        spotEl = el;
+    }
+}
+
+function fireLaser(a) {
+    const el = findEl(a);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    laserEl.style.left = (r.left + r.width / 2) + 'px';
+    laserEl.style.top = (r.top + r.height / 2) + 'px';
+    laserEl.style.opacity = '1';
+    if (laserTimer) clearTimeout(laserTimer);
+    laserTimer = setTimeout(() => { laserEl.style.opacity = '0'; }, 900);
+}
+
+// --- Section plan / cue map ---------------------------------------------
+// One continuous clip per section; element highlights fire off a proportional cue
+// map. A spotlight's cue fraction = (speech chars before it) / (total section speech
+// chars); at runtime it fires when currentTime >= frac × clip duration.
+const sectionPlan = {};
+const sectionOrder = [];
+timeline.forEach(function(a) {
+    const sn = a.sectionNumber;
+    if (sn == null) return;
+    if (!sectionPlan[sn]) { sectionPlan[sn] = { acts: [] }; sectionOrder.push(sn); }
+    sectionPlan[sn].acts.push(a);
+});
+sectionOrder.sort(function(x, y) { return x - y; });
+sectionOrder.forEach(function(sn) {
+    const acts = sectionPlan[sn].acts;
+    let total = 0;
+    acts.forEach(function(a) { if (a.type === 'speech') total += (a.text || '').length; });
+    total = Math.max(1, total);
+    const cues = [];
+    const capCues = [];   // {frac, text} per speech — caption appears at the start of its region
+    let acc = 0;
+    acts.forEach(function(a) {
+        if (a.type === 'spotlight' || a.type === 'laser') {
+            cues.push({ elementId: a.elementId, type: a.type, sectionNumber: sn, frac: acc / total });
+        } else if (a.type === 'speech') {
+            if (a.text) capCues.push({ frac: acc / total, text: a.text });
+            acc += (a.text || '').length;
+        }
+    });
+    sectionPlan[sn].cues = cues;
+    sectionPlan[sn].capCues = capCues;
+    sectionPlan[sn].chars = total;
+    sectionPlan[sn].audioUrl = sectionAudio[sn] || null;
+    // Per-block mode: every speech action carries its own clip → play one clip
+    // per spotlighted element (blocking on each) for exact highlight↔audio sync.
+    sectionPlan[sn].perBlock = acts.some(function(a) { return a.type === 'speech' && a.audioUrl; });
+    // Whole-slide duration for the progress bar = Σ block clip durations + gaps.
+    var __speechN = 0, __totalMs = 0;
+    acts.forEach(function(a) { if (a.type === 'speech') { __totalMs += blockMs(a); __speechN++; } });
+    __totalMs += BLOCK_GAP_MS * Math.max(0, __speechN - 1);
+    sectionPlan[sn].totalMs = __totalMs;
+});
+
+function currentPlan() { return currentSection != null ? sectionPlan[currentSection] : null; }
+function clearFallback() { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } }
+
+// Fire every cue whose time has passed; the latest spotlight stays lit.
+function applyCuesUpTo(t, dur) {
+    const plan = currentPlan();
+    if (!plan || !dur) return;
+    while (firedCues < plan.cues.length && t >= plan.cues[firedCues].frac * dur) {
+        const cue = plan.cues[firedCues];
+        if (cue.type === 'laser') fireLaser(cue); else applySpotlight(cue);
+        firedCues++;
+    }
+}
+
+// Seeking: re-fire from scratch so the right highlight is lit at the new position.
+function resyncCues(t, dur) { firedCues = 0; clearSpotlight(); applyCuesUpTo(t, dur); applyCaptionFromCues(t, dur); }
+
+function loadSection(sn) {
+    if (sn == null || sectionPlan[sn] == null) return;
+    clearFallback();
+    currentSection = sn;
+    firedCues = 0;
+    clearCaption();
+    showSlide(sn);
+    const plan = sectionPlan[sn];
+    if (plan.perBlock) {
+        blockIdx = 0;
+        slidePlayedMs = 0;
+        curSpeechMs = 0;
+        pendingSeekMs = null;
+        progressFill.style.width = '0%';
+        currentTimeEl.textContent = '0:00';
+        durationEl.textContent = formatTime((plan.totalMs || 0) / 1000);   // whole slide
+        runBlock(sn);            // one clip per block, blocking on each
+    } else if (plan.audioUrl) {
+        audioElement.src = plan.audioUrl;
+        audioElement.playbackRate = playRate;
+        audioElement.play().catch(function() {});
+    } else {
+        runFallback(plan);   // no clip → estimate timing
+    }
+}
+
+// --- Per-block playback: one clip per spotlighted element, blocking on each ---
+// spotlight/laser fire instantly and advance; speech plays its own clip and, on
+// 'ended', banks the clip's duration, holds a short silent gap, then advances —
+// so the highlight stays lit exactly for the duration of its narration and the
+// progress bar/duration reflect the WHOLE slide (Σ clips + gaps), not one clip.
+let blockIdx = 0;
+let slidePlayedMs = 0;     // completed speeches + gaps so far in this section
+let curSpeechMs = 0;       // duration of the clip currently playing
+let pendingSeekMs = null;  // offset to apply once a seeked clip's metadata loads
+
+function estMs(text) { return Math.max(800, ((text || '').length / 5) * 240); }
+function blockMs(a) { return (a && a.audioDurationMs) ? a.audioDurationMs : estMs(a ? a.text : ''); }
+
+function updateProgress(elapsedMs) {
+    const plan = currentPlan();
+    if (!plan || !plan.totalMs) return;
+    const frac = Math.min(1, elapsedMs / plan.totalMs);
+    progressFill.style.width = (frac * 100) + '%';
+    currentTimeEl.textContent = formatTime(elapsedMs / 1000);
+    durationEl.textContent = formatTime(plan.totalMs / 1000);
+}
+
+function runBlock(sn) {
+    const plan = sectionPlan[sn];
+    if (!playing || currentSection !== sn || !plan) return;
+    if (blockIdx >= plan.acts.length) { advance(); return; }
+    const a = plan.acts[blockIdx];
+    if (a.type === 'spotlight') { applySpotlight(a); blockIdx++; runBlock(sn); }
+    else if (a.type === 'laser') { fireLaser(a); blockIdx++; runBlock(sn); }
+    else if (a.type === 'speech') {
+        curSpeechMs = blockMs(a);
+        setCaption(a.text);
+        if (a.audioUrl) {
+            audioElement.src = a.audioUrl;
+            audioElement.playbackRate = playRate;
+            audioElement.play().catch(function() {});   // → 'ended' → onSpeechEnd
+        } else {
+            // No clip → hold the spotlight for the estimated narration time.
+            fallbackTimer = setTimeout(function() { onSpeechEnd(sn); }, curSpeechMs / playRate);
+        }
+    } else { blockIdx++; runBlock(sn); }
+}
+
+// A speech clip finished: bank its time, then a short silent gap before the next.
+function onSpeechEnd(sn) {
+    if (currentSection !== sn) return;
+    slidePlayedMs += curSpeechMs;
+    curSpeechMs = 0;
+    blockIdx++;
+    const moreSpeech = sectionPlan[sn].acts.slice(blockIdx).some(function(a) { return a.type === 'speech'; });
+    if (moreSpeech && BLOCK_GAP_MS > 0) runGap(sn); else runBlock(sn);
+}
+
+// Silent presenter pause — spotlight stays lit, progress keeps advancing.
+function runGap(sn) {
+    const start = performance.now();
+    (function tick() {
+        if (!playing || currentSection !== sn) return;
+        const ge = Math.min(BLOCK_GAP_MS, performance.now() - start);
+        updateProgress(slidePlayedMs + ge);
+        if (ge >= BLOCK_GAP_MS) { slidePlayedMs += BLOCK_GAP_MS; runBlock(sn); return; }
+        fallbackTimer = setTimeout(tick, 60);
+    })();
+}
+
+// Click-to-seek within a slide: find the block the target time lands in, light
+// its spotlight, and play that clip from the right offset.
+function seekSlide(plan, targetMs) {
+    clearFallback();
+    let acc = 0, lastSpot = null;
+    for (let i = 0; i < plan.acts.length; i++) {
+        const a = plan.acts[i];
+        if (a.type === 'spotlight' || a.type === 'laser') { lastSpot = a; continue; }
+        if (a.type !== 'speech') continue;
+        const dur = blockMs(a);
+        const isLast = !plan.acts.slice(i + 1).some(function(x) { return x.type === 'speech'; });
+        if (targetMs < acc + dur || isLast) {
+            if (lastSpot) applySpotlight(lastSpot);
+            setCaption(a.text);
+            blockIdx = i;
+            slidePlayedMs = acc;
+            curSpeechMs = dur;
+            const offMs = Math.max(0, Math.min(dur, targetMs - acc));
+            if (a.audioUrl) {
+                pendingSeekMs = offMs;
+                audioElement.src = a.audioUrl;
+                audioElement.playbackRate = playRate;
+                audioElement.play().catch(function() {});
+            } else {
+                fallbackTimer = setTimeout(function() { onSpeechEnd(currentSection); }, (dur - offMs) / playRate);
+            }
+            updateProgress(targetMs);
+            return;
+        }
+        acc += dur + BLOCK_GAP_MS;
+    }
+}
+
+// Fallback when a section clip is missing: estimate duration from char count
+// (~240ms/word ≈ chars/5 × 240ms) and fire cues + advance on a timer.
+function runFallback(plan) {
+    const durS = Math.max(2, ((plan ? plan.chars : 0) / 5) * 0.24);
+    const start = performance.now();
+    (function tick() {
+        if (!playing || currentSection == null) return;
+        const t = (performance.now() - start) / 1000;
+        applyCuesUpTo(t, durS);
+        applyCaptionFromCues(t, durS);
+        progressFill.style.width = Math.min(100, (t / durS) * 100) + '%';
+        currentTimeEl.textContent = formatTime(t);
+        if (t >= durS) { advance(); return; }
+        fallbackTimer = setTimeout(tick, 120);
+    })();
+}
+
+function advance() {
+    clearFallback();
+    const i = sectionOrder.indexOf(currentSection);
+    if (i >= 0 && i < sectionOrder.length - 1) { loadSection(sectionOrder[i + 1]); }
+    else if (outroEl && !atOutro) { showOutro(); }   // end card after the last narrated section
+    else { playing = false; setPlayIcon(); }
+}
+
+function togglePlay() { playing ? pause() : play(); }
+
+function play() {
+    if (playing) return;
+    if (atOutro) {   // replay from the start when play is pressed on the end card
+        hideOutro(); currentSection = null;
+        playing = true; setPauseIcon(); markPlaybackStarted();
+        loadSection(sectionOrder.length ? sectionOrder[0] : 1);
+        return;
+    }
+    playing = true; setPauseIcon(); markPlaybackStarted();
+    if (currentSection == null) {
+        loadSection(sectionOrder.length ? sectionOrder[0] : 1);
+    } else if (audioElement.src && audioElement.paused && !audioElement.ended) {
+        audioElement.playbackRate = playRate;
+        audioElement.play().catch(function() {});
+    } else if (currentPlan() && currentPlan().perBlock) {
+        runBlock(currentSection);     // resume the per-block runner
+    } else if (!currentPlan() || !currentPlan().audioUrl) {
+        runFallback(currentPlan());   // resume the no-clip path
+    } else {
+        advance();
+    }
+}
+
+function pause() {
+    playing = false; setPlayIcon();
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+}
+
+function gotoSection(n) {
+    if (n == null || sectionPlan[n] == null) return;
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+    playing = true; setPauseIcon(); markPlaybackStarted();
+    loadSection(n);
+}
+function nextSection() {
+    if (atOutro) return;   // already at the end card
+    const i = sectionOrder.indexOf(currentSection);
+    if (i >= 0 && i < sectionOrder.length - 1) gotoSection(sectionOrder[i + 1]);
+    else if (i === sectionOrder.length - 1 && outroEl) showOutro();   // last → end card
+    else if (i < 0 && sectionOrder.length) gotoSection(sectionOrder[0]);
+}
+function prevSection() {
+    if (atOutro) {   // from the end card back to the last narrated section
+        hideOutro();
+        if (sectionOrder.length) gotoSection(sectionOrder[sectionOrder.length - 1]);
+        return;
+    }
+    const i = sectionOrder.indexOf(currentSection);
+    if (i > 0) gotoSection(sectionOrder[i - 1]);
+    else if (sectionOrder.length) gotoSection(sectionOrder[0]);
+}
+
+function seekAudio(e) {
+    const __p = currentPlan();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (__p && __p.perBlock) {
+        // Seek across the WHOLE slide → jump to the block at that time.
+        if (!playing) { playing = true; setPauseIcon(); markPlaybackStarted(); }
+        seekSlide(__p, frac * (__p.totalMs || 0));
+        return;
+    }
+    if (!isFinite(audioElement.duration)) return;
+    const t = frac * audioElement.duration;
+    audioElement.currentTime = t;
+    resyncCues(t, audioElement.duration);
+}
+
+function setSpeed(rate) {
+    playRate = rate; audioElement.playbackRate = rate;
+    const lbl = document.getElementById('speedLabel');
+    if (lbl) lbl.textContent = String(rate) + '×';
+    document.querySelectorAll('.audio-speed-item').forEach(function(btn) {
+        btn.classList.toggle('active', Math.abs(parseFloat(btn.getAttribute('data-speed')) - rate) < 1e-6);
+    });
+    closeSpeedMenu();
+}
+function toggleSpeedMenu(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('speedMenu');
+    const tgl = document.getElementById('speedToggle');
+    if (!menu) return;
+    const open = menu.classList.toggle('open');
+    if (tgl) tgl.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeSpeedMenu() {
+    const menu = document.getElementById('speedMenu');
+    const tgl = document.getElementById('speedToggle');
+    if (menu) menu.classList.remove('open');
+    if (tgl) tgl.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('click', function(e) {
+    const wrap = (e.target && e.target.closest) ? e.target.closest('.audio-speed') : null;
+    if (!wrap) closeSpeedMenu();
+});
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSpeedMenu(); });
+
+audioElement.addEventListener('timeupdate', () => {
+    if (!isFinite(audioElement.duration)) return;
+    const __p = currentPlan();
+    if (__p && __p.perBlock) {
+        // Whole-slide progress: time banked from prior blocks/gaps + this clip.
+        updateProgress(slidePlayedMs + audioElement.currentTime * 1000);
+    } else {
+        progressFill.style.width = ((audioElement.currentTime / audioElement.duration) * 100) + '%';
+        currentTimeEl.textContent = formatTime(audioElement.currentTime);
+        applyCuesUpTo(audioElement.currentTime, audioElement.duration);
+        applyCaptionFromCues(audioElement.currentTime, audioElement.duration);
+    }
+});
+audioElement.addEventListener('loadedmetadata', () => {
+    const __p = currentPlan();
+    if (__p && __p.perBlock) {
+        // Apply a pending click-seek offset once the new clip's metadata is ready.
+        if (pendingSeekMs != null) {
+            try { audioElement.currentTime = pendingSeekMs / 1000; } catch (e) {}
+            pendingSeekMs = null;
+        }
+        // Duration label stays the whole-slide total (set in loadSection).
+    } else {
+        durationEl.textContent = formatTime(audioElement.duration);
+    }
+});
+audioElement.addEventListener('ended', () => {
+    if (!playing) return;
+    const __p = currentPlan();
+    if (__p && __p.perBlock) onSpeechEnd(currentSection);   // bank time + gap + next block
+    else advance();                                          // next section
+});
+
+// --- Cover / thumbnail ---------------------------------------------------
+// Use the deck's OWN hero (the first real content block in <main> that isn't a
+// numbered section and isn't the header/nav) as the pre-playback canvas. Tagging it
+// .il-native-cover makes the CSS show it before play and hide it once playback starts.
+function setupNativeCover() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    for (const el of main.children) {
+        if (!el.matches) continue;
+        if (el.matches('section[id^="section-"]')) continue;            // a content slide
+        if (el.matches('header, nav, .glass-header')) continue;          // the sticky header/nav
+        if (el.querySelector && el.querySelector('.nav-link')) continue; // a nav container
+        if (((el.textContent || '').trim()).length === 0) continue;      // empty wrapper
+        el.classList.add('il-native-cover');
+        return;
+    }
+}
+setupNativeCover();
+
+// --- Outro / end card ----------------------------------------------------
+// Pick the LAST substantive non-section block in <main> (e.g. the summary / metric
+// cards) — it has no narration — and tag it .il-outro so it can be shown as a static
+// end screen after the last narrated section. Skips the header/nav, footer, and the
+// hero cover (so a single non-section block stays the cover, not the outro).
+function setupOutro() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    const kids = Array.from(main.children);
+    for (let i = kids.length - 1; i >= 0; i--) {
+        const el = kids[i];
+        if (!el.matches) continue;
+        if (el.matches('section[id^="section-"]')) continue;
+        if (el.matches('header, nav, .glass-header, footer')) continue;
+        if (el.classList.contains('il-native-cover')) continue;
+        if (el.querySelector && el.querySelector('.nav-link')) continue;
+        const txt = (el.textContent || '').trim();
+        if (txt.length < 20) continue;                 // empty / tiny wrapper
+        if (/generated (on|by)/i.test(txt)) continue;  // a <div>-based footer
+        el.classList.add('il-outro');
+        outroEl = el;
+        return;
+    }
+}
+setupOutro();
+
+function showOutro() {
+    if (!outroEl) { playing = false; setPlayIcon(); return; }
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+    document.querySelectorAll('section[id^="section-"]').forEach(el => el.classList.remove('slide-active'));
+    clearSpotlight();
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    clearCaption();
+    outroEl.classList.add('il-show');
+    atOutro = true;
+    playing = false; setPlayIcon();
+    sectionInfo.textContent = 'Summary';
+}
+function hideOutro() {
+    if (outroEl) outroEl.classList.remove('il-show');
+    atOutro = false;
+}
+
+// --- Clickable section nav ----------------------------------------------
+// The generated header's nav links carry data-section="section-N". Wire them to jump
+// the player to that section via gotoSection() (works from the cover too).
+document.querySelectorAll('.nav-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        const ds = link.getAttribute('data-section');
+        if (!ds) return;
+        e.preventDefault();
+        const n = parseInt(ds.replace('section-', ''), 10);
+        if (!isNaN(n)) gotoSection(n);
+    });
+});
+
+// --- MP4 renderer hooks --------------------------------------------------
+// The server-side video renderer (Playwright) drives these to capture one static
+// frame per highlight cue, so the exported MP4 shows the same section-switching +
+// element spotlights as the live player (no audio playback needed).
+window.__ilSections = function() { return sectionOrder.slice(); };
+window.__ilCues = function(sn) {
+    const plan = sectionPlan[sn];
+    if (!plan || !plan.cues) return [];
+    return plan.cues.map(function(c) { return { elementId: c.elementId, type: c.type, frac: c.frac }; });
+};
+// Show section `sn` with highlights applied up to cue index `k` (k = -1 → no
+// highlight yet, the pre-first-cue lead-in). Hides the cover so the slide is visible.
+window.__ilShowFrame = function(sn, k) {
+    markPlaybackStarted();
+    currentSection = sn;
+    showSlide(sn);            // switches slide + clears any prior spotlight
+    const plan = sectionPlan[sn];
+    if (!plan) return;
+    for (let j = 0; j <= k && j < plan.cues.length; j++) {
+        const cue = plan.cues[j];
+        if (cue.type !== 'laser') applySpotlight(cue);   // latest spotlight wins
+    }
+};
+// MP4 export (per-block): show section `sn` and spotlight exactly `elementId`
+// (the block currently narrating). Used by the video service to render one frame
+// per block, held for that block's clip duration — so the exported MP4 reproduces
+// the live per-block highlight↔audio sync. elementId may be null/'' (speech with
+// no addressable element → just show the slide).
+window.__ilShowBlock = function(sn, elementId) {
+    markPlaybackStarted();
+    currentSection = sn;
+    showSlide(sn);            // switch slide + render mermaid + clear prior spotlight
+    if (elementId) applySpotlight({ elementId: elementId, sectionNumber: sn, type: 'spotlight' });
+};
+</script>
+</body>
+</html>

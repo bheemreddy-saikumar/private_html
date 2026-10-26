@@ -1,0 +1,121 @@
+{
+  "skill_id": "6a4408b1e15b997d713c4b8d",
+  "skill_name": "Reports Service",
+  "topic_id": "6a448828940475d76870cf31",
+  "topic_name": "API Endpoint Design for Report Generation",
+  "topic_track": "project",
+  "content_version": 11,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a448828940475d76870cf31/g9/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a448828940475d76870cf31/g11/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 11,
+  "voiceover_data": {
+    "topic_name": "API Endpoint Design for Report Generation",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-unified-endpoint-structure",
+        "section_number": 1,
+        "title": "The Unified Endpoint Structure",
+        "narration": "Now that we know why analytical queries are kept apart from transactional traffic, we need to build the front door that clients will actually call. For our report system, we use a single, unified route for all analytical requests. We call this a polymorphic endpoint, a single route that returns different types of information depending on which report is requested. In G M S, the location and the report name are both part of the web address. This simplifies our routing, and a client can fetch any report in the same way. To stay safe, we restrict these requests to a fixed list of allowed report types. G M S builds this list by combining its sales, operations, and financial reports. Think of it as a menu that prevents users from requesting data the system cannot generate. By limiting requests to known names, we stop users from accidentally triggering expensive queries. The key idea is using a strictly defined list of report types as a whitelist for analytical requests.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we know why analytical queries are kept apart from transactional traffic, we need to build the front door that clients will actually call."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "For our report system, we use a single, unified route for all analytical requests. We call this a polymorphic endpoint, a single route that returns different types of information depending on which report is requested. In G M S, the location and the report name are both part of the web address. This simplifies our routing, and a client can fetch any report in the same way."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "To stay safe, we restrict these requests to a fixed list of allowed report types. G M S builds this list by combining its sales, operations, and financial reports. Think of it as a menu that prevents users from requesting data the system cannot generate. By limiting requests to known names, we stop users from accidentally triggering expensive queries. The key idea is using a strictly defined list of report types as a whitelist for analytical requests."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-schema-driven-parameter-design",
+        "section_number": 2,
+        "title": "Schema-Driven Parameter Design",
+        "narration": "Now that we have a structure, we need to ensure the parameters passed into that route are valid, because poorly constructed queries can easily overwhelm a system. Every analytical request needs three things: the target location, the timeframe, and the report being requested. The location and report travel in the web address. The timeframe, plus optional extras such as a filter or a single member, is packaged by a data validation schema into one clean object before the core service logic touches it. If no dates are given, G M S defaults to the current month so far. Within this schema, we enforce strict rules, like ensuring a start date never comes after an end date. The route also enforces a business rule: every report must name a location, so no request can scan data across every location at once. By catching these issues at the gate, we guarantee that the report compilation logic only receives verified data. A clean input leads to a clean output. The key idea is using schemas as gatekeepers for data integrity.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we have a structure, we need to ensure the parameters passed into that route are valid, because poorly constructed queries can easily overwhelm a system."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Every analytical request needs three things: the target location, the timeframe, and the report being requested. The location and report travel in the web address. The timeframe, plus optional extras such as a filter or a single member, is packaged by a data validation schema into one clean object before the core service logic touches it. If no dates are given, G M S defaults to the current month so far."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Within this schema, we enforce strict rules, like ensuring a start date never comes after an end date. The route also enforces a business rule: every report must name a location, so no request can scan data across every location at once."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "By catching these issues at the gate, we guarantee that the report compilation logic only receives verified data. A clean input leads to a clean output. The key idea is using schemas as gatekeepers for data integrity."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-engineering-and-production-choices",
+        "section_number": 3,
+        "title": "Engineering and Production Choices",
+        "narration": "With our gatekeeping in place, let's explore why we chose these specific design patterns for the G M S architecture. We send report filters as query parameters on a simple read request, because the filters are few and stable and the whole request fits in the web address. In general, that makes a request easy to log, repeat, or share, and caches can use the address as a key. G M S does not add any caching of its own, and every request still needs a valid login token. We also have to handle time. Our database stores records in universal time, but gym staff think in their local calendar. Before the service logic runs, a shared helper on the endpoint converts the requested dates from the location's time zone into universal time, so the database sequel queries get the right bounds. This keeps our A P I simple for clients: they send local dates, and the shared helpers handle the time zone arithmetic. On the way out, the service converts timestamps in the results back to the location's local time. The key idea is shifting complexity behind the A P I to keep it clean.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "With our gatekeeping in place, let's explore why we chose these specific design patterns for the G M S architecture."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "We send report filters as query parameters on a simple read request, because the filters are few and stable and the whole request fits in the web address. In general, that makes a request easy to log, repeat, or share, and caches can use the address as a key. G M S does not add any caching of its own, and every request still needs a valid login token."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "We also have to handle time. Our database stores records in universal time, but gym staff think in their local calendar. Before the service logic runs, a shared helper on the endpoint converts the requested dates from the location's time zone into universal time, so the database sequel queries get the right bounds."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "This keeps our A P I simple for clients: they send local dates, and the shared helpers handle the time zone arithmetic. On the way out, the service converts timestamps in the results back to the location's local time. The key idea is shifting complexity behind the A P I to keep it clean."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-integration-and-future-flow",
+        "section_number": 4,
+        "title": "Integration and Future Flow",
+        "narration": "Finally, we must consider how this endpoint connects to the rest of the system as we prepare to build the underlying generation logic. This endpoint acts as the boundary between the client and our internal tools. Before any report runs, a shared access check verifies the caller's login token and confirms they belong to the requested location. The validated data object then goes to the service logic, where individual reports apply their own role limits, such as revenue reports for Owners and Managers only. Because we validate at the edge, the service logic is shielded and can focus on compiling data. We will next unpack the specific report types and explore how those definitions drive downstream processing. The key idea is that edge validation protects our core reporting logic from malformed requests.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, we must consider how this endpoint connects to the rest of the system as we prepare to build the underlying generation logic."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "This endpoint acts as the boundary between the client and our internal tools. Before any report runs, a shared access check verifies the caller's login token and confirms they belong to the requested location. The validated data object then goes to the service logic, where individual reports apply their own role limits, such as revenue reports for Owners and Managers only."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Because we validate at the edge, the service logic is shielded and can focus on compiling data. We will next unpack the specific report types and explore how those definitions drive downstream processing. The key idea is that edge validation protects our core reporting logic from malformed requests."
+          }
+        ]
+      }
+    ]
+  }
+}

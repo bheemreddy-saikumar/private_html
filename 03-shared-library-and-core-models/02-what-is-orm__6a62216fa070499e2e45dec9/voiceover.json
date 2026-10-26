@@ -1,0 +1,136 @@
+{
+  "skill_id": "6a55b84f4eac614f602a2293",
+  "skill_name": "Shared Library and Core Models",
+  "topic_id": "6a62216fa070499e2e45dec9",
+  "topic_name": "What is ORM",
+  "topic_track": "project",
+  "content_version": 18,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a62216fa070499e2e45dec9/g12/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a62216fa070499e2e45dec9/g18/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 18,
+  "voiceover_data": {
+    "topic_name": "What is ORM",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-role-of-the-orm-in-gms",
+        "section_number": 1,
+        "title": "The Role of the ORM in GMS",
+        "narration": "Now that the G M S shared library is wired and distributed across the fleet without version skew, we turn to the primary payload it carries: object-relational mapping, or O R M, to bridge our Python services with the database. This section explains the role of the O R M in our Gym Management System. In GMS, seven microservices interact with a single MySQL database. To prevent schema drift and ensure data consistency, we centralize data modeling using SQL Alchemy within the G M S shared library, creating a unified data access layer across all services. An Object-Relational Mapper, or O R M, acts as a critical abstraction layer. It translates between object-oriented Python, where we use objects and attributes like a member's email, and relational databases like MySQL, where data resides in tables and rows. Instead of writing explicit sequel, we use O R M-generated queries. This O R M-generated query, like db dot session dot query of Member dot get of five, handles the underlying sequel generation, execution, and mapping of results back into Python objects. This simplifies development and provides built-in protection against sequel injection vulnerabilities by binding parameters securely. So the key idea is that the O R M handles all the complex sequel interactions for us.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that the G M S shared library is wired and distributed across the fleet without version skew, we turn to the primary payload it carries: object-relational mapping, or O R M, to bridge our Python services with the database."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This section explains the role of the O R M in our Gym Management System. In GMS, seven microservices interact with a single MySQL database. To prevent schema drift and ensure data consistency, we centralize data modeling using SQL Alchemy within the G M S shared library, creating a unified data access layer across all services."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "An Object-Relational Mapper, or O R M, acts as a critical abstraction layer. It translates between object-oriented Python, where we use objects and attributes like a member's email, and relational databases like MySQL, where data resides in tables and rows."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Instead of writing explicit sequel, we use O R M-generated queries."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "This O R M-generated query, like db dot session dot query of Member dot get of five, handles the underlying sequel generation, execution, and mapping of results back into Python objects. This simplifies development and provides built-in protection against sequel injection vulnerabilities by binding parameters securely. So the key idea is that the O R M handles all the complex sequel interactions for us."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-sqlalchemy-the-project-s-data-backbone",
+        "section_number": 2,
+        "title": "SQLAlchemy: The Project's Data Backbone",
+        "narration": "We chose SQL Alchemy for its robustness and wide adoption. This section covers its core configuration and optimized settings for our microservice architecture. SQL Alchemy is the backbone of our data management. Its core configuration lives in the shared library. We use specific engine configurations optimized for our containerized microservice environment. Crucially, we use connection pooling, which means reusing a small set of open database connections instead of opening a new one every time, with a health check turned on. This setting ensures that before using a database connection, SQL Alchemy pings it to validate its health. We also recycle every connection after an hour. This avoids problems with connections the network has silently dropped and ensures connections don't remain open indefinitely, maintaining a healthy database connection pool. So the key idea is that these configurations keep our database connections healthy and efficient.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "We chose SQL Alchemy for its robustness and wide adoption. This section covers its core configuration and optimized settings for our microservice architecture."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "SQL Alchemy is the backbone of our data management. Its core configuration lives in the shared library. We use specific engine configurations optimized for our containerized microservice environment. Crucially, we use connection pooling, which means reusing a small set of open database connections instead of opening a new one every time, with a health check turned on. This setting ensures that before using a database connection, SQL Alchemy pings it to validate its health."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "We also recycle every connection after an hour. This avoids problems with connections the network has silently dropped and ensures connections don't remain open indefinitely, maintaining a healthy database connection pool. So the key idea is that these configurations keep our database connections healthy and efficient."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-declarative-base-and-db-model",
+        "section_number": 3,
+        "title": "Declarative Base and `db.Model`",
+        "narration": "Let's explore how SQL Alchemy's Declarative Base simplifies model definition and ensures consistency through automatic table naming within GMS. SQL Alchemy's Declarative Base is a factory for creating base classes. All GMS data models, like User or Member, inherit from this base. This declarative approach automatically registers model classes with SQL Alchemy's mapping system, making our code cleaner. Within GMS, every model builds on this shared base class. A key customization is automatic table naming. Instead of typing a table name in every model, our base class works it out from the class name. For example, the Member class automatically maps to the member table. So nobody has to type table names by hand, and every table follows the same naming rule. The key idea: the shared base class handles table naming automatically.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Let's explore how SQL Alchemy's Declarative Base simplifies model definition and ensures consistency through automatic table naming within GMS."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "SQL Alchemy's Declarative Base is a factory for creating base classes. All GMS data models, like User or Member, inherit from this base. This declarative approach automatically registers model classes with SQL Alchemy's mapping system, making our code cleaner."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Within GMS, every model builds on this shared base class. A key customization is automatic table naming. Instead of typing a table name in every model, our base class works it out from the class name."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "For example, the Member class automatically maps to the member table. So nobody has to type table names by hand, and every table follows the same naming rule. The key idea: the shared base class handles table naming automatically."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-engineering-trade-offs-and-raw-sql",
+        "section_number": 4,
+        "title": "Engineering Trade-offs and Raw SQL",
+        "narration": "Every design choice involves trade-offs. Here, we examine our key decisions and the strategic use of raw sequel where the O R M falls short. We make several key engineering decisions. Sharing models in the G M S shared library guarantees schema consistency but requires coordinated redeployments for database changes. Using the O R M for everyday create, read, update and delete operations speeds up development and enhances security, though O R M queries may be slightly less performant than hand-optimized sequel for simple operations. Our declarative base implementation offers a single source of truth but can be limiting with legacy databases or non-standard naming conventions. These trade-offs are carefully considered to balance consistency, development speed, and performance across our microservices. While the O R M is our default, we strategically use Raw sequel for complex, performance-critical queries, especially in the Reports Service. For instance, calculating monthly churn or summarizing millions of ledger entries is more efficient with direct sequel execution, using SQL Alchemy's text function for robust connection management. So the key idea is that while the O R M is powerful, direct sequel execution via SQL Alchemy's text function offers robust connection management for performance-critical operations.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Every design choice involves trade-offs. Here, we examine our key decisions and the strategic use of raw sequel where the O R M falls short."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "We make several key engineering decisions. Sharing models in the G M S shared library guarantees schema consistency but requires coordinated redeployments for database changes. Using the O R M for everyday create, read, update and delete operations speeds up development and enhances security, though O R M queries may be slightly less performant than hand-optimized sequel for simple operations."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Our declarative base implementation offers a single source of truth but can be limiting with legacy databases or non-standard naming conventions. These trade-offs are carefully considered to balance consistency, development speed, and performance across our microservices."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "While the O R M is our default, we strategically use Raw sequel for complex, performance-critical queries, especially in the Reports Service. For instance, calculating monthly churn or summarizing millions of ledger entries is more efficient with direct sequel execution, using SQL Alchemy's text function for robust connection management."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "So the key idea is that while the O R M is powerful, direct sequel execution via SQL Alchemy's text function offers robust connection management for performance-critical operations."
+          }
+        ]
+      }
+    ]
+  }
+}

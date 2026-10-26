@@ -1,0 +1,146 @@
+{
+  "skill_id": "6a55b84f4eac614f602a2293",
+  "skill_name": "Shared Library and Core Models",
+  "topic_id": "6a55bb558c5dd1b6294abdf5",
+  "topic_name": "Shared Database Access Layer",
+  "topic_track": "project",
+  "content_version": 12,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a55bb558c5dd1b6294abdf5/g8/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a55bb558c5dd1b6294abdf5/g12/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 12,
+  "voiceover_data": {
+    "topic_name": "Shared Database Access Layer",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-introducing-the-shared-database-access-layer",
+        "section_number": 1,
+        "title": "Introducing the Shared Database Access Layer",
+        "narration": "In Common Data Models, we built those Python classes for members, plans, and classes. Now, we need the layer that actually connects to MySQL and lets those blueprints read and write. That's our Shared Database Access Layer. A model class is just a blueprint: it describes a table, but it has no live connection to the database. To actually move data, we need what's called a Shared Database Access Layer. Now, in a system with four services and three background workers, the biggest architectural choice is this: does each service manage its own database connection logic, or do they share one central implementation? For the Gym Management System, we chose the latter. So, we have a shared, framework-neutral access layer. The key idea here is that a shared access layer centralizes all your database logic across all your services.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "In Common Data Models, we built those Python classes for members, plans, and classes. Now, we need the layer that actually connects to MySQL and lets those blueprints read and write. That's our Shared Database Access Layer."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "A model class is just a blueprint: it describes a table, but it has no live connection to the database. To actually move data, we need what's called a Shared Database Access Layer."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Now, in a system with four services and three background workers, the biggest architectural choice is this: does each service manage its own database connection logic, or do they share one central implementation? For the Gym Management System, we chose the latter. So, we have a shared, framework-neutral access layer. The key idea here is that a shared access layer centralizes all your database logic across all your services."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-shared-database-vs-database-per-service",
+        "section_number": 2,
+        "title": "Shared Database vs. Database-per-Service",
+        "narration": "So, we've defined the models. But how do we connect them to the database? Let's explore the trade-offs between two common microservice patterns: database-per-service and a shared database. In microservices, you generally see two main paths. First, database-per-service. Here, each service has its own private database. This gives you great isolation, but reporting across services becomes expensive, requiring either H T T P calls or complex event syncing. The second path is a shared database. The Gym Management System uses this shared database path. All services connect to a single MySQL instance. This makes it easy and performant to do sequel joins across different domains, like joining a member's profile with their payment history. Plus, by centralizing the connection logic, every process talks to the database using the exact same pool settings and session patterns. This shared database pattern, which we first discussed in the High-Level System Architecture Overview, allows for direct data access. For example, the reports service can run complex sequel queries across tables owned by members and plans, without needing those costly internal H T T P calls. This is a huge performance boost for a data-heavy platform. So, the key takeaway is that the shared database pattern enables direct data access and high performance across services.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So, we've defined the models. But how do we connect them to the database? Let's explore the trade-offs between two common microservice patterns: database-per-service and a shared database."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "In microservices, you generally see two main paths. First, database-per-service. Here, each service has its own private database. This gives you great isolation, but reporting across services becomes expensive, requiring either H T T P calls or complex event syncing. The second path is a shared database."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "The Gym Management System uses this shared database path. All services connect to a single MySQL instance. This makes it easy and performant to do sequel joins across different domains, like joining a member's profile with their payment history. Plus, by centralizing the connection logic, every process talks to the database using the exact same pool settings and session patterns."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "This shared database pattern, which we first discussed in the High-Level System Architecture Overview, allows for direct data access. For example, the reports service can run complex sequel queries across tables owned by members and plans, without needing those costly internal H T T P calls."
+          },
+          {
+            "el_id": "s2-block-4",
+            "type": "block",
+            "text": "This is a huge performance boost for a data-heavy platform. So, the key takeaway is that the shared database pattern enables direct data access and high performance across services."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-centralizing-the-engine-and-session-management",
+        "section_number": 3,
+        "title": "Centralizing the Engine and Session Management",
+        "narration": "We'll now dive into the shared access layer's implementation, focusing on how we centralize the database engine and manage sessions for both web requests and background workers. The engine is your entry point to MySQL. Instead of every service defining its own, we configure it just once, in the shared library. This includes the connection health check and hourly recycling settings. These prevent errors where the database has quietly closed a connection that sat idle, which happens often with background workers. You'll recall we saw these settings before in 'What is O R M', and all our processes inherit them. Since GMS runs both H T T P services and background workers, our access layer needs two ways to interact with the database. For the A P I services, each request gets its own session. That session is cleaned up automatically when the request ends. This keeps the model code clean, letting the code simply save and commit without managing sessions itself. For background workers, though, there's no H T T P request lifecycle. So, each background job wraps its work in a single all-or-nothing unit. This guarantees that every background job either completes successfully with a commit, or rolls back cleanly if an error happens, without leaking any database connections. This pattern is directly integrated into the worker's task lifecycle. So, the key idea is that session management is different for web requests versus background workers: one session per request for web services, and one all-or-nothing unit per job for workers.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "We'll now dive into the shared access layer's implementation, focusing on how we centralize the database engine and manage sessions for both web requests and background workers."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The engine is your entry point to MySQL. Instead of every service defining its own, we configure it just once, in the shared library. This includes the connection health check and hourly recycling settings. These prevent errors where the database has quietly closed a connection that sat idle, which happens often with background workers. You'll recall we saw these settings before in 'What is O R M', and all our processes inherit them."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Since GMS runs both H T T P services and background workers, our access layer needs two ways to interact with the database. For the A P I services, each request gets its own session."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "That session is cleaned up automatically when the request ends. This keeps the model code clean, letting the code simply save and commit without managing sessions itself."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "For background workers, though, there's no H T T P request lifecycle. So, each background job wraps its work in a single all-or-nothing unit. This guarantees that every background job either completes successfully with a commit, or rolls back cleanly if an error happens, without leaking any database connections."
+          },
+          {
+            "el_id": "s3-block-5",
+            "type": "block",
+            "text": "This pattern is directly integrated into the worker's task lifecycle. So, the key idea is that session management is different for web requests versus background workers: one session per request for web services, and one all-or-nothing unit per job for workers."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-engineering-trade-offs-and-operational-notes",
+        "section_number": 4,
+        "title": "Engineering Trade-offs and Operational Notes",
+        "narration": "Finally, let's discuss the engineering trade-offs of this approach and a unique wrapper that smoothed our migration, setting the stage for more advanced querying. Building the access layer this way offers gains like direct data access for complex queries and uniform configuration across the fleet. The trade-off is schema coupling: a breaking migration in one table requires updating the shared library and redeploying affected services. We accept this tight coupling for development speed and query efficiency. A unique part of this implementation is the Db wrapper class. It mimics Flask SQL Alchemy's interface, allowing us to migrate hundreds of database calls from a legacy monolithic structure to modern microservices without a full rewrite. This abstraction smooths out framework transitions. So, the key idea here is that a centralized, shared database access layer streamlines development and improves performance by providing uniform connection and session management for all services and workers. With our engine and session lifecycles now set up for both web services and background workers, we're ready to look at how to pull complex data efficiently in the next section, Advanced Querying with SQL Alchemy.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let's discuss the engineering trade-offs of this approach and a unique wrapper that smoothed our migration, setting the stage for more advanced querying."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Building the access layer this way offers gains like direct data access for complex queries and uniform configuration across the fleet. The trade-off is schema coupling: a breaking migration in one table requires updating the shared library and redeploying affected services. We accept this tight coupling for development speed and query efficiency."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "A unique part of this implementation is the Db wrapper class. It mimics Flask SQL Alchemy's interface, allowing us to migrate hundreds of database calls from a legacy monolithic structure to modern microservices without a full rewrite. This abstraction smooths out framework transitions."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "So, the key idea here is that a centralized, shared database access layer streamlines development and improves performance by providing uniform connection and session management for all services and workers."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "With our engine and session lifecycles now set up for both web services and background workers, we're ready to look at how to pull complex data efficiently in the next section, Advanced Querying with SQL Alchemy."
+          }
+        ]
+      }
+    ]
+  }
+}

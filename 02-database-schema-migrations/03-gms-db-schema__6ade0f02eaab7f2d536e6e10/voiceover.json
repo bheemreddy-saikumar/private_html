@@ -1,0 +1,116 @@
+{
+  "skill_id": "6a4408afe15b997d713c4b89",
+  "skill_name": "Database Schema & Migrations",
+  "topic_id": "6ade0f02eaab7f2d536e6e10",
+  "topic_name": "GMS DB Schema",
+  "topic_track": "project",
+  "content_version": 16,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6ade0f02eaab7f2d536e6e10/g15/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6ade0f02eaab7f2d536e6e10/g16/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 16,
+  "voiceover_data": {
+    "topic_name": "GMS DB Schema",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-why-the-schema-comes-first",
+        "section_number": 1,
+        "title": "Why the Schema Comes First",
+        "narration": "Now that we've seen how GMS was rolled out milestone by milestone, starting with memberships, let's look at the foundation every milestone was built on: the shared database schema. In GMS, we use a shared database pattern where multiple microservices read and write to the same central database. With four A P I services and background workers relying on it, the schema acts as our contract. If services disagree on what a membership represents, the entire system fails. We must define this contract first. Code is easy to refactor, but a central table with millions of rows is not. We design the schema for where the platform is going, not just where it is today. By planning ahead, we ensure the foundation remains stable as we scale. So the key idea is: design the schema first, because it is the foundation and the contract every service depends on.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we've seen how GMS was rolled out milestone by milestone, starting with memberships, let's look at the foundation every milestone was built on: the shared database schema."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In GMS, we use a shared database pattern where multiple microservices read and write to the same central database. With four A P I services and background workers relying on it, the schema acts as our contract. If services disagree on what a membership represents, the entire system fails. We must define this contract first."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Code is easy to refactor, but a central table with millions of rows is not. We design the schema for where the platform is going, not just where it is today. By planning ahead, we ensure the foundation remains stable as we scale. So the key idea is: design the schema first, because it is the foundation and the contract every service depends on."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-five-design-principles",
+        "section_number": 2,
+        "title": "Five Design Principles",
+        "narration": "Since the schema is our shared foundation, we rely on five core design principles to keep it consistent. First, we enforce a tenant boundary, giving almost every table a location I D, so multiple gyms can share one database safely. Next, we separate identity from profile, keeping login data distinct from personal details. Third, we distinguish catalog from contract, which is our term for separating the menu of plans from the specific customer purchase. We also use reference tables, which are dedicated lookup tables that store fixed system choices to keep code and data aligned. Lastly, we apply uniform conventions, like consistent naming and status-based retirement instead of deletion. Every G M S table follows these principles, so if you can read one table, you can read them all. So the key idea is: consistent principles make every table predictable.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Since the schema is our shared foundation, we rely on five core design principles to keep it consistent."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "First, we enforce a tenant boundary, giving almost every table a location I D, so multiple gyms can share one database safely. Next, we separate identity from profile, keeping login data distinct from personal details. Third, we distinguish catalog from contract, which is our term for separating the menu of plans from the specific customer purchase."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "We also use reference tables, which are dedicated lookup tables that store fixed system choices to keep code and data aligned. Lastly, we apply uniform conventions, like consistent naming and status-based retirement instead of deletion. Every G M S table follows these principles, so if you can read one table, you can read them all. So the key idea is: consistent principles make every table predictable."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-the-core-tables",
+        "section_number": 3,
+        "title": "The Core Tables",
+        "narration": "To see these principles in action, let us look at the core tables that map our domain. Everything starts with the tenant. A gym is the business, and a location is one physical site that belongs to a gym. Plans, classes, members and invoices all belong to a location, which is how one database can hold many gyms without mixing their data. In this diagram, you can see how users connect to profiles and memberships. The user table manages login, while user profile holds details, keeping security separate from data. Member profile links a user to a specific location, allowing someone to hold memberships at multiple locations through their single account. We also see the catalog versus contract split in our plans and memberships. A membership stores its own signup fee and discount, so a future change to the plan's price never rewrites an existing member's deal. Similarly, classes use recurrence rules to store a whole year of yoga sessions in one row. Reference tables complete the picture. The billing type table holds four rows: Recurring, Paid in Full, Session packs, and Free. Every plan points to one of them, so an invalid billing type cannot be saved, and the code reads the same values as named constants instead of magic numbers. So the key idea is: each table has one clear job, linked by explicit relationships.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "To see these principles in action, let us look at the core tables that map our domain."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Everything starts with the tenant. A gym is the business, and a location is one physical site that belongs to a gym. Plans, classes, members and invoices all belong to a location, which is how one database can hold many gyms without mixing their data. In this diagram, you can see how users connect to profiles and memberships. The user table manages login, while user profile holds details, keeping security separate from data. Member profile links a user to a specific location, allowing someone to hold memberships at multiple locations through their single account."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "We also see the catalog versus contract split in our plans and memberships. A membership stores its own signup fee and discount, so a future change to the plan's price never rewrites an existing member's deal. Similarly, classes use recurrence rules to store a whole year of yoga sessions in one row. Reference tables complete the picture. The billing type table holds four rows: Recurring, Paid in Full, Session packs, and Free. Every plan points to one of them, so an invalid billing type cannot be saved, and the code reads the same values as named constants instead of magic numbers. So the key idea is: each table has one clear job, linked by explicit relationships."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-serving-microservices",
+        "section_number": 4,
+        "title": "Serving Microservices",
+        "narration": "Finally, let us see how this schema powers our microservices through clear ownership and shared models. Each service mainly writes its own tables: the auth admin service owns gyms, locations and users; the members service owns member profiles, memberships, invoices and payments; the plans and classes service owns plans and classes; and the reports service only reads. Code boundaries match data ownership. We use G M S shared, the common library holding shared models across all services, to ensure everyone sees the same truth. Whether it is scoping data by tenant or joining across domains for reporting, the schema serves the entire platform as a single source of truth. Because breaking changes affect all services, we never edit this schema by hand; we use versioned migrations instead. A shared schema gives every service the same rules and the same truth. So the key idea is: one versioned, shared schema is the single source of truth for every service. Next, in From Empty Schema to Working Data, we'll create this schema in a running database and change it safely with migrations.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, let us see how this schema powers our microservices through clear ownership and shared models."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Each service mainly writes its own tables: the auth admin service owns gyms, locations and users; the members service owns member profiles, memberships, invoices and payments; the plans and classes service owns plans and classes; and the reports service only reads. Code boundaries match data ownership. We use G M S shared, the common library holding shared models across all services, to ensure everyone sees the same truth. Whether it is scoping data by tenant or joining across domains for reporting, the schema serves the entire platform as a single source of truth."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Because breaking changes affect all services, we never edit this schema by hand; we use versioned migrations instead. A shared schema gives every service the same rules and the same truth. So the key idea is: one versioned, shared schema is the single source of truth for every service."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "Next, in From Empty Schema to Working Data, we'll create this schema in a running database and change it safely with migrations."
+          }
+        ]
+      }
+    ]
+  }
+}

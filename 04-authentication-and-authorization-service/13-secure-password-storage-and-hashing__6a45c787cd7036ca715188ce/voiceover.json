@@ -1,0 +1,164 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a45c787cd7036ca715188ce",
+  "topic_name": "Secure password storage and hashing",
+  "topic_track": "theory",
+  "content_version": 10,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a45c787cd7036ca715188ce/g8/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a45c787cd7036ca715188ce/g10/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 10,
+  "voiceover_data": {
+    "topic_name": "Secure password storage and hashing",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-secure-password-storage-introduction",
+        "section_number": 1,
+        "title": "Secure Password Storage Introduction",
+        "narration": "Secure Password Storage and Hashing. Our registration workflow is ready to send background tasks asynchronously using Celery. Now, we need to secure the step that happens right before saving user data: hashing the user's password. In modern authentication, protecting user credentials is vital. This topic covers secure password storage and handling. When using external providers like OAuth, we shift password management to them, reducing our direct attack surface for credential compromise. However, managing tokens, sessions, and user identity links remains critical. For users authenticating through OAuth, we don't really need to hash their passwords directly on our end. Our system will trust the security of the OAuth provider. But, if our system issues its own tokens, like JSON Web Tokens, then securing those tokens and their signing keys becomes a top priority. So, the main takeaway here is: With OAuth, password security is on the provider, but we're still responsible for our own tokens and keys.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Secure Password Storage and Hashing. Our registration workflow is ready to send background tasks asynchronously using Celery. Now, we need to secure the step that happens right before saving user data: hashing the user's password."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In modern authentication, protecting user credentials is vital. This topic covers secure password storage and handling. When using external providers like OAuth, we shift password management to them, reducing our direct attack surface for credential compromise. However, managing tokens, sessions, and user identity links remains critical."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "For users authenticating through OAuth, we don't really need to hash their passwords directly on our end. Our system will trust the security of the OAuth provider."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "But, if our system issues its own tokens, like JSON Web Tokens, then securing those tokens and their signing keys becomes a top priority. So, the main takeaway here is: With OAuth, password security is on the provider, but we're still responsible for our own tokens and keys."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-modern-hashing-standards",
+        "section_number": 2,
+        "title": "Modern Hashing Standards",
+        "narration": "Modern Hashing Standards. While OAuth bypasses local password hashing, understanding these standards is crucial for any system that does manage local passwords, or for securing internal tokens. We strictly avoid legacy algorithms like MD5 or SHA-1 because they are fast checksums that can be easily parallelized on GPUs to perform billions of guesses per second. Instead, we use computationally intensive, salted hashing algorithms such as Argon2id or bcrypt, which are deliberately slow, tunable, and memory-hard to make hardware-accelerated brute force economically and computationally infeasible. Remember, a one-way cryptographic hash transforms a password into an irreversible string. Salting involves combining each password with a unique random string before hashing. This ensures even identical passwords produce distinct database hashes, thwarting precomputed hash tables. The work factor, or cost factor, tunes the computational effort, aiming for about one hundred to three hundred milliseconds per verification. This balances security against user experience. Now, for users logging in via OAuth, this direct hashing step is skipped because we're relying on the provider. Our focus then shifts to verifying the OAuth provider's token and securely managing our own internal items, like JSON Web Tokens for authorization. These might use different cryptographic methods, like different signing algorithms or key rotation strategies. So, the key idea is: We use modern, slow hashing algorithms for local passwords, along with salts and adjustable work factors to prevent attacks.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Modern Hashing Standards. While OAuth bypasses local password hashing, understanding these standards is crucial for any system that does manage local passwords, or for securing internal tokens."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We strictly avoid legacy algorithms like MD5 or SHA-1 because they are fast checksums that can be easily parallelized on GPUs to perform billions of guesses per second. Instead, we use computationally intensive, salted hashing algorithms such as Argon2id or bcrypt, which are deliberately slow, tunable, and memory-hard to make hardware-accelerated brute force economically and computationally infeasible. Remember, a one-way cryptographic hash transforms a password into an irreversible string."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Salting involves combining each password with a unique random string before hashing. This ensures even identical passwords produce distinct database hashes, thwarting precomputed hash tables. The work factor, or cost factor, tunes the computational effort, aiming for about one hundred to three hundred milliseconds per verification. This balances security against user experience."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Now, for users logging in via OAuth, this direct hashing step is skipped because we're relying on the provider. Our focus then shifts to verifying the OAuth provider's token and securely managing our own internal items, like JSON Web Tokens for authorization."
+          },
+          {
+            "el_id": "s2-block-4",
+            "type": "block",
+            "text": "These might use different cryptographic methods, like different signing algorithms or key rotation strategies. So, the key idea is: We use modern, slow hashing algorithms for local passwords, along with salts and adjustable work factors to prevent attacks."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-service-layer-implementation",
+        "section_number": 3,
+        "title": "Service Layer Implementation",
+        "narration": "Service Layer Implementation. The service layer is where we enforce secure handling of passwords before they ever touch the database. The service layer must intercept plaintext passwords, often from Pydantic Data Transfer Objects, and hash them before persistence. We use libraries like passlib for this. The CryptContext is configured with a strong algorithm, like Argon2, and handles legacy algorithm deprecation gracefully. Here, the get password hash function takes a plaintext password and returns its secure hash. The verify password function compares a submitted plaintext password against a stored hash. This logic resides in the service layer, abstracting the hashing mechanism from data persistence. For non-OAuth flows, this implementation is directly applicable. For OAuth users, these functions aren't called during primary authentication. If a user has a local password for recovery or MFA, these functions would still apply to that local password. So, the key idea is: The service layer abstracts password hashing and verification, keeping it separate from database concerns.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Service Layer Implementation. The service layer is where we enforce secure handling of passwords before they ever touch the database."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The service layer must intercept plaintext passwords, often from Pydantic Data Transfer Objects, and hash them before persistence. We use libraries like passlib for this. The CryptContext is configured with a strong algorithm, like Argon2, and handles legacy algorithm deprecation gracefully."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Here, the get password hash function takes a plaintext password and returns its secure hash. The verify password function compares a submitted plaintext password against a stored hash. This logic resides in the service layer, abstracting the hashing mechanism from data persistence."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "For non-OAuth flows, this implementation is directly applicable. For OAuth users, these functions aren't called during primary authentication. If a user has a local password for recovery or MFA, these functions would still apply to that local password. So, the key idea is: The service layer abstracts password hashing and verification, keeping it separate from database concerns."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-registration-and-login-lifecycle",
+        "section_number": 4,
+        "title": "Registration and Login Lifecycle",
+        "narration": "Registration and Login Lifecycle. Let's examine how these principles apply during user registration and the login process. During registration, we first validate input using Pydantic models, ensuring password strength and valid associated data. Then, the plaintext password is transformed into a secure hash using get password hash before being stored. The database holds the hash, never the plaintext. For OAuth registrations, there's no local password to hash. The process links our system to the provider's identifier. Validation still applies to profile data. We securely store the OAuth identifier and potentially tokens, which are treated as sensitive credentials. During login, verify password compares the submitted password against the stored hash. This computationally intensive check prevents rapid guessing. For OAuth logins, this is replaced by validating the assertion, like an ID token, received from the provider. This involves checking signatures, expiration, and issuer. So, the key idea is: Registration hashes passwords, while login verifies them, with OAuth flows delegating these steps to the provider.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Registration and Login Lifecycle. Let's examine how these principles apply during user registration and the login process."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "During registration, we first validate input using Pydantic models, ensuring password strength and valid associated data. Then, the plaintext password is transformed into a secure hash using get password hash before being stored. The database holds the hash, never the plaintext."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "For OAuth registrations, there's no local password to hash. The process links our system to the provider's identifier. Validation still applies to profile data. We securely store the OAuth identifier and potentially tokens, which are treated as sensitive credentials."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "During login, verify password compares the submitted password against the stored hash. This computationally intensive check prevents rapid guessing. For OAuth logins, this is replaced by validating the assertion, like an ID token, received from the provider. This involves checking signatures, expiration, and issuer. So, the key idea is: Registration hashes passwords, while login verifies them, with OAuth flows delegating these steps to the provider."
+          }
+        ]
+      },
+      {
+        "section_id": "section-05-sensitive-flows-and-operations",
+        "section_number": 5,
+        "title": "Sensitive Flows and Operational Considerations",
+        "narration": "Sensitive Flows and Operational Considerations. We'll wrap up by looking at password resets, admin APIs, and some essential operational practices. The password reset flow involves generating a secure, short-lived token, transmitting it via email, and then hashing the new password. Crucially, all active sessions must be invalidated upon a successful reset. For OAuth users, password resets are handled by the provider; we might offer an unlink account feature instead. Admin APIs for managing users must be secured with RBAC. This ensures only authorized personnel can modify credentials. For OAuth users, RBAC maps roles based on provider claims or internal records, protecting administrative actions within our system. Operationally, log authentication attempts but never plaintext passwords or hashes. Manage secrets like J W T signing keys securely using environment variables or secret management systems. So, the key idea is: Always use strong, salted, and slow hashing for local passwords, and delegate to trusted providers for OAuth. Once login verification succeeds and access tokens are issued, the next security boundary is protecting long-lived sessions by implementing refresh token rotation.",
+        "segments": [
+          {
+            "el_id": "s5-title",
+            "type": "title",
+            "text": "Sensitive Flows and Operational Considerations. We'll wrap up by looking at password resets, admin APIs, and some essential operational practices."
+          },
+          {
+            "el_id": "s5-block-1",
+            "type": "block",
+            "text": "The password reset flow involves generating a secure, short-lived token, transmitting it via email, and then hashing the new password. Crucially, all active sessions must be invalidated upon a successful reset. For OAuth users, password resets are handled by the provider; we might offer an unlink account feature instead."
+          },
+          {
+            "el_id": "s5-block-2",
+            "type": "block",
+            "text": "Admin APIs for managing users must be secured with RBAC. This ensures only authorized personnel can modify credentials. For OAuth users, RBAC maps roles based on provider claims or internal records, protecting administrative actions within our system."
+          },
+          {
+            "el_id": "s5-block-3",
+            "type": "block",
+            "text": "Operationally, log authentication attempts but never plaintext passwords or hashes. Manage secrets like J W T signing keys securely using environment variables or secret management systems. So, the key idea is: Always use strong, salted, and slow hashing for local passwords, and delegate to trusted providers for OAuth. Once login verification succeeds and access tokens are issued, the next security boundary is protecting long-lived sessions by implementing refresh token rotation."
+          }
+        ]
+      }
+    ]
+  }
+}

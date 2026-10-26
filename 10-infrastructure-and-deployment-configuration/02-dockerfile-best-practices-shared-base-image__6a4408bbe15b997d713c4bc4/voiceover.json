@@ -1,0 +1,88 @@
+{
+  "skill_id": "6a4408b3e15b997d713c4b91",
+  "skill_name": "Infrastructure and Deployment Configuration",
+  "topic_id": "6a4408bbe15b997d713c4bc4",
+  "topic_name": "Dockerfile Best Practices: Shared Base Image",
+  "topic_track": "theory",
+  "content_version": 7,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408bbe15b997d713c4bc4/g7/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4408bbe15b997d713c4bc4/g6/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 1,
+  "voiceover_data": {
+    "topic_name": "Dockerfile Best Practices: Shared Base Image",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-conceptual-model-gms-base",
+        "section_number": 1,
+        "title": "The Conceptual Model: gms-base",
+        "narration": "After defining our services and their requirements, we have an operational hurdle: we keep rebuilding the same dependencies across seven distinct services. We solve this by using a shared base image. A shared base image is a foundation for your container templates, holding the common tools and runtimes every service needs. By using one golden image like GMS base, we make sure every service uses the same Python versions and system libraries, preventing drift across the entire GMS ecosystem. This pattern also uses Docker layer caching, where the container engine skips steps if the files have not changed. Pre-installing heavy components speeds up our C I C D pipelines and cuts registry costs. Remember, efficiency is built on foundations, so the key idea is: use one base.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "After defining our services and their requirements, we have an operational hurdle: we keep rebuilding the same dependencies across seven distinct services. We solve this by using a shared base image."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "A shared base image is a foundation for your container templates, holding the common tools and runtimes every service needs. By using one golden image like GMS base, we make sure every service uses the same Python versions and system libraries, preventing drift across the entire GMS ecosystem."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "This pattern also uses Docker layer caching, where the container engine skips steps if the files have not changed. Pre-installing heavy components speeds up our C I C D pipelines and cuts registry costs. Remember, efficiency is built on foundations, so the key idea is: use one base."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-implementation-and-integration",
+        "section_number": 2,
+        "title": "Implementation and Integration",
+        "narration": "Now that we see the value of a shared base, let's look at how to implement it in our Dockerfiles. Our GMS base Dockerfile sets the runtime by installing system-level packages and core logic. As we saw when pulling shared models, migrations, and D T O's from GMS shared, we include that internal library right in the base image. This makes sure every service gets the latest core logic automatically, enforcing a fail-fast mechanism during our builds. Each service just inherits from this base. This keeps your service Dockerfiles thin, with only their unique code. When you change a service's source code, Docker only rebuilds the final layers and hits the cache for the base layers. Key idea: build thin service images. So the key idea is layer-based efficiency.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we see the value of a shared base, let's look at how to implement it in our Dockerfiles."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Our GMS base Dockerfile sets the runtime by installing system-level packages and core logic. As we saw when pulling shared models, migrations, and D T O's from GMS shared, we include that internal library right in the base image. This makes sure every service gets the latest core logic automatically, enforcing a fail-fast mechanism during our builds."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Each service just inherits from this base. This keeps your service Dockerfiles thin, with only their unique code. When you change a service's source code, Docker only rebuilds the final layers and hits the cache for the base layers. Key idea: build thin service images. So the key idea is layer-based efficiency."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-trade-offs-and-versioning",
+        "section_number": 3,
+        "title": "Trade-offs and Versioning",
+        "narration": "While this shared approach is powerful, we have to manage the trade-offs of centralized infrastructure. A big risk is image bloat, where a container gets too large because we bundled extra tools. Also, because we use a single base, breaking changes there affect everything. We fix this with explicit versioning, avoiding the latest tag in favor of specific semantic versions to ensure our builds are stable and audit-ready. Pinning our base image version gives us control over when services adopt changes, making deployments more reliable. Remember, atomic updates are a strength, but orchestration is the cost. Versioning gives us the stability we need for scaling, so the key idea is: version your base images. Now that our images build consistently, the next step is wiring them together locally using Docker Compose for Microservice Orchestration.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "While this shared approach is powerful, we have to manage the trade-offs of centralized infrastructure."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "A big risk is image bloat, where a container gets too large because we bundled extra tools. Also, because we use a single base, breaking changes there affect everything. We fix this with explicit versioning, avoiding the latest tag in favor of specific semantic versions to ensure our builds are stable and audit-ready."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Pinning our base image version gives us control over when services adopt changes, making deployments more reliable. Remember, atomic updates are a strength, but orchestration is the cost. Versioning gives us the stability we need for scaling, so the key idea is: version your base images. Now that our images build consistently, the next step is wiring them together locally using Docker Compose for Microservice Orchestration."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Seeding Concepts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; }
+        .glass-header { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226,232,240,0.8); }
+        .nav-link { transition: all 0.2s ease; padding: 0.4em 0.75em; border-radius: 0.375em; }
+        .nav-link.active { background-color: #4f46e5 !important; color: white !important; font-weight: 600; }
+        .bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; }
+        .bento-card:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); transform: translateY(-4px); }
+        .reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 768px) {
+            .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+            section { margin-bottom: 1.5rem !important; }
+            section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+            section [class*="rounded-[3rem]"] { padding: 1.5rem !important; border-radius: 1.5rem !important; }
+            .mobile-nav-panel { display: none; }
+            .mobile-nav-panel.open { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem; background: white; border-bottom: 1px solid rgba(226,232,240,0.8); z-index: 100; }
+        }
+        @media (min-width: 769px) {
+            .mobile-nav-toggle, .mobile-nav-panel { display: none !important; }
+        }
+        .step-active { background-color: #4f46e5; color: white; transform: scale(1.1); }
+        .tab-content.hidden { display: none; }
+    </style>
+<style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */section.slide-active.il-dim [data-el-id]:not(.il-spot){transition:opacity .4s ease,filter .4s ease,transform .4s ease,box-shadow .4s ease;opacity:.42;filter:brightness(.85) saturate(.88);}section.slide-active.il-dim [data-el-id].il-spot{opacity:1 !important;filter:brightness(1.08) saturate(1.12) !important;border-radius:16px;position:relative;z-index:30;box-shadow:0 0 0 2px rgba(99,102,241,.6),0 0 0 6px rgba(99,102,241,.14),0 18px 40px -14px rgba(15,23,42,.45),0 0 28px 4px rgba(99,102,241,.3);animation:ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,ilSpotPulse 2.4s ease-in-out .5s infinite;}section.slide-active.il-dim [data-el-id$="-title"].il-spot{padding-left:14px;}section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot){overflow:visible !important;}@keyframes ilSpotIn{0%{transform:scale(.99);}60%{transform:scale(1.045);}100%{transform:scale(1.03);}}@keyframes ilSpotPulse{0%,100%{transform:scale(1.03);box-shadow:0 0 0 2px rgba(99,102,241,.55),0 0 0 6px rgba(99,102,241,.12),0 18px 40px -14px rgba(15,23,42,.45),0 0 26px 4px rgba(99,102,241,.26);}50%{transform:scale(1.038);box-shadow:0 0 0 3px rgba(99,102,241,.82),0 0 0 11px rgba(99,102,241,.1),0 24px 50px -14px rgba(15,23,42,.5),0 0 46px 12px rgba(99,102,241,.5);}}</style>
+<style>
+html.preview-mode { scroll-snap-type: none !important; }
+html.preview-mode, html.preview-mode body { overflow: hidden !important; height: 100vh !important; }
+html.preview-mode main { overflow: hidden !important; }
+/* Hide the in-flow, non-section content of <main> (hero/title block, metric cards,
+   footer) so it never flashes through during the gap between slide transitions.
+   Sections themselves are left to the show/hide rules below. */
+html.preview-mode main > *:not(section) { display: none !important; }
+/* Un-IDed <section>s are hidden by default; if one is the deck hero it gets tagged
+   .il-native-cover (below), whose higher-specificity rule shows it before playback. */
+html.preview-mode main > section:not([id^="section-"]) { display: none !important; }
+html.preview-mode section[id^="section-"] { display: none !important; }
+html.preview-mode section[id^="section-"].slide-active {
+    display: flex !important; flex-direction: column !important; position: fixed !important;
+    top: 64px !important; left: 0 !important; right: 0 !important; bottom: 80px !important;
+    width: 100% !important; max-width: 100% !important; min-height: calc(100vh - 144px) !important;
+    z-index: 100 !important; background: #f4f7fb !important; padding: 16px 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+html.preview-mode section[id^="section-"].slide-active > * { max-width: 100% !important; box-sizing: border-box !important; }
+html.preview-mode section[id^="section-"].slide-active .bento-card {
+    flex: 1 !important; min-height: 600px !important; display: flex !important; flex-direction: column !important;
+}
+html.preview-mode .hero-section, html.preview-mode .metric-cards, html.preview-mode footer { display: none !important; }
+
+/* Cover / thumbnail — use the deck's OWN hero (first non-section block in <main>,
+   tagged .il-native-cover by JS). Shown as the canvas BEFORE playback; hidden once
+   playback starts so playback begins on the first voice-over slide. The high
+   specificity here beats the `main > *` flash-hide rules above. */
+html.preview-mode .il-native-cover {
+    display: flex !important; flex-direction: column !important; justify-content: center !important;
+    position: fixed !important; top: 64px !important; left: 0 !important; right: 0 !important; bottom: 80px !important;
+    z-index: 120 !important; background: #f4f7fb !important; padding: 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+html.preview-mode.playback-started .il-native-cover { display: none !important; }
+
+/* Outro / end-card — a trailing non-section block (e.g. the summary/metric cards)
+   that has no narration. Hidden during playback; shown as a static end screen (like
+   the cover, but at the end) once playback finishes. */
+html.preview-mode .il-outro.il-show {
+    display: flex !important; flex-direction: column !important; justify-content: center !important;
+    position: fixed !important; top: 64px !important; left: 0 !important; right: 0 !important; bottom: 80px !important;
+    z-index: 120 !important; background: #f4f7fb !important; padding: 24px !important;
+    overflow: auto !important; margin: 0 !important; box-sizing: border-box !important;
+}
+
+/* Top-nav links: only the ACTIVE section's link looks highlighted. The generated
+   header styles the last link as a permanent indigo pill — neutralize any non-active
+   link so it doesn't look "selected" on every slide. The .nav-link.active rule keeps
+   the current link filled. */
+html.preview-mode .nav-link:not(.active) {
+    background-color: transparent !important;
+    background-image: none !important;
+    color: #64748b !important;
+    box-shadow: none !important;
+}
+
+/* Recede the non-highlighted elements (colour-agnostic opacity + a touch darker)
+   so the spotlit one stands apart. NOTE: kept in sync with
+   html_generation_service._FOCUS_CSS (baked into generated HTML). */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+/* Spotlight — a modern focus treatment: a spring "pop-in" when the highlight
+   lands on a new element, then a breathing accent ring + colored glow that pulls
+   the eye to whatever is being narrated right now. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the spotlight box hugs the first letter — give it a
+   little breathing room on the left when highlighted. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* The slide's column/layout containers use overflow-hidden (to fit one screen),
+   which clips the highlighted element's scale + glow ring at the left/right edges.
+   Reveal overflow ONLY on the clipping ancestor that actually holds the spotlit
+   element, so its overflowing edges stay visible without affecting other slides. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+/* Spring pop-in: a slight overshoot so the eye snaps to the new element. */
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+/* Breathing ring + glow: the accent ring thickens and the glow swells/recedes,
+   with a subtle scale, so the highlight feels alive and keeps drawing focus. */
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+/* Laser pointer — transient dot. */
+#ilLaser {
+    position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(244,63,94,.95) 0%, rgba(244,63,94,.35) 60%, transparent 70%);
+    box-shadow: 0 0 12px 4px rgba(244,63,94,.55); pointer-events: none; opacity: 0;
+    transition: opacity .2s ease, left .25s ease, top .25s ease; z-index: 10000;
+}
+/* Player chrome — matches TopicAudioPlayer aesthetic. */
+/* Self-contained dark-glass media bar — guaranteed contrast over ANY deck theme
+   (the learner renders the deck in its native colors, so the bar must not depend
+   on the slide background). */
+.audio-player-container {
+    position: fixed; bottom: 0; left: 0; right: 0; background: rgba(17,24,39,.94); border-top: 1px solid rgba(255,255,255,.10);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    box-shadow: 0 -4px 18px -8px rgba(0,0,0,.5); padding: 12px 16px; display: flex; align-items: center;
+    justify-content: center; gap: 12px; z-index: 9999; color: #e5e7eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; flex-wrap: nowrap;
+}
+.audio-player-container button {
+    background: rgba(255,255,255,.08); border: none; color: #f1f5f9; width: 36px; height: 36px; border-radius: 8px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; flex-shrink: 0;
+}
+.audio-player-container button:hover { background: rgba(255,255,255,.18); color: #fff; }
+.audio-player-container button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+.audio-player-container button.play-btn { width: 44px; height: 44px; border-radius: 50%; background: #6366f1; color: #fff; }
+.audio-player-container button.play-btn:hover { background: #4f46e5; color: #fff; }
+.audio-progress-container { flex: 1; min-width: 0; max-width: 460px; display: flex; flex-direction: column; gap: 4px; }
+.audio-progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,.18); border-radius: 999px; cursor: pointer; overflow: hidden; }
+.audio-progress-fill { height: 100%; background: #818cf8; width: 0%; transition: width .1s; }
+.audio-time { display: flex; justify-content: space-between; font-size: 11px; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+.audio-section-info { color: #cbd5e1; font-size: 12px; font-weight: 500; min-width: 120px; text-align: center; }
+/* Subtitles / captions — self-contained, high-contrast so they stay readable over dark OR light slides. */
+#ilCaptions {
+    position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); max-width: min(880px, 92vw);
+    background: rgba(15,23,42,.86); color: #fff; padding: 8px 16px; border-radius: 10px; font-size: 15px;
+    line-height: 1.45; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9);
+    box-shadow: 0 4px 20px -6px rgba(0,0,0,.5); z-index: 9998; pointer-events: none;
+}
+#ilCaptions:empty, #ilCaptions.cap-off { display: none; }
+/* CC + speed pill are text buttons, not the 36px icon buttons — override the fixed size. */
+.audio-player-container .cc-btn, .audio-player-container .audio-speed-toggle { width: auto; height: auto; }
+/* CC toggle */
+.cc-btn {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); color: #e5e7eb; padding: 4px 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; border-radius: 6px; cursor: pointer; transition: all .15s;
+    flex-shrink: 0;
+}
+.cc-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+.cc-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+/* Speed popover pill */
+.audio-speed { position: relative; flex-shrink: 0; }
+.audio-speed-toggle {
+    display: inline-flex; align-items: center; gap: 3px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22);
+    color: #e5e7eb; padding: 4px 8px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer;
+    transition: all .15s; min-width: 48px; justify-content: center; font-variant-numeric: tabular-nums;
+}
+.audio-speed-toggle:hover { background: rgba(255,255,255,.18); color: #fff; }
+.audio-speed-menu {
+    display: none; position: absolute; bottom: calc(100% + 8px); right: 0; background: #111827; border: 1px solid #374151;
+    border-radius: 10px; box-shadow: 0 8px 24px -8px rgba(0,0,0,.5); padding: 3px 0; min-width: 0; width: max-content; z-index: 10001; overflow: hidden;
+}
+.audio-speed-menu.open { display: block; }
+.audio-speed-item {
+    display: block; width: 100%; text-align: center; background: transparent; border: none; color: #e5e7eb;
+    padding: 6px 6px; font-size: 12px; font-weight: 500; border-radius: 0; cursor: pointer; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* Speed items are <button>s inside .audio-player-container, so the generic
+   `.audio-player-container button` rule (36px, 8px radius) out-specifies the
+   plain `.audio-speed-item` class. Scope these here to actually win: full-width
+   uniform rows, auto height, square corners. */
+.audio-player-container .audio-speed-item { width: 100%; height: auto; border-radius: 0; background: transparent; }
+.audio-player-container .audio-speed-item:hover { background: #374151; }
+.audio-player-container .audio-speed-item.active { background: #3730a3; color: #fff; font-weight: 600; }
+@media (max-width: 640px) {
+    .audio-player-container { flex-wrap: wrap; padding: 10px 12px; gap: 8px; justify-content: space-between; }
+    .audio-section-info { display: none; }
+    .audio-progress-container { order: 99; flex: 1 0 100%; max-width: none; }
+    #ilCaptions { bottom: 120px; font-size: 13px; padding: 6px 12px; }
+    /* Mobile: let the slide be its natural height so the slide heading isn't
+       pushed off-screen. The desktop 600px card min-height + full-viewport
+       slide min-height make the single-column phone layout far taller than the
+       viewport, scrolling the heading above the fold. */
+    html.preview-mode section[id^="section-"].slide-active { min-height: 0 !important; padding: 14px 14px !important; }
+    html.preview-mode section[id^="section-"].slide-active .bento-card { min-height: auto !important; }
+    html.preview-mode main > section:not([id^="section-"]) { min-height: 0 !important; }
+}
+</style>
+</head>
+<body>
+
+    <header class="glass-header fixed top-0 w-full z-50">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between relative">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg text-white flex items-center justify-center font-bold">D</div>
+                <span class="uppercase text-xs font-semibold tracking-widest text-slate-500">Database Seeding</span>
+            </div>
+            
+            <nav class="hidden md:flex items-center gap-2">
+                <a href="#section-1" data-section="section-1" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Overview</a>
+                <a href="#section-2" data-section="section-2" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Data Types</a>
+                <a href="#section-3" data-section="section-3" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">init.sql</a>
+                <a href="#section-4" data-section="section-4" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Migrations</a>
+                <a href="#section-5" data-section="section-5" class="nav-link text-sm font-medium text-slate-500 hover:text-indigo-600">Lifecycle</a>
+            </nav>
+
+            <button class="mobile-nav-toggle md:hidden inline-flex items-center justify-center w-9 h-9 rounded-md text-slate-700 hover:bg-slate-100" aria-label="Toggle menu" onclick="document.querySelector('.mobile-nav-panel').classList.toggle('open')">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+
+            <div class="mobile-nav-panel absolute left-0 right-0 top-full shadow-lg border-t border-slate-100">
+                <a href="#section-1" data-section="section-1" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm py-3 px-4">Overview</a>
+                <a href="#section-2" data-section="section-2" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm py-3 px-4">Data Types</a>
+                <a href="#section-3" data-section="section-3" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm py-3 px-4">init.sql</a>
+                <a href="#section-4" data-section="section-4" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm py-3 px-4">Migrations</a>
+                <a href="#section-5" data-section="section-5" onclick="document.querySelector('.mobile-nav-panel').classList.remove('open')" class="nav-link text-sm py-3 px-4">Lifecycle</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-32 pb-0 max-w-6xl mx-auto px-6">
+        <section class="text-center mb-24 reveal">
+            <span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span>
+            <h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">
+                Database Seeding with Initial Data
+            </h1>
+            <p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">
+                Database Seeding Concepts
+            </p>
+        </section>
+
+        <!-- Section 1: What is Database Seeding? -->
+        <section id="section-1" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Foundational Overview</span>
+                <h2 data-el-id="s1-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">What is Database Seeding?</h2>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-base leading-relaxed italic">Database seeding populates your database with essential initial data, making the application functional after schema creation.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <div data-el-id="s1-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Schema vs. Seeding</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Alembic ensures database "shape" (tables, columns).</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Seeding populates initial required data.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Empty schemas lack immediate functionality.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s1-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Key Purposes</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Provides static reference data for logic.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Bootstraps sample data for dev environments.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-2xl bg-slate-50 p-6 flex flex-col items-center justify-center border border-slate-200" style="min-height: 400px;">
+                        <div class="text-center mb-8">
+                            <p class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Lifecycle Visualization</p>
+                            <div class="flex justify-center items-center gap-4">
+                                <div id="s1-step-1" class="w-12 h-12 rounded-full border-2 border-slate-200 flex items-center justify-center font-bold text-slate-400 transition-all duration-500">1</div>
+                                <div class="w-8 h-0.5 bg-slate-200"></div>
+                                <div id="s1-step-2" class="w-12 h-12 rounded-full border-2 border-slate-200 flex items-center justify-center font-bold text-slate-400 transition-all duration-500">2</div>
+                                <div class="w-8 h-0.5 bg-slate-200"></div>
+                                <div id="s1-step-3" class="w-12 h-12 rounded-full border-2 border-slate-200 flex items-center justify-center font-bold text-slate-400 transition-all duration-500">3</div>
+                            </div>
+                        </div>
+                        <div id="s1-visual-box" class="w-full h-40 bg-white rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-4 transition-all duration-500">
+                            <p id="s1-status-text" class="text-slate-400 text-sm font-medium">Click "Initialize" to begin</p>
+                            <div id="s1-db-rows" class="w-full mt-4 space-y-2 opacity-0">
+                                <div class="h-3 w-full bg-indigo-100 rounded animate-pulse"></div>
+                                <div class="h-3 w-3/4 bg-indigo-100 rounded animate-pulse"></div>
+                            </div>
+                        </div>
+                        <button onclick="runS1Animation()" class="mt-8 px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors">Initialize DB</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Seed Data Categories -->
+        <section id="section-2" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Data Categories</span>
+                <h2 data-el-id="s2-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">Seed Data Categories</h2>
+
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-base leading-relaxed italic">Differentiating between reference data and mock data ensures the right information populates your database for its intended purpose.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <div data-el-id="s2-block-1" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Reference Data (Foundational)</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Lookup data required for application runtime.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Roles, membership types, subscription plans.</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s2-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Development/Mock Data</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Simulates production environments for testing.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Dummy users, schedules, locations.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div onclick="this.querySelector('.acc-body').classList.toggle('hidden');" class="cursor-pointer bg-white border border-slate-200 rounded-xl p-5 hover:border-indigo-300 transition-all shadow-sm">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                    </div>
+                                    <h4 class="font-bold text-slate-900">Reference Data</h4>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                            <div class="acc-body hidden mt-4 text-slate-600 text-sm border-t border-slate-100 pt-4 space-y-2">
+                                <p class="font-semibold text-indigo-600">Primary Goal: Reliability</p>
+                                <p>Essential for schema constraints. Without this, your application crashes when trying to assign a 'User' to a 'Role' that doesn't exist.</p>
+                            </div>
+                        </div>
+                        <div onclick="this.querySelector('.acc-body').classList.toggle('hidden');" class="cursor-pointer bg-white border border-slate-200 rounded-xl p-5 hover:border-indigo-300 transition-all shadow-sm">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    </div>
+                                    <h4 class="font-bold text-slate-900">Development Data</h4>
+                                </div>
+                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                            <div class="acc-body hidden mt-4 text-slate-600 text-sm border-t border-slate-100 pt-4 space-y-2">
+                                <p class="font-semibold text-emerald-600">Primary Goal: Velocity</p>
+                                <p>Used to populate charts, lists, and profiles so developers don't have to manually create 100 users to test pagination.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: The init.sql Seeding Mechanism (DARK CONTRAST) -->
+        <section id="section-3" class="mb-12 reveal">
+            <div class="bg-slate-900 rounded-[3rem] p-12 md:p-24 text-white relative overflow-hidden flex flex-col justify-center min-h-[600px]">
+                <div class="absolute -top-32 -left-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-[120px]"></div>
+                <div class="relative z-10">
+                    <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Seeding Mechanism</span>
+                    <h2 data-el-id="s3-title" class="text-xl md:text-3xl font-bold text-white tracking-tight mt-2 mb-8">The init.sql Seeding Mechanism</h2>
+                    
+                    <div class="flex flex-col md:flex-row gap-12 items-center">
+                        <div class="w-full md:w-1/2 flex flex-col gap-6">
+                            <div class="bg-white/5 rounded-3xl border border-white/10 p-8">
+                                <p class="text-slate-300 text-lg leading-relaxed italic">Foundational seed data is managed in init.sql, acting as the authoritative source that must remain synchronized with application Enums.</p>
+                            </div>
+                            <div class="space-y-4">
+                                <div data-el-id="s3-block-1" class="content-block bg-white/5 rounded-2xl border border-white/10 p-5">
+                                    <p class="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">init.sql Role</p>
+                                    <ul class="space-y-2">
+                                        <li class="flex items-start text-slate-400 text-sm leading-relaxed"><span class="text-indigo-400 mr-2">›</span>Defines "Day 0" foundational state.</li>
+                                        <li class="flex items-start text-slate-400 text-sm leading-relaxed"><span class="text-indigo-400 mr-2">›</span>Located in <code>gms_be/gmsshared/db/init.sql</code>.</li>
+                                    </ul>
+                                </div>
+                                <div data-el-id="s3-block-2" class="content-block bg-indigo-500/10 border-l-4 border-indigo-400 rounded-r-xl p-5">
+                                    <p class="text-slate-200 text-base font-medium leading-relaxed">Data in <code>init.sql</code> must align perfectly with Python Enums; otherwise, serialization fails.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-full md:w-1/2 flex-shrink-0 rounded-3xl bg-white/5 border border-white/10 p-6 flex items-center justify-center min-h-[300px]">
+                            <pre data-el-id="s3-visual-1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-sql">INSERT INTO roles (id, name, description) VALUES 
+(1, 'super_admin', 'Full system access'),
+(2, 'gym_owner', 'Access to specific gym locations'),
+(3, 'staff', 'Daily operations access'),
+(4, 'member', 'Standard member access')
+ON CONFLICT (id) DO NOTHING;</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Seeding vs. Schema Migrations -->
+        <section id="section-4" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Migrations vs Seeding</span>
+                <h2 data-el-id="s4-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">Seeding vs. Schema Migrations</h2>
+
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-sm leading-relaxed italic">Use Alembic migrations for data tied to schema changes, and init.sql for core system parameters and initial setup.</p>
+                        </div>
+                        <div class="space-y-4">
+                            <div data-el-id="s4-block-1" class="content-block grid grid-cols-1 gap-3">
+                                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">Alembic Migrations</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Best for data transformations, column renames, and structural evolutions over time.</p>
+                                </div>
+                                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                                    <p class="font-bold text-slate-900 text-sm mb-1">init.sql Seeding</p>
+                                    <p class="text-slate-600 text-xs leading-relaxed">Best for static reference tables and environment bootstrapping from scratch.</p>
+                                </div>
+                            </div>
+                            <div data-el-id="s4-block-2" class="content-block bg-indigo-50 border-l-4 border-indigo-500 rounded-r-xl p-4">
+                                <p class="text-slate-800 text-sm font-medium leading-relaxed">Keeping <code>init.sql</code> separate streamlines environment setup for new developers.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-8 flex flex-col items-center justify-center border border-slate-200" style="min-height: 400px;">
+                        <div class="w-full bg-white rounded-xl p-6 shadow-md border border-slate-100">
+                            <div class="flex items-center justify-between mb-6">
+                                <span id="mode-label" class="text-sm font-bold text-indigo-600 uppercase tracking-tighter">Alembic Focus</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" onchange="toggleS4Mode(this)">
+                                    <div class="w-14 h-7 bg-slate-200 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                                </label>
+                            </div>
+                            <div id="mode-content" class="space-y-4">
+                                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                    <p class="text-xs font-bold text-slate-500">Typical Usage</p>
+                                    <p class="text-sm text-slate-700">Modifying table structure and migrating existing data to the new shape.</p>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                    <p class="text-xs font-bold text-slate-500">Frequency</p>
+                                    <p class="text-sm text-slate-700">Run incrementally every time the codebase changes.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Operational Lifecycle & Idempotency -->
+        <section id="section-5" class="mb-12 reveal">
+            <div class="bento-card p-8 md:p-12">
+                <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Operational Lifecycle</span>
+                <h2 data-el-id="s5-title" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-6">Operational Lifecycle & Idempotency</h2>
+
+                <div class="flex flex-col md:flex-row gap-8 items-center md:max-h-[600px] md:overflow-hidden">
+                    <div class="w-full md:w-1/2 flex flex-col gap-4 justify-center">
+                        <div class="bg-slate-50 rounded-xl border border-slate-100 p-5">
+                            <p class="text-slate-600 text-base leading-relaxed italic">Seeding scripts must be idempotent, running safely multiple times, and are applied after schema migration during container startup.</p>
+                        </div>
+                        <div class="space-y-4">
+                            <div data-el-id="s5-block-1" class="content-block py-1">
+                                <p class="text-sm font-semibold text-slate-800 mb-1.5">Container Initialization Sequence</p>
+                                <ul class="space-y-2">
+                                    <li class="flex items-center text-slate-700 text-sm"><span class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-[10px] flex items-center justify-center mr-3 font-bold">1</span>DB Engine Starts</li>
+                                    <li class="flex items-center text-slate-700 text-sm"><span class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-[10px] flex items-center justify-center mr-3 font-bold">2</span>Alembic Upgrade Head</li>
+                                    <li class="flex items-center text-slate-700 text-sm"><span class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-[10px] flex items-center justify-center mr-3 font-bold">3</span>init.sql Execution</li>
+                                </ul>
+                            </div>
+                            <div data-el-id="s5-block-2" class="content-block bg-slate-50 rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Idempotency Requirement</p>
+                                <ul class="space-y-1.5">
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Must run multiple times without duplication.</li>
+                                    <li class="flex items-start text-slate-700 text-sm leading-relaxed"><span class="text-indigo-500 mr-2">›</span>Achieved via <code>ON CONFLICT</code> logic.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 flex-shrink-0 rounded-xl bg-slate-50 p-2 flex items-center justify-center" style="max-height:480px;overflow:auto;">
+                        <div data-el-id="s5-visual-1" style="max-height:420px;overflow:auto;display:flex;align-items:center;justify-content:center;width:100%;"><pre class="mermaid" style="width:100%;min-width:100%;">%%{init: {'theme':'neutral','themeVariables':{'fontSize':'16px','nodeTextSize':'16px'},'flowchart':{'nodeSpacing':50,'rankSpacing':45,'padding':16,'wrappingWidth':220}}}%%
+graph LR
+  A[Database Start] --> B[Alembic Upgrade Head]
+  B --> C[init.sql Execution]
+  C --> D[Ready State]</pre></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Topic Summary -->
+        <div class="max-w-5xl mx-auto px-6 mb-24 reveal">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span>
+            <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-2">Key Takeaways</h2>
+            <p class="text-slate-500 mb-8 max-w-2xl">Effective database seeding bridges the gap between a structural schema and a functional application by providing foundational reference and development data.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0 border border-slate-100 shadow-sm">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Overview</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Seeding populates initial data required to make an empty schema functional.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0 border border-slate-100 shadow-sm">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Data Types</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Distinguish between core reference data and temporary mock/dev data.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0 border border-slate-100 shadow-sm">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">init.sql</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Centralized SQL script for Day 0 data, synced with app Enums.</p>
+                    </div>
+                </div>
+                <div class="bento-card p-4 flex items-start gap-3 min-h-0 border border-slate-100 shadow-sm">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span>
+                    <div>
+                        <p class="font-bold text-slate-900 leading-tight">Migrations</p>
+                        <p class="text-slate-500 text-sm mt-0.5">Use Alembic for schema changes; init.sql for system parameters.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-12 border-t border-slate-200 text-center">
+        <p class="text-slate-500 text-sm">Generated on: <span id="gen-timestamp"></span></p>
+        <p class="text-slate-400 text-xs mt-1">Generated by Altgan</p>
+    </footer>
+
+    <script>
+        // Initialize active nav
+        const firstNavLink = document.querySelector('.nav-link[data-section="section-1"]');
+        if (firstNavLink) firstNavLink.classList.add('active');
+
+        // Nav Highlighting
+        const navObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+                    const sectionId = entry.target.id;
+                    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                    const activeLinks = document.querySelectorAll(`.nav-link[data-section="${sectionId}"]`);
+                    activeLinks.forEach(link => link.classList.add('active'));
+                }
+            });
+        }, { threshold: 0.5, rootMargin: '0px 0px -50% 0px' });
+        document.querySelectorAll('section[id^="section-"]').forEach(sec => navObserver.observe(sec));
+
+        // Reveal animations
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+        // Timestamp
+        document.getElementById('gen-timestamp').textContent = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // Section 1 Animation
+        function runS1Animation() {
+            const steps = [
+                { id: 's1-step-1', text: 'CREATING SCHEMA...', bg: 'bg-slate-100' },
+                { id: 's1-step-2', text: 'ALEMBIC: DEFINING TABLES...', bg: 'bg-indigo-50' },
+                { id: 's1-step-3', text: 'SEEDING: POPULATING DATA', bg: 'bg-indigo-600' }
+            ];
+            
+            const statusText = document.getElementById('s1-status-text');
+            const dbRows = document.getElementById('s1-db-rows');
+            const visualBox = document.getElementById('s1-visual-box');
+
+            statusText.textContent = "Resetting...";
+            dbRows.classList.add('opacity-0');
+            document.querySelectorAll('[id^="s1-step-"]').forEach(s => s.classList.remove('step-active', 'bg-indigo-600', 'text-white'));
+
+            setTimeout(() => {
+                document.getElementById('s1-step-1').classList.add('step-active');
+                statusText.textContent = "Step 1: Container Start";
+                
+                setTimeout(() => {
+                    document.getElementById('s1-step-2').classList.add('step-active');
+                    statusText.textContent = "Step 2: Alembic Migrations";
+                    visualBox.style.borderStyle = "solid";
+                    visualBox.style.borderColor = "#4f46e5";
+
+                    setTimeout(() => {
+                        document.getElementById('s1-step-3').classList.add('step-active');
+                        statusText.textContent = "Step 3: init.sql Seeding Complete";
+                        dbRows.classList.remove('opacity-0');
+                    }, 1200);
+                }, 1200);
+            }, 500);
+        }
+
+        // Section 4 Toggle
+        function toggleS4Mode(checkbox) {
+            const label = document.getElementById('mode-label');
+            const content = document.getElementById('mode-content');
+            
+            if (checkbox.checked) {
+                label.textContent = "init.sql Focus";
+                label.classList.remove('text-indigo-600');
+                label.classList.add('text-emerald-600');
+                content.innerHTML = `
+                    <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <p class="text-xs font-bold text-emerald-500">Typical Usage</p>
+                        <p class="text-sm text-slate-700">Inserting Roles, Permissions, and static Lookups.</p>
+                    </div>
+                    <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <p class="text-xs font-bold text-emerald-500">Frequency</p>
+                        <p class="text-sm text-slate-700">Executed during clean container initialization.</p>
+                    </div>
+                `;
+            } else {
+                label.textContent = "Alembic Focus";
+                label.classList.remove('text-emerald-600');
+                label.classList.add('text-indigo-600');
+                content.innerHTML = `
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <p class="text-xs font-bold text-slate-500">Typical Usage</p>
+                        <p class="text-sm text-slate-700">Modifying table structure and migrating existing data to the new shape.</p>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <p class="text-xs font-bold text-slate-500">Frequency</p>
+                        <p class="text-sm text-slate-700">Run incrementally every time the codebase changes.</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:false,theme:"neutral"});document.addEventListener("DOMContentLoaded",function(){  setTimeout(function(){    document.querySelectorAll("pre.mermaid svg").forEach(function(svg){      svg.removeAttribute("height");      svg.removeAttribute("width");      svg.style.width="100%";      svg.style.maxWidth="100%";      svg.style.height="auto";    });  },500);});</script>
+<div id="ilLaser"></div>
+<div class="audio-player-container" id="audioPlayer">
+    <button onclick="prevSection()" title="Previous section" aria-label="Previous section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z"/></svg>
+    </button>
+    <button class="play-btn" onclick="togglePlay()" id="playBtn" title="Play/Pause" aria-label="Play / Pause">
+        <svg id="playIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pauseIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+    </button>
+    <button onclick="nextSection()" title="Next section" aria-label="Next section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2 0V6l6.5 6L8 18zM16 6v12h2V6h-2z"/></svg>
+    </button>
+    <div class="audio-progress-container">
+        <div class="audio-progress-bar" onclick="seekAudio(event)"><div class="audio-progress-fill" id="progressFill"></div></div>
+        <div class="audio-time"><span id="currentTime">0:00</span><span id="duration">0:00</span></div>
+    </div>
+    <div class="audio-section-info" id="sectionInfo">Press &#9654; to start</div>
+    <button type="button" class="cc-btn active" id="ccBtn" onclick="toggleCaptions()" title="Subtitles" aria-label="Toggle subtitles" aria-pressed="true">CC</button>
+    <div class="audio-speed" data-il-speed>
+        <button type="button" class="audio-speed-toggle" id="speedToggle" onclick="toggleSpeedMenu(event)" aria-haspopup="true" aria-expanded="false" title="Playback speed">
+            <span id="speedLabel">1&times;</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="audio-speed-menu" id="speedMenu" role="menu" aria-label="Playback speed">
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="0.75" onclick="setSpeed(0.75)">0.75&times;</button>
+            <button type="button" class="audio-speed-item active" role="menuitemradio" data-speed="1" onclick="setSpeed(1)">1&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="1.25" onclick="setSpeed(1.25)">1.25&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="1.5" onclick="setSpeed(1.5)">1.5&times;</button>
+            <button type="button" class="audio-speed-item" role="menuitemradio" data-speed="2" onclick="setSpeed(2)">2&times;</button>
+        </div>
+    </div>
+</div>
+<div id="ilCaptions" aria-live="polite"></div>
+<audio id="audioElement"></audio>
+
+<script>
+const timeline = [{"type": "spotlight", "sectionNumber": 1, "elementId": "s1-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "text": "Okay, now that we've covered how to manage our database schema with Alembic, let's shift gears a bit. We'll focus on getting essential initial data into that schema. This process is called database seeding.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-1-action-2.wav?v=1783289308", "audioDurationMs": 11264}, {"type": "spotlight", "sectionNumber": 1, "elementId": "s1-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "text": "You see, managing a database involves two main things. Alembic, which we just discussed, handles the shape of the database \u2013 its structure, tables, and how they relate. Seeding, on the other hand, is about populating that structure with the actual data the application needs. An empty database, no matter how well-designed, just can't run anything on its own.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-1-action-4.wav?v=1783289308", "audioDurationMs": 21504}, {"type": "spotlight", "sectionNumber": 1, "elementId": "s1-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 1, "elementId": null, "text": "So, why do we seed? Well, there are two main reasons. First, it provides static, reference data that our application logic relies on. Think about things like user roles or different subscription tiers. Second, seeding is super helpful for setting up development environments. It gives new developers sample data right away, making their onboarding and testing much faster.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-1-action-6.wav?v=1783289308", "audioDurationMs": 22101}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "text": "We know seeding provides initial data, but what kinds of data are we typically seeding? Let's break that down into categories.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-2-action-2.wav?v=1783289308", "audioDurationMs": 6912}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "text": "The first type is reference data. This is static lookup data that the application absolutely needs to function. Examples include things like user roles, membership types for a service, or different subscription plans. If this data is missing, your application will likely break, often because of foreign key issues.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-2-action-4.wav?v=1783289308", "audioDurationMs": 17877}, {"type": "spotlight", "sectionNumber": 2, "elementId": "s2-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 2, "elementId": null, "text": "The second category is development or mock data. This is used to mimic a production environment during development. Think of fake user accounts, sample locations, or a schedule of made-up classes. Importantly, this kind of data is not used in production; it's strictly for testing and development.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-2-action-6.wav?v=1783289308", "audioDurationMs": 16981}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "text": "We've talked about what seeding is and the types of data involved. Now, let's zoom in on one way to manage that foundational seed data: the init.sql file.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-3-action-2.wav?v=1783289308", "audioDurationMs": 9301}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "text": "This init.sql file is really important for setting up the database's Day Zero state \u2013 the absolute minimum data needed right from the start. In our project, you'll find it in g m s underscore be, slash, g m s shared, slash, db, slash, init.sql. It mainly contains INSERT statements for our core reference tables.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-3-action-4.wav?v=1783289308", "audioDurationMs": 20437}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "text": "Here's something critical to remember: the data in init.sql must match our Python Enums exactly. If they don't line up \u2013 maybe an ID is in the database but not in the Enum, or vice versa \u2013 your application will likely fail when it tries to read records, leading to errors.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-3-action-6.wav?v=1783289308", "audioDurationMs": 15957}, {"type": "spotlight", "sectionNumber": 3, "elementId": "s3-visual-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 3, "elementId": null, "text": "Let me show you an example of what init.sql might look like. This snippet inserts data into the roles table, defining roles like super admin, gym owner, staff, and member, along with their descriptions. See that on conflict id do nothing part? That's key for making the script idempotent, which we'll cover later. It just means if a record with that ID already exists, it skips the insert, preventing errors if the script runs more than once.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-3-action-8.wav?v=1783289308", "audioDurationMs": 25557}, {"type": "spotlight", "sectionNumber": 4, "elementId": "s4-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 4, "elementId": null, "text": "We've seen how seeding works with init.sql, but how does that connect with the schema migrations managed by Alembic? Let's clarify the difference.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-4-action-2.wav?v=1783289308", "audioDurationMs": 7765}, {"type": "spotlight", "sectionNumber": 4, "elementId": "s4-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 4, "elementId": null, "text": "The main distinction is their purpose. You use Alembic migrations for data directly linked to schema changes. For example, adding a new column that needs a default value, or changing data types. init.sql, however, is strictly for core system settings and that essential initial data, like the roles we just looked at. So, remember: migrations for structural changes, init.sql for fundamental, static data.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-4-action-4.wav?v=1783289308", "audioDurationMs": 25386}, {"type": "spotlight", "sectionNumber": 4, "elementId": "s4-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 4, "elementId": null, "text": "Keeping init.sql separate also really helps streamline setup for new developers. They can get a fully working development environment up and running much faster because all the essential starting data is managed in one predictable place.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-4-action-6.wav?v=1783289308", "audioDurationMs": 12757}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-title", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "Finally, let's think about how seeding fits into the operational flow, especially regarding idempotency, which is vital for reliable deployments.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-5-action-2.wav?v=1783289308", "audioDurationMs": 8234}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-block-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "When a new container starts up, there's a specific sequence to get the database ready. First, the database engine itself starts. Then, the application service runs alembic upgrade head to apply any pending schema migrations, making sure the database structure is current. After the schema is finalized, the init.sql script runs to populate that essential initial data. This ensures seeding data is applied to the correct, final schema.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-5-action-4.wav?v=1783289308", "audioDurationMs": 25685}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-block-2", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "For init.sql to work smoothly in this process, its scripts need to be idempotent. This means they can run multiple times without causing errors or creating duplicate data. As we saw in the init.sql example, we use techniques like on conflict clauses in PostgreSQL to achieve this. Idempotency is crucial, especially in long-running development environments where services might restart unexpectedly.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-5-action-6.wav?v=1783289308", "audioDurationMs": 23765}, {"type": "spotlight", "sectionNumber": 5, "elementId": "s5-visual-1", "text": null, "audioUrl": null, "audioDurationMs": null}, {"type": "speech", "sectionNumber": 5, "elementId": null, "text": "This diagram visually maps out the container initialization sequence we just discussed. We begin with the database engine starting, then Alembic applies schema upgrades, followed by init.sql executing for data seeding. Finally, the system reaches its ready state, prepared to handle requests. This clear, ordered process ensures a consistent and reliable application startup.", "audioUrl": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-5-action-8.wav?v=1783289308", "audioDurationMs": 21802}];
+const sectionAudio = {"1": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-1-action-6.wav?v=1783289308", "2": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-2-action-6.wav?v=1783289308", "3": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-3-action-8.wav?v=1783289308", "4": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-4-action-6.wav?v=1783289308", "5": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/6a4408b5e15b997d713c4b97/section-5-action-8.wav?v=1783289308"};
+const sectionCount = 5;
+const BLOCK_GAP_MS = 450;   // silent pause between per-block clips
+let playing = false;
+let playRate = 1;
+let currentSection = null;
+let firedCues = 0;
+let laserTimer = null;
+let fallbackTimer = null;
+let outroEl = null;
+let atOutro = false;
+
+const audioElement = document.getElementById('audioElement');
+const playIcon = document.getElementById('playIcon');
+const pauseIcon = document.getElementById('pauseIcon');
+const progressFill = document.getElementById('progressFill');
+const currentTimeEl = document.getElementById('currentTime');
+const durationEl = document.getElementById('duration');
+const sectionInfo = document.getElementById('sectionInfo');
+const laserEl = document.getElementById('ilLaser');
+let spotEl = null;   // the element currently spotlighted (for scroll re-tracking)
+
+document.documentElement.classList.add('preview-mode');
+
+// Mermaid: render per-slide (renders at 0px when display:none).
+if (typeof mermaid !== 'undefined') { mermaid.initialize({ startOnLoad: false, theme: 'neutral' }); }
+document.querySelectorAll('pre.mermaid').forEach(function(el) {
+    if (!el.getAttribute('data-mermaid-src')) { el.setAttribute('data-mermaid-src', el.textContent); }
+});
+const renderedMermaids = new Set();
+function renderMermaidInSection(sectionEl) {
+    if (!sectionEl || typeof mermaid === 'undefined') return;
+    sectionEl.querySelectorAll('pre.mermaid').forEach(function(el) {
+        const id = el.id || ('mermaid-' + Math.random().toString(36).substr(2, 9));
+        el.id = id;
+        if (renderedMermaids.has(id)) return;
+        const src = el.getAttribute('data-mermaid-src');
+        if (!src) return;
+        el.removeAttribute('data-processed'); el.innerHTML = ''; el.textContent = src;
+        renderedMermaids.add(id);
+        setTimeout(function() { mermaid.run({ nodes: [el] }); }, 50);
+    });
+}
+
+function formatTime(s) {
+    if (!isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+function setPlayIcon() { playIcon.style.display = 'block'; pauseIcon.style.display = 'none'; }
+function setPauseIcon() { playIcon.style.display = 'none'; pauseIcon.style.display = 'block'; }
+function markPlaybackStarted() { document.documentElement.classList.add('playback-started'); }
+
+// --- Subtitles / captions ------------------------------------------------
+// Per-block: the caption is the currently-narrated block's text. Self-contained
+// high-contrast bar (see #ilCaptions CSS) so it reads over dark or light slides.
+const captionsEl = document.getElementById('ilCaptions');
+const ccBtn = document.getElementById('ccBtn');
+let captionsOn = true;
+try { captionsOn = (localStorage.getItem('ilCaptions') || '1') !== '0'; } catch (e) {}
+let lastCaptionText = '';
+function renderCaption() {
+    if (!captionsEl) return;
+    if (captionsOn && lastCaptionText) {
+        captionsEl.textContent = lastCaptionText;
+        captionsEl.classList.remove('cap-off');
+    } else {
+        captionsEl.classList.add('cap-off');
+    }
+}
+function setCaption(text) { lastCaptionText = text || ''; renderCaption(); }
+function clearCaption() { lastCaptionText = ''; if (captionsEl) captionsEl.textContent = ''; }
+function syncCcBtn() {
+    if (!ccBtn) return;
+    ccBtn.classList.toggle('active', captionsOn);
+    ccBtn.setAttribute('aria-pressed', captionsOn ? 'true' : 'false');
+}
+function toggleCaptions() {
+    captionsOn = !captionsOn;
+    try { localStorage.setItem('ilCaptions', captionsOn ? '1' : '0'); } catch (e) {}
+    syncCcBtn();
+    renderCaption();
+}
+syncCcBtn();
+// Proportional (section-clip) mode: show the speech whose region currentTime is in.
+function applyCaptionFromCues(t, dur) {
+    const plan = currentPlan();
+    if (!plan || !plan.capCues || !plan.capCues.length || !dur) return;
+    let txt = '';
+    for (let i = 0; i < plan.capCues.length; i++) {
+        if (t >= plan.capCues[i].frac * dur) txt = plan.capCues[i].text; else break;
+    }
+    setCaption(txt);
+}
+
+function clearSpotlight() {
+    document.querySelectorAll('.il-dim').forEach(e => e.classList.remove('il-dim'));
+    document.querySelectorAll('.il-spot').forEach(e => e.classList.remove('il-spot'));
+    spotEl = null;
+}
+
+function showSlide(sectionNumber) {
+    hideOutro();
+    document.querySelectorAll('section[id^="section-"]').forEach(el => el.classList.remove('slide-active'));
+    clearSpotlight();
+    const sectionEl = document.getElementById('section-' + sectionNumber);
+    if (sectionEl) { sectionEl.classList.add('slide-active'); renderMermaidInSection(sectionEl); }
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const link = document.querySelector('.nav-link[data-section="section-' + sectionNumber + '"]');
+    if (link) link.classList.add('active');
+    sectionInfo.textContent = 'Section ' + sectionNumber + (sectionCount ? ' of ' + sectionCount : '');
+}
+
+function findEl(a) { return a.elementId ? document.querySelector('[data-el-id="' + a.elementId + '"]') : null; }
+
+function applySpotlight(a) {
+    const sec = document.getElementById('section-' + a.sectionNumber);
+    if (sec) sec.classList.add('il-dim');
+    document.querySelectorAll('.il-spot').forEach(e => e.classList.remove('il-spot'));
+    const el = findEl(a);
+    if (el) {
+        el.classList.add('il-spot');
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        spotEl = el;
+    }
+}
+
+function fireLaser(a) {
+    const el = findEl(a);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    laserEl.style.left = (r.left + r.width / 2) + 'px';
+    laserEl.style.top = (r.top + r.height / 2) + 'px';
+    laserEl.style.opacity = '1';
+    if (laserTimer) clearTimeout(laserTimer);
+    laserTimer = setTimeout(() => { laserEl.style.opacity = '0'; }, 900);
+}
+
+// --- Section plan / cue map ---------------------------------------------
+// One continuous clip per section; element highlights fire off a proportional cue
+// map. A spotlight's cue fraction = (speech chars before it) / (total section speech
+// chars); at runtime it fires when currentTime >= frac × clip duration.
+const sectionPlan = {};
+const sectionOrder = [];
+timeline.forEach(function(a) {
+    const sn = a.sectionNumber;
+    if (sn == null) return;
+    if (!sectionPlan[sn]) { sectionPlan[sn] = { acts: [] }; sectionOrder.push(sn); }
+    sectionPlan[sn].acts.push(a);
+});
+sectionOrder.sort(function(x, y) { return x - y; });
+sectionOrder.forEach(function(sn) {
+    const acts = sectionPlan[sn].acts;
+    let total = 0;
+    acts.forEach(function(a) { if (a.type === 'speech') total += (a.text || '').length; });
+    total = Math.max(1, total);
+    const cues = [];
+    const capCues = [];   // {frac, text} per speech — caption appears at the start of its region
+    let acc = 0;
+    acts.forEach(function(a) {
+        if (a.type === 'spotlight' || a.type === 'laser') {
+            cues.push({ elementId: a.elementId, type: a.type, sectionNumber: sn, frac: acc / total });
+        } else if (a.type === 'speech') {
+            if (a.text) capCues.push({ frac: acc / total, text: a.text });
+            acc += (a.text || '').length;
+        }
+    });
+    sectionPlan[sn].cues = cues;
+    sectionPlan[sn].capCues = capCues;
+    sectionPlan[sn].chars = total;
+    sectionPlan[sn].audioUrl = sectionAudio[sn] || null;
+    // Per-block mode: every speech action carries its own clip → play one clip
+    // per spotlighted element (blocking on each) for exact highlight↔audio sync.
+    sectionPlan[sn].perBlock = acts.some(function(a) { return a.type === 'speech' && a.audioUrl; });
+    // Whole-slide duration for the progress bar = Σ block clip durations + gaps.
+    var __speechN = 0, __totalMs = 0;
+    acts.forEach(function(a) { if (a.type === 'speech') { __totalMs += blockMs(a); __speechN++; } });
+    __totalMs += BLOCK_GAP_MS * Math.max(0, __speechN - 1);
+    sectionPlan[sn].totalMs = __totalMs;
+});
+
+function currentPlan() { return currentSection != null ? sectionPlan[currentSection] : null; }
+function clearFallback() { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } }
+
+// Fire every cue whose time has passed; the latest spotlight stays lit.
+function applyCuesUpTo(t, dur) {
+    const plan = currentPlan();
+    if (!plan || !dur) return;
+    while (firedCues < plan.cues.length && t >= plan.cues[firedCues].frac * dur) {
+        const cue = plan.cues[firedCues];
+        if (cue.type === 'laser') fireLaser(cue); else applySpotlight(cue);
+        firedCues++;
+    }
+}
+
+// Seeking: re-fire from scratch so the right highlight is lit at the new position.
+function resyncCues(t, dur) { firedCues = 0; clearSpotlight(); applyCuesUpTo(t, dur); applyCaptionFromCues(t, dur); }
+
+function loadSection(sn) {
+    if (sn == null || sectionPlan[sn] == null) return;
+    clearFallback();
+    currentSection = sn;
+    firedCues = 0;
+    clearCaption();
+    showSlide(sn);
+    const plan = sectionPlan[sn];
+    if (plan.perBlock) {
+        blockIdx = 0;
+        slidePlayedMs = 0;
+        curSpeechMs = 0;
+        pendingSeekMs = null;
+        progressFill.style.width = '0%';
+        currentTimeEl.textContent = '0:00';
+        durationEl.textContent = formatTime((plan.totalMs || 0) / 1000);   // whole slide
+        runBlock(sn);            // one clip per block, blocking on each
+    } else if (plan.audioUrl) {
+        audioElement.src = plan.audioUrl;
+        audioElement.playbackRate = playRate;
+        audioElement.play().catch(function() {});
+    } else {
+        runFallback(plan);   // no clip → estimate timing
+    }
+}
+
+// --- Per-block playback: one clip per spotlighted element, blocking on each ---
+// spotlight/laser fire instantly and advance; speech plays its own clip and, on
+// 'ended', banks the clip's duration, holds a short silent gap, then advances —
+// so the highlight stays lit exactly for the duration of its narration and the
+// progress bar/duration reflect the WHOLE slide (Σ clips + gaps), not one clip.
+let blockIdx = 0;
+let slidePlayedMs = 0;     // completed speeches + gaps so far in this section
+let curSpeechMs = 0;       // duration of the clip currently playing
+let pendingSeekMs = null;  // offset to apply once a seeked clip's metadata loads
+
+function estMs(text) { return Math.max(800, ((text || '').length / 5) * 240); }
+function blockMs(a) { return (a && a.audioDurationMs) ? a.audioDurationMs : estMs(a ? a.text : ''); }
+
+function updateProgress(elapsedMs) {
+    const plan = currentPlan();
+    if (!plan || !plan.totalMs) return;
+    const frac = Math.min(1, elapsedMs / plan.totalMs);
+    progressFill.style.width = (frac * 100) + '%';
+    currentTimeEl.textContent = formatTime(elapsedMs / 1000);
+    durationEl.textContent = formatTime(plan.totalMs / 1000);
+}
+
+function runBlock(sn) {
+    const plan = sectionPlan[sn];
+    if (!playing || currentSection !== sn || !plan) return;
+    if (blockIdx >= plan.acts.length) { advance(); return; }
+    const a = plan.acts[blockIdx];
+    if (a.type === 'spotlight') { applySpotlight(a); blockIdx++; runBlock(sn); }
+    else if (a.type === 'laser') { fireLaser(a); blockIdx++; runBlock(sn); }
+    else if (a.type === 'speech') {
+        curSpeechMs = blockMs(a);
+        setCaption(a.text);
+        if (a.audioUrl) {
+            audioElement.src = a.audioUrl;
+            audioElement.playbackRate = playRate;
+            audioElement.play().catch(function() {});   // → 'ended' → onSpeechEnd
+        } else {
+            // No clip → hold the spotlight for the estimated narration time.
+            fallbackTimer = setTimeout(function() { onSpeechEnd(sn); }, curSpeechMs / playRate);
+        }
+    } else { blockIdx++; runBlock(sn); }
+}
+
+// A speech clip finished: bank its time, then a short silent gap before the next.
+function onSpeechEnd(sn) {
+    if (currentSection !== sn) return;
+    slidePlayedMs += curSpeechMs;
+    curSpeechMs = 0;
+    blockIdx++;
+    const moreSpeech = sectionPlan[sn].acts.slice(blockIdx).some(function(a) { return a.type === 'speech'; });
+    if (moreSpeech && BLOCK_GAP_MS > 0) runGap(sn); else runBlock(sn);
+}
+
+// Silent presenter pause — spotlight stays lit, progress keeps advancing.
+function runGap(sn) {
+    const start = performance.now();
+    (function tick() {
+        if (!playing || currentSection !== sn) return;
+        const ge = Math.min(BLOCK_GAP_MS, performance.now() - start);
+        updateProgress(slidePlayedMs + ge);
+        if (ge >= BLOCK_GAP_MS) { slidePlayedMs += BLOCK_GAP_MS; runBlock(sn); return; }
+        fallbackTimer = setTimeout(tick, 60);
+    })();
+}
+
+// Click-to-seek within a slide: find the block the target time lands in, light
+// its spotlight, and play that clip from the right offset.
+function seekSlide(plan, targetMs) {
+    clearFallback();
+    let acc = 0, lastSpot = null;
+    for (let i = 0; i < plan.acts.length; i++) {
+        const a = plan.acts[i];
+        if (a.type === 'spotlight' || a.type === 'laser') { lastSpot = a; continue; }
+        if (a.type !== 'speech') continue;
+        const dur = blockMs(a);
+        const isLast = !plan.acts.slice(i + 1).some(function(x) { return x.type === 'speech'; });
+        if (targetMs < acc + dur || isLast) {
+            if (lastSpot) applySpotlight(lastSpot);
+            setCaption(a.text);
+            blockIdx = i;
+            slidePlayedMs = acc;
+            curSpeechMs = dur;
+            const offMs = Math.max(0, Math.min(dur, targetMs - acc));
+            if (a.audioUrl) {
+                pendingSeekMs = offMs;
+                audioElement.src = a.audioUrl;
+                audioElement.playbackRate = playRate;
+                audioElement.play().catch(function() {});
+            } else {
+                fallbackTimer = setTimeout(function() { onSpeechEnd(currentSection); }, (dur - offMs) / playRate);
+            }
+            updateProgress(targetMs);
+            return;
+        }
+        acc += dur + BLOCK_GAP_MS;
+    }
+}
+
+// Fallback when a section clip is missing: estimate duration from char count
+// (~240ms/word ≈ chars/5 × 240ms) and fire cues + advance on a timer.
+function runFallback(plan) {
+    const durS = Math.max(2, ((plan ? plan.chars : 0) / 5) * 0.24);
+    const start = performance.now();
+    (function tick() {
+        if (!playing || currentSection == null) return;
+        const t = (performance.now() - start) / 1000;
+        applyCuesUpTo(t, durS);
+        applyCaptionFromCues(t, durS);
+        progressFill.style.width = Math.min(100, (t / durS) * 100) + '%';
+        currentTimeEl.textContent = formatTime(t);
+        if (t >= durS) { advance(); return; }
+        fallbackTimer = setTimeout(tick, 120);
+    })();
+}
+
+function advance() {
+    clearFallback();
+    const i = sectionOrder.indexOf(currentSection);
+    if (i >= 0 && i < sectionOrder.length - 1) { loadSection(sectionOrder[i + 1]); }
+    else if (outroEl && !atOutro) { showOutro(); }   // end card after the last narrated section
+    else { playing = false; setPlayIcon(); }
+}
+
+function togglePlay() { playing ? pause() : play(); }
+
+function play() {
+    if (playing) return;
+    if (atOutro) {   // replay from the start when play is pressed on the end card
+        hideOutro(); currentSection = null;
+        playing = true; setPauseIcon(); markPlaybackStarted();
+        loadSection(sectionOrder.length ? sectionOrder[0] : 1);
+        return;
+    }
+    playing = true; setPauseIcon(); markPlaybackStarted();
+    if (currentSection == null) {
+        loadSection(sectionOrder.length ? sectionOrder[0] : 1);
+    } else if (audioElement.src && audioElement.paused && !audioElement.ended) {
+        audioElement.playbackRate = playRate;
+        audioElement.play().catch(function() {});
+    } else if (currentPlan() && currentPlan().perBlock) {
+        runBlock(currentSection);     // resume the per-block runner
+    } else if (!currentPlan() || !currentPlan().audioUrl) {
+        runFallback(currentPlan());   // resume the no-clip path
+    } else {
+        advance();
+    }
+}
+
+function pause() {
+    playing = false; setPlayIcon();
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+}
+
+function gotoSection(n) {
+    if (n == null || sectionPlan[n] == null) return;
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+    playing = true; setPauseIcon(); markPlaybackStarted();
+    loadSection(n);
+}
+function nextSection() {
+    if (atOutro) return;   // already at the end card
+    const i = sectionOrder.indexOf(currentSection);
+    if (i >= 0 && i < sectionOrder.length - 1) gotoSection(sectionOrder[i + 1]);
+    else if (i === sectionOrder.length - 1 && outroEl) showOutro();   // last → end card
+    else if (i < 0 && sectionOrder.length) gotoSection(sectionOrder[0]);
+}
+function prevSection() {
+    if (atOutro) {   // from the end card back to the last narrated section
+        hideOutro();
+        if (sectionOrder.length) gotoSection(sectionOrder[sectionOrder.length - 1]);
+        return;
+    }
+    const i = sectionOrder.indexOf(currentSection);
+    if (i > 0) gotoSection(sectionOrder[i - 1]);
+    else if (sectionOrder.length) gotoSection(sectionOrder[0]);
+}
+
+function seekAudio(e) {
+    const __p = currentPlan();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (__p && __p.perBlock) {
+        // Seek across the WHOLE slide → jump to the block at that time.
+        if (!playing) { playing = true; setPauseIcon(); markPlaybackStarted(); }
+        seekSlide(__p, frac * (__p.totalMs || 0));
+        return;
+    }
+    if (!isFinite(audioElement.duration)) return;
+    const t = frac * audioElement.duration;
+    audioElement.currentTime = t;
+    resyncCues(t, audioElement.duration);
+}
+
+function setSpeed(rate) {
+    playRate = rate; audioElement.playbackRate = rate;
+    const lbl = document.getElementById('speedLabel');
+    if (lbl) lbl.textContent = String(rate) + '×';
+    document.querySelectorAll('.audio-speed-item').forEach(function(btn) {
+        btn.classList.toggle('active', Math.abs(parseFloat(btn.getAttribute('data-speed')) - rate) < 1e-6);
+    });
+    closeSpeedMenu();
+}
+function toggleSpeedMenu(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('speedMenu');
+    const tgl = document.getElementById('speedToggle');
+    if (!menu) return;
+    const open = menu.classList.toggle('open');
+    if (tgl) tgl.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeSpeedMenu() {
+    const menu = document.getElementById('speedMenu');
+    const tgl = document.getElementById('speedToggle');
+    if (menu) menu.classList.remove('open');
+    if (tgl) tgl.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('click', function(e) {
+    const wrap = (e.target && e.target.closest) ? e.target.closest('.audio-speed') : null;
+    if (!wrap) closeSpeedMenu();
+});
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSpeedMenu(); });
+
+audioElement.addEventListener('timeupdate', () => {
+    if (!isFinite(audioElement.duration)) return;
+    const __p = currentPlan();
+    if (__p && __p.perBlock) {
+        // Whole-slide progress: time banked from prior blocks/gaps + this clip.
+        updateProgress(slidePlayedMs + audioElement.currentTime * 1000);
+    } else {
+        progressFill.style.width = ((audioElement.currentTime / audioElement.duration) * 100) + '%';
+        currentTimeEl.textContent = formatTime(audioElement.currentTime);
+        applyCuesUpTo(audioElement.currentTime, audioElement.duration);
+        applyCaptionFromCues(audioElement.currentTime, audioElement.duration);
+    }
+});
+audioElement.addEventListener('loadedmetadata', () => {
+    const __p = currentPlan();
+    if (__p && __p.perBlock) {
+        // Apply a pending click-seek offset once the new clip's metadata is ready.
+        if (pendingSeekMs != null) {
+            try { audioElement.currentTime = pendingSeekMs / 1000; } catch (e) {}
+            pendingSeekMs = null;
+        }
+        // Duration label stays the whole-slide total (set in loadSection).
+    } else {
+        durationEl.textContent = formatTime(audioElement.duration);
+    }
+});
+audioElement.addEventListener('ended', () => {
+    if (!playing) return;
+    const __p = currentPlan();
+    if (__p && __p.perBlock) onSpeechEnd(currentSection);   // bank time + gap + next block
+    else advance();                                          // next section
+});
+
+// --- Cover / thumbnail ---------------------------------------------------
+// Use the deck's OWN hero (the first real content block in <main> that isn't a
+// numbered section and isn't the header/nav) as the pre-playback canvas. Tagging it
+// .il-native-cover makes the CSS show it before play and hide it once playback starts.
+function setupNativeCover() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    for (const el of main.children) {
+        if (!el.matches) continue;
+        if (el.matches('section[id^="section-"]')) continue;            // a content slide
+        if (el.matches('header, nav, .glass-header')) continue;          // the sticky header/nav
+        if (el.querySelector && el.querySelector('.nav-link')) continue; // a nav container
+        if (((el.textContent || '').trim()).length === 0) continue;      // empty wrapper
+        el.classList.add('il-native-cover');
+        return;
+    }
+}
+setupNativeCover();
+
+// --- Outro / end card ----------------------------------------------------
+// Pick the LAST substantive non-section block in <main> (e.g. the summary / metric
+// cards) — it has no narration — and tag it .il-outro so it can be shown as a static
+// end screen after the last narrated section. Skips the header/nav, footer, and the
+// hero cover (so a single non-section block stays the cover, not the outro).
+function setupOutro() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    const kids = Array.from(main.children);
+    for (let i = kids.length - 1; i >= 0; i--) {
+        const el = kids[i];
+        if (!el.matches) continue;
+        if (el.matches('section[id^="section-"]')) continue;
+        if (el.matches('header, nav, .glass-header, footer')) continue;
+        if (el.classList.contains('il-native-cover')) continue;
+        if (el.querySelector && el.querySelector('.nav-link')) continue;
+        const txt = (el.textContent || '').trim();
+        if (txt.length < 20) continue;                 // empty / tiny wrapper
+        if (/generated (on|by)/i.test(txt)) continue;  // a <div>-based footer
+        el.classList.add('il-outro');
+        outroEl = el;
+        return;
+    }
+}
+setupOutro();
+
+function showOutro() {
+    if (!outroEl) { playing = false; setPlayIcon(); return; }
+    clearFallback();
+    if (!audioElement.paused) audioElement.pause();
+    document.querySelectorAll('section[id^="section-"]').forEach(el => el.classList.remove('slide-active'));
+    clearSpotlight();
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    clearCaption();
+    outroEl.classList.add('il-show');
+    atOutro = true;
+    playing = false; setPlayIcon();
+    sectionInfo.textContent = 'Summary';
+}
+function hideOutro() {
+    if (outroEl) outroEl.classList.remove('il-show');
+    atOutro = false;
+}
+
+// --- Clickable section nav ----------------------------------------------
+// The generated header's nav links carry data-section="section-N". Wire them to jump
+// the player to that section via gotoSection() (works from the cover too).
+document.querySelectorAll('.nav-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        const ds = link.getAttribute('data-section');
+        if (!ds) return;
+        e.preventDefault();
+        const n = parseInt(ds.replace('section-', ''), 10);
+        if (!isNaN(n)) gotoSection(n);
+    });
+});
+
+// --- MP4 renderer hooks --------------------------------------------------
+// The server-side video renderer (Playwright) drives these to capture one static
+// frame per highlight cue, so the exported MP4 shows the same section-switching +
+// element spotlights as the live player (no audio playback needed).
+window.__ilSections = function() { return sectionOrder.slice(); };
+window.__ilCues = function(sn) {
+    const plan = sectionPlan[sn];
+    if (!plan || !plan.cues) return [];
+    return plan.cues.map(function(c) { return { elementId: c.elementId, type: c.type, frac: c.frac }; });
+};
+// Show section `sn` with highlights applied up to cue index `k` (k = -1 → no
+// highlight yet, the pre-first-cue lead-in). Hides the cover so the slide is visible.
+window.__ilShowFrame = function(sn, k) {
+    markPlaybackStarted();
+    currentSection = sn;
+    showSlide(sn);            // switches slide + clears any prior spotlight
+    const plan = sectionPlan[sn];
+    if (!plan) return;
+    for (let j = 0; j <= k && j < plan.cues.length; j++) {
+        const cue = plan.cues[j];
+        if (cue.type !== 'laser') applySpotlight(cue);   // latest spotlight wins
+    }
+};
+// MP4 export (per-block): show section `sn` and spotlight exactly `elementId`
+// (the block currently narrating). Used by the video service to render one frame
+// per block, held for that block's clip duration — so the exported MP4 reproduces
+// the live per-block highlight↔audio sync. elementId may be null/'' (speech with
+// no addressable element → just show the slide).
+window.__ilShowBlock = function(sn, elementId) {
+    markPlaybackStarted();
+    currentSection = sn;
+    showSlide(sn);            // switch slide + render mermaid + clear prior spotlight
+    if (elementId) applySpotlight({ elementId: elementId, sectionNumber: sn, type: 'spotlight' });
+};
+</script>
+</body>
+</html>

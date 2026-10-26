@@ -1,0 +1,121 @@
+{
+  "skill_id": "6a459de3940475d76870cf45",
+  "skill_name": "Project Scope & Overview",
+  "topic_id": "6a459e92940475d76870cf48",
+  "topic_name": "Defining Project Scope",
+  "topic_track": "project",
+  "content_version": 20,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a459e92940475d76870cf48/g20/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a459e92940475d76870cf48/g18/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 18,
+  "voiceover_data": {
+    "topic_name": "Defining Project Scope",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-what-s-in-and-out-of-scope",
+        "section_number": 1,
+        "title": "What's In and Out of Scope?",
+        "narration": "Okay, now that we're ready to get started on the Gym Management System, the very first thing we need to do is to define exactly what we're building and what we're going to leave out. Before diving into technical details like Python decorators or routing, we need a clear definition of what this Gym Management System project actually is, and perhaps more importantly, what it is *not*. At its core, the GMS project digitizes a modern gym business. The business objective is to automate complex member and operational lifecycles: from organizational setup and member registration, through monthly billing and class attendance, to defining plans and capturing revenue. From a learning perspective, this project demonstrates how a production-grade microservices architecture solves these problems without becoming unmanageable spaghetti code. So the key idea is: defining scope is critical to building manageable systems.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Okay, now that we're ready to get started on the Gym Management System, the very first thing we need to do is to define exactly what we're building and what we're going to leave out."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Before diving into technical details like Python decorators or routing, we need a clear definition of what this Gym Management System project actually is, and perhaps more importantly, what it is *not*."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "At its core, the GMS project digitizes a modern gym business. The business objective is to automate complex member and operational lifecycles: from organizational setup and member registration, through monthly billing and class attendance, to defining plans and capturing revenue."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "From a learning perspective, this project demonstrates how a production-grade microservices architecture solves these problems without becoming unmanageable spaghetti code. So the key idea is: defining scope is critical to building manageable systems."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-project-scope-what-s-in-the-box",
+        "section_number": 2,
+        "title": "Project Scope: What's In the Box?",
+        "narration": "So, what exactly are we building? We're constructing a fleet of seven distinct services, and these are strictly defined by the business domains of our architecture. We have a service for Identity and Administration. This handles authentication, role-based access control, and gym-specific management like locations and staff. Then, we have a dedicated Member service for managing profiles, memberships, and integrating with payment gateways. And the Service Catalog will manage what members can actually buy and book, like plans and class schedules. We'll also build an Insights service for read-only reporting on sales and attendance trends. And finally, three specialized asynchronous workers for background tasks like email notifications, batch processing, and scheduling. So, in total, you'll work with four RESTful A P I services and three asynchronous services using Celery and a Beat scheduler. So, the key idea is: we are building seven distinct services, each strictly defined by its business domain.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So, what exactly are we building? We're constructing a fleet of seven distinct services, and these are strictly defined by the business domains of our architecture."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We have a service for Identity and Administration. This handles authentication, role-based access control, and gym-specific management like locations and staff. Then, we have a dedicated Member service for managing profiles, memberships, and integrating with payment gateways. And the Service Catalog will manage what members can actually buy and book, like plans and class schedules."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "We'll also build an Insights service for read-only reporting on sales and attendance trends. And finally, three specialized asynchronous workers for background tasks like email notifications, batch processing, and scheduling. So, in total, you'll work with four RESTful A P I services and three asynchronous services using Celery and a Beat scheduler. So, the key idea is: we are building seven distinct services, each strictly defined by its business domain."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-project-boundaries-what-s-out-of-scope",
+        "section_number": 3,
+        "title": "Project Boundaries: What's Out of Scope?",
+        "narration": "Defining boundaries is key to preventing scope creep, so let's be clear about what's *not* included in this project. First off, we are building the backend only. While we do provide OpenAPI docs for testing the endpoints, there's no frontend UI like React or a mobile app in this repository. Also, we're excluding physical hardware integration. Things like door access will be handled via A P I logic, not actual I O T devices. A significant design decision is our use of a shared database pattern. Unlike the purist microservices that have isolated databases, we're actually using a single MySQL database. This is a pragmatic choice that reduces data synchronization overhead, while still teaching you to enforce service boundaries at the code level. So, the key idea here is: we're focusing on core backend engineering by defining clear inclusions and exclusions.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Defining boundaries is key to preventing scope creep, so let's be clear about what's *not* included in this project."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "First off, we are building the backend only. While we do provide OpenAPI docs for testing the endpoints, there's no frontend UI like React or a mobile app in this repository. Also, we're excluding physical hardware integration. Things like door access will be handled via A P I logic, not actual I O T devices."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "A significant design decision is our use of a shared database pattern. Unlike the purist microservices that have isolated databases, we're actually using a single MySQL database. This is a pragmatic choice that reduces data synchronization overhead, while still teaching you to enforce service boundaries at the code level. So, the key idea here is: we're focusing on core backend engineering by defining clear inclusions and exclusions."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-implementation-plan-and-approach",
+        "section_number": 4,
+        "title": "Implementation Plan and Approach",
+        "narration": "With our scope defined, let's look at how we'll implement this project using a service-oriented approach and its core rules. We'll use asynchronous cooperation: services don't call each other directly. Instead, they drop messages into a Redis broker, and then background workers like the email service pick these up later. This ensures the system stays decoupled. Also, every service is containerized with Docker, all built from one shared base image so every environment is identical. Inside each service, we'll follow a strict layered architecture: the 'Endpoint' layer for validation, the 'Service Layer' for business logic, and the 'Model' for database interactions. With our scope and architectural boundaries locked in, we turn next to Key Features and Functionalities to walk through the exact user and gym workflows our services automate. So, the key idea is: we adhere to a strict layered architecture within each service.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "With our scope defined, let's look at how we'll implement this project using a service-oriented approach and its core rules."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "We'll use asynchronous cooperation: services don't call each other directly. Instead, they drop messages into a Redis broker, and then background workers like the email service pick these up later. This ensures the system stays decoupled. Also, every service is containerized with Docker, all built from one shared base image so every environment is identical."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Inside each service, we'll follow a strict layered architecture: the 'Endpoint' layer for validation, the 'Service Layer' for business logic, and the 'Model' for database interactions."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "With our scope and architectural boundaries locked in, we turn next to Key Features and Functionalities to walk through the exact user and gym workflows our services automate. So, the key idea is: we adhere to a strict layered architecture within each service."
+          }
+        ]
+      }
+    ]
+  }
+}

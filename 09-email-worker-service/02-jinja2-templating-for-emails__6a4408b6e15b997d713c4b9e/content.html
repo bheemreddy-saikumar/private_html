@@ -1,0 +1,269 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Jinja2 Templating for Emails</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Jinja2 Templating for Emails</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Jinja2 Templating for Emails</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Rendering Architecture</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Jinja2 transforms raw task data into formatted emails.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-in" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#94a3b8"></path>
+    </marker>
+    <marker id="arrow-out" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="70" y="140" width="190" height="64" rx="32" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"></rect>
+  <text x="165" y="180" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#b45309">Task Data</text>
+
+  
+  <rect x="70" y="280" width="190" height="84" rx="14" fill="#eef2ff" stroke="#4f46e5" stroke-width="3"></rect>
+  <line x1="95" y1="304" x2="155" y2="304" stroke="#c7d2fe" stroke-width="3" stroke-linecap="round"></line>
+  <text x="165" y="340" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#4f46e5">Template</text>
+
+  
+  <path d="M 262 172 C 300 172, 305 220, 332 232" fill="none" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow-in)"></path>
+  <path d="M 262 322 C 300 322, 305 280, 332 268" fill="none" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow-in)"></path>
+
+  
+  <rect x="340" y="175" width="180" height="150" rx="20" fill="#0f172a" stroke="#334155" stroke-width="2"></rect>
+  <text x="430" y="244" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#ffffff">Jinja2</text>
+  <text x="430" y="278" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#94a3b8">Engine</text>
+
+  
+  <line x1="520" y1="250" x2="582" y2="250" stroke="#10b981" stroke-width="4" marker-end="url(#arrow-out)"></line>
+
+  
+  <rect x="590" y="175" width="170" height="150" rx="16" fill="#ecfdf5" stroke="#10b981" stroke-width="3"></rect>
+  <path d="M 605 195 L 675 240 L 745 195" fill="none" stroke="#a7f3d0" stroke-width="3" stroke-linejoin="round"></path>
+  <text x="675" y="275" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Rendered</text>
+  <text x="675" y="304" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Email</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Templates on Disk</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="60" y="55" width="700" height="410" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><rect x="80" y="75" width="660" height="52" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"></rect><circle cx="110" cy="101" r="9" fill="#4f46e5"></circle><text x="132" y="108" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Server Disk</text><text x="475" y="108" font-family="monospace" font-size="20" fill="#64748b">emails/templates/</text><rect x="100" y="175" width="250" height="230" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><rect x="100" y="175" width="250" height="44" rx="14" fill="#f1f5f9"></rect><text x="225" y="205" text-anchor="middle" font-family="monospace" font-size="20" fill="#64748b">welcome.j2</text><rect x="135" y="250" width="180" height="10" rx="5" fill="#e2e8f0"></rect><rect x="135" y="280" width="140" height="10" rx="5" fill="#e2e8f0"></rect><rect x="135" y="310" width="160" height="10" rx="5" fill="#e2e8f0"></rect><rect x="390" y="155" width="330" height="265" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect><rect x="415" y="175" width="120" height="32" rx="16" fill="#eef2ff" stroke="#c7d2fe"></rect><text x="475" y="198" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Template</text><text x="555" y="245" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#0f172a">booking_confirmed.j2</text><rect x="415" y="275" width="280" height="44" rx="8" fill="#f1f5f9" stroke="#cbd5e1"></rect><text x="555" y="304" text-anchor="middle" font-family="monospace" font-size="20" fill="#4f46e5">{{ class_title }}</text><rect x="415" y="335" width="280" height="44" rx="8" fill="#f1f5f9" stroke="#cbd5e1"></rect><text x="555" y="364" text-anchor="middle" font-family="monospace" font-size="20" fill="#f59e0b">{{ session_time }}</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div data-el-id="s1-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Jinja2 Environment Setup</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s1-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">from jinja2 import Environment, FileSystemLoader, select_autoescape</span>
+<span class="cl" data-line="2">import os</span>
+<span class="cl" data-line="3"></span>
+<span class="cl" data-line="4"># Define the path to the template directory</span>
+<span class="cl" data-line="5">TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), 'templates')</span>
+<span class="cl" data-line="6"></span>
+<span class="cl" data-line="7">def get_template(template_name: str):</span>
+<span class="cl" data-line="8">    env = Environment(</span>
+<span class="cl" data-line="9">        loader=FileSystemLoader(TEMPLATE_DIR),</span>
+<span class="cl" data-line="10">        autoescape=select_autoescape(['html', 'xml'])</span>
+<span class="cl" data-line="11">    )</span>
+<span class="cl" data-line="12">    return env.get_template(template_name)</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s1-block-3"><div data-el-id="s1-block-3" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">GMS Engine Config</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-3-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#0f172a"></path></marker></defs><rect x="60" y="60" width="330" height="400" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><text x="90" y="115" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">autoescape: off</text><rect x="90" y="140" width="60" height="32" rx="16" fill="#e2e8f0"></rect><circle cx="106" cy="156" r="12" fill="#94a3b8"></circle><text x="165" y="163" font-family="Inter, sans-serif" font-size="20" fill="#64748b">disabled</text><rect x="115" y="220" width="220" height="130" rx="12" fill="#ffffff" stroke="#10b981" stroke-width="3"></rect><path d="M 115 220 L 225 300 L 335 220" fill="none" stroke="#10b981" stroke-width="2.5"></path><path d="M 115 350 L 195 280" fill="none" stroke="#cbd5e1" stroke-width="2"></path><path d="M 335 350 L 255 280" fill="none" stroke="#cbd5e1" stroke-width="2"></path><rect x="125" y="380" width="200" height="44" rx="22" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect><text x="225" y="409" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#047857">Plain text safe</text><rect x="430" y="60" width="330" height="400" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect><text x="460" y="115" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Fresh per email</text><path d="M 555 170 v 40 a 40 14 0 0 0 80 0 v -40 Z" fill="#0f172a"></path><ellipse cx="595" cy="210" rx="40" ry="14" fill="#0f172a"></ellipse><ellipse cx="595" cy="170" rx="40" ry="14" fill="#334155"></ellipse><ellipse cx="595" cy="170" rx="36" ry="11" fill="#475569"></ellipse><g transform="translate(470, 260)"><rect x="0" y="0" width="90" height="36" rx="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect><text x="45" y="25" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">Task</text><line x1="100" y1="18" x2="145" y2="18" stroke="#0f172a" stroke-width="2.5" marker-end="url(#arrow)"></line><rect x="155" y="0" width="95" height="36" rx="18" fill="#0f172a"></rect><text x="202" y="25" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">Engine</text></g><rect x="495" y="380" width="200" height="44" rx="22" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="595" y="409" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Low volume</text></svg></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;the rendering architecture</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Dynamic Data Injection</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Templates turn raw data into finished emails.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#94a3b8"></path></marker></defs><rect x="60" y="215" width="160" height="70" rx="35" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"></rect><text x="140" y="258" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#b45309">Raw Data</text><line x1="220" y1="250" x2="280" y2="250" stroke="#94a3b8" stroke-width="3" marker-end="url(#arr)"></line><rect x="290" y="125" width="240" height="250" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect><rect x="310" y="150" width="200" height="90" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"></rect><text x="410" y="188" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">Expressions</text><text x="410" y="222" text-anchor="middle" font-family="monospace" font-size="20" fill="#64748b">{{ name }}</text><rect x="310" y="260" width="200" height="90" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"></rect><text x="410" y="298" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">Logic</text><text x="410" y="332" text-anchor="middle" font-family="monospace" font-size="20" fill="#64748b">{% if ... %}</text><line x1="530" y1="250" x2="590" y2="250" stroke="#94a3b8" stroke-width="3" marker-end="url(#arr)"></line><rect x="600" y="195" width="160" height="110" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="3"></rect><path d="M 602 205 L 680 255 L 758 205" fill="none" stroke="#10b981" stroke-width="2.5"></path><text x="680" y="288" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#047857">Email</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Variable Expressions</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-html"><span class="cl" data-line="1">&lt;p&gt;Hello {{ member_name }},&lt;/p&gt;</span>
+<span class="cl" data-line="2">&lt;p&gt;Your booking for &lt;strong&gt;{{ class_name }}&lt;/strong&gt; on {{ date }} is confirmed.&lt;/p&gt;</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Control Structures</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s2-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-html"><span class="cl" data-line="1">{% if is_trial_member %}</span>
+<span class="cl" data-line="2">&lt;p&gt;We hope you are enjoying your trial period!&lt;/p&gt;</span>
+<span class="cl" data-line="3">{% endif %}</span></code></pre></div></div></div></div><div class="scene-footer"><span>2 &nbsp;dynamic data injection</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Template Inheritance and Reusability</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">One shared base layout guarantees consistent branding across emails.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  <text x="210" y="60" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Base Shell</text>
+
+  
+  <rect x="95" y="85" width="230" height="340" rx="14" fill="#ffffff" stroke="#c7d2fe" stroke-width="3"></rect>
+
+  
+  <rect x="110" y="100" width="200" height="54" rx="8" fill="#4f46e5"></rect>
+  <text x="210" y="134" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">Header</text>
+
+  
+  <rect x="110" y="170" width="200" height="170" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 6" stroke-width="2"></rect>
+  <text x="210" y="262" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Content Slot</text>
+
+  
+  <rect x="110" y="356" width="200" height="54" rx="8" fill="#64748b"></rect>
+  <text x="210" y="390" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ffffff">Footer</text>
+
+  
+  <path d="M 335 220 C 420 220, 420 175, 498 175" fill="none" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+  <path d="M 335 300 C 420 300, 420 385, 498 385" fill="none" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)">
+    <animate attributeName="stroke-dashoffset" from="28" to="0" dur="2s" repeatCount="indefinite"></animate>
+  </path>
+
+  
+  <rect x="510" y="85" width="220" height="180" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="522" y="97" width="196" height="32" rx="6" fill="#4f46e5"></rect>
+  <rect x="522" y="137" width="196" height="76" rx="6" fill="#eef2ff" stroke="#c7d2fe"></rect>
+  <text x="620" y="182" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Booking</text>
+  <rect x="522" y="221" width="196" height="32" rx="6" fill="#64748b"></rect>
+
+  
+  <rect x="510" y="295" width="220" height="180" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="522" y="307" width="196" height="32" rx="6" fill="#4f46e5"></rect>
+  <rect x="522" y="347" width="196" height="76" rx="6" fill="#eef2ff" stroke="#c7d2fe"></rect>
+  <text x="620" y="392" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Receipt</text>
+  <rect x="522" y="431" width="196" height="32" rx="6" fill="#64748b"></rect>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Template inheritance</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s3-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-html"><span class="cl" data-line="1">{# Example of template inheritance in owner_verification.j2 #}</span>
+<span class="cl" data-line="2">{% extends "base.j2" %}</span>
+<span class="cl" data-line="3"></span>
+<span class="cl" data-line="4">{% block content %}</span>
+<span class="cl" data-line="5">&lt;h2&gt;Verify Your Account&lt;/h2&gt;</span>
+<span class="cl" data-line="6">&lt;p&gt;Click the link below to verify your gym owner account:&lt;/p&gt;</span>
+<span class="cl" data-line="7">&lt;a href="{{ verification_url }}"&gt;Verify Account&lt;/a&gt;</span>
+<span class="cl" data-line="8">{% endblock %}</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Dumb Template Policy</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="60" y="70" width="310" height="360" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="95" y="122" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#0f172a">Worker</text>
+
+  <rect x="95" y="142" width="160" height="38" rx="19" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></rect>
+  <text x="175" y="167" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#047857">Heavy Logic</text>
+
+  <rect x="95" y="210" width="240" height="56" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="115" y="245" font-family="monospace" font-size="20" fill="#0f172a">calculate_fee()</text>
+
+  <rect x="95" y="290" width="240" height="56" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="115" y="325" font-family="monospace" font-size="20" fill="#0f172a">format_time()</text>
+
+  
+  <rect x="375" y="200" width="70" height="36" rx="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="410" y="225" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">data</text>
+
+  <line x1="375" y1="260" x2="442" y2="260" stroke="#f59e0b" stroke-width="3" marker-end="url(#arrow)"></line>
+  <circle cx="375" cy="260" r="5" fill="#f59e0b">
+    <animate attributeName="cx" values="375;440;375" dur="2.5s" repeatCount="indefinite"></animate>
+  </circle>
+
+  
+  <rect x="450" y="70" width="310" height="360" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <path d="M 450 86 a 16 16 0 0 1 16 -16 h 278 a 16 16 0 0 1 16 16 v 10 h -310 z" fill="#4f46e5"></path>
+  <text x="485" y="122" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#4f46e5">Template</text>
+
+  <rect x="485" y="142" width="160" height="38" rx="19" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="565" y="167" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Display Only</text>
+
+  <rect x="485" y="210" width="240" height="56" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"></rect>
+  <text x="505" y="245" font-family="monospace" font-size="20" fill="#4f46e5">{{ fee }}</text>
+
+  <rect x="485" y="290" width="240" height="56" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"></rect>
+  <text x="505" y="325" font-family="monospace" font-size="20" fill="#4f46e5">{{ time }}</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-3" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Reusable templates ensure consistent brand identity across every message.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408b6e15b997d713c4b9e/g13/images/s3-block-3-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;template inheritance and reusability</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">The Rendering Architecture</p><p class="text-slate-500 text-sm mt-0.5">Jinja2 transforms raw task data into formatted emails.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Dynamic Data Injection</p><p class="text-slate-500 text-sm mt-0.5">Templates turn raw data into finished emails.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Template Inheritance and Reusability</p><p class="text-slate-500 text-sm mt-0.5">One shared base layout guarantees consistent branding across emails.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

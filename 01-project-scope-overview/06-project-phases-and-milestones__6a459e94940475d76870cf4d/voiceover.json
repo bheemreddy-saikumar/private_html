@@ -1,0 +1,146 @@
+{
+  "skill_id": "6a459de3940475d76870cf45",
+  "skill_name": "Project Scope & Overview",
+  "topic_id": "6a459e94940475d76870cf4d",
+  "topic_name": "Project Phases and Milestones",
+  "topic_track": "project",
+  "content_version": 14,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a459e94940475d76870cf4d/g10/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a459e94940475d76870cf4d/g14/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 14,
+  "voiceover_data": {
+    "topic_name": "Project Phases and Milestones",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-project-roadmap-business-value-first",
+        "section_number": 1,
+        "title": "The Project Roadmap: Business Value First",
+        "narration": "Now that we've traced the whole system, from the browser all the way down to the database, it's time to see how you actually roll out a complex, seven-service architecture step by step, instead of all at once. This topic details the real-world project phases and milestones for the Gym Management System, following a 'Business Value First' logic. Building a system with multiple microservices isn't a single, monolithic push. Instead, this project followed a sequence of milestones, each driven by immediate business needs. We focused on building what was essential for the gym to operate, and let the limitations of each step guide our next architectural decision. This iterative approach keeps delivering value continuously. Milestone one, 'The Foundation,' focused on memberships. This was the project's 'Hello World,' establishing core data models for Users, Plans, and Memberships. We built initial versions of the Auth Admin and Members services, crucially focusing on the membership states—Active, Frozen, or Cancelled—and the rules for moving between them. Getting this right was paramount, as all downstream systems depend on accurate membership status. Everything else in the Gym Management System hangs off a membership record, so we built that first. This foundational step made sure that before we even thought about scheduling classes or processing payments, we had a solid handle on who our members were and what their access privileges were. So, the key takeaway is: build the core domain first, because everything else depends on it.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we've traced the whole system, from the browser all the way down to the database, it's time to see how you actually roll out a complex, seven-service architecture step by step, instead of all at once."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "This topic details the real-world project phases and milestones for the Gym Management System, following a 'Business Value First' logic. Building a system with multiple microservices isn't a single, monolithic push."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Instead, this project followed a sequence of milestones, each driven by immediate business needs. We focused on building what was essential for the gym to operate, and let the limitations of each step guide our next architectural decision. This iterative approach keeps delivering value continuously."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Milestone one, 'The Foundation,' focused on memberships. This was the project's 'Hello World,' establishing core data models for Users, Plans, and Memberships. We built initial versions of the Auth Admin and Members services, crucially focusing on the membership states—Active, Frozen, or Cancelled—and the rules for moving between them. Getting this right was paramount, as all downstream systems depend on accurate membership status."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "Everything else in the Gym Management System hangs off a membership record, so we built that first."
+          },
+          {
+            "el_id": "s1-block-5",
+            "type": "block",
+            "text": "This foundational step made sure that before we even thought about scheduling classes or processing payments, we had a solid handle on who our members were and what their access privileges were. So, the key takeaway is: build the core domain first, because everything else depends on it."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-building-functionality-experience-and-payments",
+        "section_number": 2,
+        "title": "Building Functionality: Experience and Payments",
+        "narration": "We've built the foundation of members and their plans. The next logical step is to build out the member experience and integrate financial transactions. Milestone two, 'The Experience,' moved us from a static user database to a dynamic scheduling engine. We built functionality for group classes, virtual sessions, and trainer scheduling. This milestone introduced the 'Rules Layer,' which determines if a member can book a class based on their specific plan, connecting the Members service with the Plans and Classes service. This stage required the very first instances of inter-service communication. It allowed members to actually interact with the system, moving beyond just existing in it. This created value for both the gym and its clients by enabling them to book classes. Milestone three, 'The Gateway,' integrated Payrix for payment processing. Now the system became transactional: users could pay, and memberships were granted. We built the Payrix integration layer and mapped out the payment states. However, a limitation popped up: we could process payments, but we didn't really track debt. If a payment failed, we had a record of the failure, but no persistent 'owing' state. So, the key idea here is: you need to track the full lifecycle of a transaction, including failures and debt.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "We've built the foundation of members and their plans. The next logical step is to build out the member experience and integrate financial transactions."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Milestone two, 'The Experience,' moved us from a static user database to a dynamic scheduling engine. We built functionality for group classes, virtual sessions, and trainer scheduling. This milestone introduced the 'Rules Layer,' which determines if a member can book a class based on their specific plan, connecting the Members service with the Plans and Classes service."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "This stage required the very first instances of inter-service communication. It allowed members to actually interact with the system, moving beyond just existing in it. This created value for both the gym and its clients by enabling them to book classes."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Milestone three, 'The Gateway,' integrated Payrix for payment processing. Now the system became transactional: users could pay, and memberships were granted. We built the Payrix integration layer and mapped out the payment states. However, a limitation popped up: we could process payments, but we didn't really track debt."
+          },
+          {
+            "el_id": "s2-block-4",
+            "type": "block",
+            "text": "If a payment failed, we had a record of the failure, but no persistent 'owing' state. So, the key idea here is: you need to track the full lifecycle of a transaction, including failures and debt."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-refining-financials-and-automation",
+        "section_number": 3,
+        "title": "Refining Financials and Automation",
+        "narration": "With basic payments functional, the project pivoted to a more robust billing system and introduced automation to handle scale. Milestone four, 'The Turning Point,' was critical. We shifted from a simple payment-taking app to a true Billing System by separating the 'Obligation' – the Invoice – from the 'Transaction' – the Payment. This unlocked features like due amounts, overdue balances, partial payments, and discounts, creating an 'Invoice' object before payment is even attempted. This allowed the system to 'know' who owes what, enabling access control based on unpaid invoices, regardless of recent payment attempts. Milestone five, 'Automation,' addressed the maintenance overhead of manual invoicing by introducing Celery and Redis. This asynchronous processing handles generating invoices and attempting collections, preventing system crashes during peak hours. So, when a membership is due, a background worker generates the invoice and tries to collect. This queues jobs in Redis, ensuring retries happen without impacting A P I responsiveness. The key idea here is: separate the obligation from the transaction, and automate backend processes to handle scale and ensure reliability.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "With basic payments functional, the project pivoted to a more robust billing system and introduced automation to handle scale."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Milestone four, 'The Turning Point,' was critical. We shifted from a simple payment-taking app to a true Billing System by separating the 'Obligation' – the Invoice – from the 'Transaction' – the Payment. This unlocked features like due amounts, overdue balances, partial payments, and discounts, creating an 'Invoice' object before payment is even attempted."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "This allowed the system to 'know' who owes what, enabling access control based on unpaid invoices, regardless of recent payment attempts. Milestone five, 'Automation,' addressed the maintenance overhead of manual invoicing by introducing Celery and Redis. This asynchronous processing handles generating invoices and attempting collections, preventing system crashes during peak hours."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "So, when a membership is due, a background worker generates the invoice and tries to collect. This queues jobs in Redis, ensuring retries happen without impacting A P I responsiveness. The key idea here is: separate the obligation from the transaction, and automate backend processes to handle scale and ensure reliability."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-visibility-scheduling-and-scaling",
+        "section_number": 4,
+        "title": "Visibility, Scheduling, and Scaling",
+        "narration": "Finally, the project focuses on providing business visibility, implementing time-driven automation, and scaling the infrastructure effectively. Milestone six, 'Visibility,' introduced the Reports service. We treated reporting as a read-only concern, isolating heavy aggregations so they wouldn't impact core operations like member check-ins. Milestone seven, 'Time-Driven Automation,' uses Celery Beat to schedule periodic jobs. This scans for upcoming membership renewals, expiring freezes, and overdue invoices that need a reminder. The final phase, milestone eight, focused on 'Elasticity.' We used microservices and Kubernetes for this. Containerizing with Docker and orchestrating with Kubernetes allowed us to scale efficiently. For example, the system can spin up many payment worker instances during high-demand periods, like the first of the month, and then scale back down. This saves significant cloud costs. So the project arc moved from Identity, to Activity, to Financials, and finally to Scale. Each milestone solved a bottleneck from the previous one. With this phased delivery roadmap in place, we'll next turn to Success Criteria and KPIs to establish how we quantitatively evaluate the health and impact of this architecture. The key idea to remember is: architecture evolves through iterative milestones, addressing bottlenecks and scaling needs.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Finally, the project focuses on providing business visibility, implementing time-driven automation, and scaling the infrastructure effectively."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Milestone six, 'Visibility,' introduced the Reports service. We treated reporting as a read-only concern, isolating heavy aggregations so they wouldn't impact core operations like member check-ins. Milestone seven, 'Time-Driven Automation,' uses Celery Beat to schedule periodic jobs. This scans for upcoming membership renewals, expiring freezes, and overdue invoices that need a reminder."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "The final phase, milestone eight, focused on 'Elasticity.' We used microservices and Kubernetes for this. Containerizing with Docker and orchestrating with Kubernetes allowed us to scale efficiently. For example, the system can spin up many payment worker instances during high-demand periods, like the first of the month, and then scale back down. This saves significant cloud costs."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "So the project arc moved from Identity, to Activity, to Financials, and finally to Scale. Each milestone solved a bottleneck from the previous one. With this phased delivery roadmap in place, we'll next turn to Success Criteria and KPIs to establish how we quantitatively evaluate the health and impact of this architecture. The key idea to remember is: architecture evolves through iterative milestones, addressing bottlenecks and scaling needs."
+          }
+        ]
+      }
+    ]
+  }
+}

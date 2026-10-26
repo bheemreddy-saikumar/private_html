@@ -1,0 +1,121 @@
+{
+  "skill_id": "6a4408b2e15b997d713c4b8f",
+  "skill_name": "Batch Worker & Scheduler",
+  "topic_id": "6a4e394ef6e77d9b63610977",
+  "topic_name": "Celery & Redis for Background Task Execution",
+  "topic_track": "project",
+  "content_version": 10,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4e394ef6e77d9b63610977/g8/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4e394ef6e77d9b63610977/g10/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 10,
+  "voiceover_data": {
+    "topic_name": "Celery & Redis for Background Task Execution",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-restaurant-architecture",
+        "section_number": 1,
+        "title": "The Restaurant Architecture",
+        "narration": "Last time, we examined how to make background processing resilient against silent failures. Now, let's put those architectural principles into practice by wiring up Celery and Redis in G M S to handle tasks without user delays. Think of our system like a busy restaurant. The A P I service acts as the waiter, taking orders and moving to the next customer instantly. The message broker, acting as the ticket rail, holds incoming requests. Finally, the background workers act as the kitchen, pulling those orders off the rail to prepare them without keeping the waiter waiting. In this setup, we separate responsibilities. One storage area acts as the message broker, pinning tasks for workers. Another acts as the result backend, a dedicated storage locker where the system writes whether a task succeeded or failed. Because we often just need to fire actions, we use a skip setting to discard task results. The key idea here is decoupling.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Last time, we examined how to make background processing resilient against silent failures. Now, let's put those architectural principles into practice by wiring up Celery and Redis in G M S to handle tasks without user delays."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Think of our system like a busy restaurant. The A P I service acts as the waiter, taking orders and moving to the next customer instantly. The message broker, acting as the ticket rail, holds incoming requests. Finally, the background workers act as the kitchen, pulling those orders off the rail to prepare them without keeping the waiter waiting."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "In this setup, we separate responsibilities. One storage area acts as the message broker, pinning tasks for workers. Another acts as the result backend, a dedicated storage locker where the system writes whether a task succeeded or failed. Because we often just need to fire actions, we use a skip setting to discard task results. The key idea here is decoupling."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-execution-flow",
+        "section_number": 2,
+        "title": "The Execution Flow",
+        "narration": "Now that we see how the components interact, let's look at the actual flow when a request triggers a background task. When a user action occurs, the A P I service saves basic data to our sequel database and dispatches a message to the broker. The broker keeps this serialized instruction until a worker is available. A worker then sees the message, claims it, and runs the requested job. Each job gets its own fresh database session from the shared helper we built in Shared Database Access Layer, because a background job has no web request to open one for it. This process relies on asynchronous communication, as we established in Designing Asynchronous Systems when mapping our services and workers. The A P I service does not wait for the task to finish, allowing it to return a success status to the user immediately. The key idea is immediate response through asynchronous hand-offs.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we see how the components interact, let's look at the actual flow when a request triggers a background task."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "When a user action occurs, the A P I service saves basic data to our sequel database and dispatches a message to the broker. The broker keeps this serialized instruction until a worker is available."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "A worker then sees the message, claims it, and runs the requested job. Each job gets its own fresh database session from the shared helper we built in Shared Database Access Layer, because a background job has no web request to open one for it."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "This process relies on asynchronous communication, as we established in Designing Asynchronous Systems when mapping our services and workers. The A P I service does not wait for the task to finish, allowing it to return a success status to the user immediately. The key idea is immediate response through asynchronous hand-offs."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-managing-workload-scaling",
+        "section_number": 3,
+        "title": "Managing Workload Scaling",
+        "narration": "Since not all tasks are equally demanding, we need a way to prevent heavy jobs from blocking urgent ones, which brings us to task routing. Task routing involves directing different types of work into dedicated, named waiting lines. For instance, G M S separates email tasks from heavy batch jobs, like crediting back sessions that members booked but missed. This ensures that a long batch job never blocks a time-sensitive email. Separate lines would also let us add more email workers during peak signup hours without touching the batch side. By isolating our workloads, we ensure the system remains responsive even while a batch job is running. The batch job itself is triggered by Celery Beat, a scheduler that sends it automatically on a clock, twice a day. The key idea is workload isolation through dedicated queues.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Since not all tasks are equally demanding, we need a way to prevent heavy jobs from blocking urgent ones, which brings us to task routing."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "Task routing involves directing different types of work into dedicated, named waiting lines. For instance, G M S separates email tasks from heavy batch jobs, like crediting back sessions that members booked but missed. This ensures that a long batch job never blocks a time-sensitive email. Separate lines would also let us add more email workers during peak signup hours without touching the batch side."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "By isolating our workloads, we ensure the system remains responsive even while a batch job is running. The batch job itself is triggered by Celery Beat, a scheduler that sends it automatically on a clock, twice a day. The key idea is workload isolation through dedicated queues."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-ensuring-data-integrity",
+        "section_number": 4,
+        "title": "Ensuring Data Integrity",
+        "narration": "To wrap up our configuration, we must address reliability and the risks of tasks failing mid-process. We implement the task acknowledgement guard we introduced in Designing Asynchronous Systems to ensure crashed tasks return to the queue. By delaying confirmation until processing finishes, we prevent data loss. This requires an idempotency guard, a safety check like a database flag, to ensure that retried jobs do not duplicate real-world effects, such as processing a payment twice. We also send every message in plain J S O N, a simple text format that is safe for any service to read. Finally, always verify that a consumer is actually listening for your tasks, because the system will not warn you if a message lands in a queue no worker reads. The key idea is reliable execution through safe acknowledgement and idempotency. Now that we understand how basic queue routing keeps our workloads separate, we will take a deep dive into configuring dedicated queues to strictly isolate the batch queue.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "To wrap up our configuration, we must address reliability and the risks of tasks failing mid-process."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "We implement the task acknowledgement guard we introduced in Designing Asynchronous Systems to ensure crashed tasks return to the queue. By delaying confirmation until processing finishes, we prevent data loss. This requires an idempotency guard, a safety check like a database flag, to ensure that retried jobs do not duplicate real-world effects, such as processing a payment twice."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "We also send every message in plain J S O N, a simple text format that is safe for any service to read. Finally, always verify that a consumer is actually listening for your tasks, because the system will not warn you if a message lands in a queue no worker reads."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "The key idea is reliable execution through safe acknowledgement and idempotency. Now that we understand how basic queue routing keeps our workloads separate, we will take a deep dive into configuring dedicated queues to strictly isolate the batch queue."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "skill_id": "6a55b84f4eac614f602a2293",
+  "skill_name": "Shared Library and Core Models",
+  "topic_id": "6a55bb538c5dd1b6294abdf2",
+  "topic_name": "Structuring the Shared Code Repository",
+  "topic_track": "project",
+  "content_version": 41,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a55bb538c5dd1b6294abdf2/g38/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a55bb538c5dd1b6294abdf2/g41/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 41,
+  "voiceover_data": {
+    "topic_name": "Structuring the Shared Code Repository",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-repository-layout-and-dependency-hub",
+        "section_number": 1,
+        "title": "Repository Layout and Dependency Hub",
+        "narration": "Now that dbmate has finished setting up our tables and adding baseline data, it is time to structure the shared code that every service in our fleet will use to interact with the database. We use the G M S shared library for this, which serves as a central toolbox of code and models to keep our services in sync. We organize this library using a source layout, a pattern that keeps our actual application code separate from configuration files to avoid accidental imports. This layout houses our centralized config, database logic, and the data models that act as our single source of truth. To further unify the fleet, we centralize heavy dependencies in the shared library's dependency list. By pulling libraries like SQL Alchemy, our tool for mapping database rows to Python objects, and FastAPI, our framework for asynchronous A P I's, into this hub, we ensure every service uses the exact same versions. This creates a hub-and-spoke dependency model where services connect to one core library instead of duplicating logic. The key idea here is consolidation, keeping all services aligned by channeling every dependency through one source.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that dbmate has finished setting up our tables and adding baseline data, it is time to structure the shared code that every service in our fleet will use to interact with the database."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "We use the G M S shared library for this, which serves as a central toolbox of code and models to keep our services in sync. We organize this library using a source layout, a pattern that keeps our actual application code separate from configuration files to avoid accidental imports. This layout houses our centralized config, database logic, and the data models that act as our single source of truth."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "To further unify the fleet, we centralize heavy dependencies in the shared library's dependency list. By pulling libraries like SQL Alchemy, our tool for mapping database rows to Python objects, and FastAPI, our framework for asynchronous A P I's, into this hub, we ensure every service uses the exact same versions."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "This creates a hub-and-spoke dependency model where services connect to one core library instead of duplicating logic. The key idea here is consolidation, keeping all services aligned by channeling every dependency through one source."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-shared-base-strategy",
+        "section_number": 2,
+        "title": "Shared Base Strategy",
+        "narration": "Having defined our dependency hub, we must ensure these heavy libraries do not slow down our deployment pipelines. We optimize this using a shared base image, a pre-built container that holds all our heavy third-party packages. Using Docker, our platform for portable environments, we create a base that installs the G M S shared library once. Every other service then builds on this, inheriting the environment instantly without needing to reinstall dependencies. It makes builds much faster. The key idea is efficiency, by stacking our services on a common foundation, we eliminate redundant installs and speed up the development cycle.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Having defined our dependency hub, we must ensure these heavy libraries do not slow down our deployment pipelines."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We optimize this using a shared base image, a pre-built container that holds all our heavy third-party packages. Using Docker, our platform for portable environments, we create a base that installs the G M S shared library once."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Every other service then builds on this, inheriting the environment instantly without needing to reinstall dependencies. It makes builds much faster. The key idea is efficiency, by stacking our services on a common foundation, we eliminate redundant installs and speed up the development cycle."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-engineering-trade-offs",
+        "section_number": 3,
+        "title": "Engineering Trade-offs",
+        "narration": "Finally, let us look at the trade-offs we accept by tying our entire fleet to one centralized repository. We are choosing consistency over autonomy. Because services share models, a change in a schema might require a fleet-wide redeployment. However, this eliminates the silent failures that happen when services interpret data differently, such as schema drift or mismatching database contracts. By catching these issues early, we ensure system-wide integrity. Consistency creates safer, more predictable production behavior, which brings us to our key idea, safety. With our repository layout and base Docker image established, next we will look at our versioning and distribution strategy for rolling out updates across the fleet.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Finally, let us look at the trade-offs we accept by tying our entire fleet to one centralized repository."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "We are choosing consistency over autonomy. Because services share models, a change in a schema might require a fleet-wide redeployment. However, this eliminates the silent failures that happen when services interpret data differently, such as schema drift or mismatching database contracts."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "By catching these issues early, we ensure system-wide integrity. Consistency creates safer, more predictable production behavior, which brings us to our key idea, safety. With our repository layout and base Docker image established, next we will look at our versioning and distribution strategy for rolling out updates across the fleet."
+          }
+        ]
+      }
+    ]
+  }
+}

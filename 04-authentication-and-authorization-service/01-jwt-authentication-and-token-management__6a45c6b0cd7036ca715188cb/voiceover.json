@@ -1,0 +1,103 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a45c6b0cd7036ca715188cb",
+  "topic_name": "JWT Authentication and Token Management",
+  "topic_track": "theory",
+  "content_version": 7,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a45c6b0cd7036ca715188cb/g5/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a45c6b0cd7036ca715188cb/g7/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 7,
+  "voiceover_data": {
+    "topic_name": "JWT Authentication and Token Management",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-dual-token-strategy-for-security-and-ux",
+        "section_number": 1,
+        "title": "Dual-Token Strategy for Security and UX",
+        "narration": "Now that we've covered the core ideas of I A M and the need for short-lived credentials, let's translate those concepts into code using JSON Web Tokens, or JWTs. In this section, we'll dive into the technical implementation of JWTs in our backend services. We're focusing on stateless authentication and a dual-token strategy. So, our system uses two types of tokens: an Access Token and a Refresh Token. This approach balances security with a good user experience. Access tokens are short-lived, maybe fifteen to sixty minutes, and they're used to authorize individual A P I requests. They carry the user's identity and claims, and you'll send them with most A P I calls. Refresh tokens, on the other hand, are long-lived, lasting seven to thirty days. Their sole purpose is to obtain new access tokens when the current ones expire. These are stored more securely and have stricter revocation logic. This separation minimizes the risk of intercepted tokens while reducing the need for frequent logins. So the key idea is that refresh tokens provide a secure way to re-authenticate without constant user interaction.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that we've covered the core ideas of I A M and the need for short-lived credentials, let's translate those concepts into code using JSON Web Tokens, or JWTs."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In this section, we'll dive into the technical implementation of JWTs in our backend services. We're focusing on stateless authentication and a dual-token strategy. So, our system uses two types of tokens: an Access Token and a Refresh Token."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "This approach balances security with a good user experience. Access tokens are short-lived, maybe fifteen to sixty minutes, and they're used to authorize individual A P I requests. They carry the user's identity and claims, and you'll send them with most A P I calls."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "Refresh tokens, on the other hand, are long-lived, lasting seven to thirty days. Their sole purpose is to obtain new access tokens when the current ones expire. These are stored more securely and have stricter revocation logic. This separation minimizes the risk of intercepted tokens while reducing the need for frequent logins. So the key idea is that refresh tokens provide a secure way to re-authenticate without constant user interaction."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-generating-and-validating-jwts",
+        "section_number": 2,
+        "title": "Generating and Validating JWTs",
+        "narration": "Now that we understand the dual-token strategy, let's explore how these tokens are generated and validated. Token generation is typically handled within the User model for consistency, while validation is the crucial gatekeeping step. Access tokens are generated using a method like User dot generate access token. It creates a signed payload including the expiration time, the user's unique ID in the sub claim, and a type identifier. The payload is then encoded using a secret key and a specified algorithm, like HS256. Refresh tokens are generated similarly but often include a unique jti claim or a specific 'refresh' type. This helps differentiate their purpose. In services like auth public svc dot py, these are issued during login to provide the client with the complete credential set for continued access. Token validation, handled by methods like User dot decode token, is a multi-step process. First, it verifies the token's signature using the shared secret key to ensure it hasn't been tampered with. Then, it automatically checks the expiration time. Finally, it verifies critical claims, such as the type, to prevent token substitution. So the key idea is that validating a token's signature, expiration, and claims prevents unauthorized access.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we understand the dual-token strategy, let's explore how these tokens are generated and validated. Token generation is typically handled within the User model for consistency, while validation is the crucial gatekeeping step."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Access tokens are generated using a method like User dot generate access token. It creates a signed payload including the expiration time, the user's unique ID in the sub claim, and a type identifier. The payload is then encoded using a secret key and a specified algorithm, like HS256."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Refresh tokens are generated similarly but often include a unique jti claim or a specific 'refresh' type. This helps differentiate their purpose. In services like auth public svc dot py, these are issued during login to provide the client with the complete credential set for continued access."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "Token validation, handled by methods like User dot decode token, is a multi-step process. First, it verifies the token's signature using the shared secret key to ensure it hasn't been tampered with. Then, it automatically checks the expiration time. Finally, it verifies critical claims, such as the type, to prevent token substitution. So the key idea is that validating a token's signature, expiration, and claims prevents unauthorized access."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-security-statelessness-and-propagation",
+        "section_number": 3,
+        "title": "Security, Statelessness, and Propagation",
+        "narration": "With token mechanics covered, let's discuss the crucial operational aspects and security principles that underpin J W T authentication, focusing on key management, the trade-offs of statelessness, and how identity propagates through the system. The security of J W Ts hinges on the confidentiality of the SECRET KEY. This key must be managed securely, typically injected via environment variables and never committed to code. If compromised, all existing tokens can be forged, rendering the system insecure. J W Ts enable stateless authentication, meaning services don't need to constantly check a database for session validity. While this improves scalability, it means tokens can't be easily revoked before expiration without a blocklist. For refresh tokens, however, we can check an is active status on the user record to enable manual session termination. Once a token has been validated, the user's identity, which is found in the sub claim, is typically added to the request context. This identity then becomes the basis for authorization \n– deciding if a user has permission to access certain resources, like through Role-Based Access Control. So, the key idea here is that stateless JWTs enable scalable authentication, and by carefully managing secret keys and claims, we maintain security.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "With token mechanics covered, let's discuss the crucial operational aspects and security principles that underpin J W T authentication, focusing on key management, the trade-offs of statelessness, and how identity propagates through the system."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "The security of J W Ts hinges on the confidentiality of the SECRET KEY. This key must be managed securely, typically injected via environment variables and never committed to code. If compromised, all existing tokens can be forged, rendering the system insecure."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "J W Ts enable stateless authentication, meaning services don't need to constantly check a database for session validity. While this improves scalability, it means tokens can't be easily revoked before expiration without a blocklist. For refresh tokens, however, we can check an is active status on the user record to enable manual session termination."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Once a token has been validated, the user's identity, which is found in the sub claim, is typically added to the request context. This identity then becomes the basis for authorization \n– deciding if a user has permission to access certain resources, like through Role-Based Access Control. So, the key idea here is that stateless JWTs enable scalable authentication, and by carefully managing secret keys and claims, we maintain security."
+          }
+        ]
+      }
+    ]
+  }
+}

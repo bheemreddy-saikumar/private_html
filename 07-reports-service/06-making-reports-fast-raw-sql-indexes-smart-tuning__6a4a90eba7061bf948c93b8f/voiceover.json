@@ -1,0 +1,111 @@
+{
+  "skill_id": "6a4408b1e15b997d713c4b8d",
+  "skill_name": "Reports Service",
+  "topic_id": "6a4a90eba7061bf948c93b8f",
+  "topic_name": "Making Reports Fast: Raw SQL, Indexes & Smart Tuning",
+  "topic_track": "project",
+  "content_version": 15,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4a90eba7061bf948c93b8f/g13/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4a90eba7061bf948c93b8f/g15/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 15,
+  "voiceover_data": {
+    "topic_name": "Making Reports Fast: Raw SQL, Indexes & Smart Tuning",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-why-we-bypass-the-mapper",
+        "section_number": 1,
+        "title": "Why We Bypass The Mapper",
+        "narration": "Having seen how report requests are validated and which report types we offer, we now need to see what happens when those queries hit real-world database volume and start competing for resources. In G M S, most code uses an object relational mapper, a library that turns database rows into Python objects so we rarely write sequel by hand. For big reports, though, a mapper can trigger an N plus one query storm: the app runs one query to fetch a list, then one more query for every item on that list. With thousands of items, that slows reporting badly. To fix this, we use raw sequel to bypass the mapper's overhead for analytical loads. It is like driving a manual car where you choose the gears, while the mapper is an automatic. We still use the mapper's engine for connection pooling, reusing open database connections. The engine also supports parameter binding, which sends dynamic values as pure data so they can never run as malicious code. G M S report queries do not use binding today: they place the location and dates straight into the query text, and are safe only because those values are validated first. Binding would be the safer habit.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Having seen how report requests are validated and which report types we offer, we now need to see what happens when those queries hit real-world database volume and start competing for resources."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In G M S, most code uses an object relational mapper, a library that turns database rows into Python objects so we rarely write sequel by hand. For big reports, though, a mapper can trigger an N plus one query storm: the app runs one query to fetch a list, then one more query for every item on that list. With thousands of items, that slows reporting badly."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "To fix this, we use raw sequel to bypass the mapper's overhead for analytical loads. It is like driving a manual car where you choose the gears, while the mapper is an automatic."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "We still use the mapper's engine for connection pooling, reusing open database connections. The engine also supports parameter binding, which sends dynamic values as pure data so they can never run as malicious code. G M S report queries do not use binding today: they place the location and dates straight into the query text, and are safe only because those values are validated first. Binding would be the safer habit."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-maintaining-stable-connections",
+        "section_number": 2,
+        "title": "Maintaining Stable Connections",
+        "narration": "We use raw sequel to control queries, but we must also keep our connection pool stable to avoid unnecessary overhead. We configure the database engine to run a quick health check, a ping, before using any connection from the pool. If a network issue dropped a connection, the system quietly replaces it rather than failing. We also retire any connection older than one hour, so we always work with fresh, reliable connections. Active connection management means we never waste a request on a stale or broken database link.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "We use raw sequel to control queries, but we must also keep our connection pool stable to avoid unnecessary overhead."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We configure the database engine to run a quick health check, a ping, before using any connection from the pool. If a network issue dropped a connection, the system quietly replaces it rather than failing. We also retire any connection older than one hour, so we always work with fresh, reliable connections. Active connection management means we never waste a request on a stale or broken database link."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-addressing-production-bottlenecks",
+        "section_number": 3,
+        "title": "Addressing Production Bottlenecks",
+        "narration": "While those settings keep connections alive, we still face architectural bottlenecks when processing large datasets. A common issue is the full table scan, where the database trudges through every row because no index exists to guide it. Another is pulling thousands of rows into app memory to work on them there, which is slow and memory-hungry; math like totals belongs in the database, using its built-in sum and count functions. G M S reports already aggregate in sequel, but one report filter fetches every row first and then filters in Python. Loading all results into memory at once can also crash a service as data grows. Streaming fixes this: the database sends results in small batches, so memory use stays flat. Caching helps too: saving the result of a heavy report means an identical request comes back almost instantly. G M S does neither today; every report loads all its rows in one go and runs live. The key idea is optimizing how we fetch and process data.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "While those settings keep connections alive, we still face architectural bottlenecks when processing large datasets."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "A common issue is the full table scan, where the database trudges through every row because no index exists to guide it. Another is pulling thousands of rows into app memory to work on them there, which is slow and memory-hungry; math like totals belongs in the database, using its built-in sum and count functions. G M S reports already aggregate in sequel, but one report filter fetches every row first and then filters in Python."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Loading all results into memory at once can also crash a service as data grows. Streaming fixes this: the database sends results in small batches, so memory use stays flat. Caching helps too: saving the result of a heavy report means an identical request comes back almost instantly. G M S does neither today; every report loads all its rows in one go and runs live. The key idea is optimizing how we fetch and process data."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-a-disciplined-tuning-roadmap",
+        "section_number": 4,
+        "title": "A Disciplined Tuning Roadmap",
+        "narration": "Now that we know the common pitfalls, we follow a disciplined roadmap to improve performance without guessing. First, measure. The database's slow query log records queries that take too long, and the explain feature shows exactly how the database plans to run each one. Then we might add a composite index, an index built on several columns at once, like a phone book sorted by last name and then first name. That is a quick win that can turn a slow search into an instant one. Next, we move aggregation into sequel and use streaming for stability. As traffic grows, a further step is moving heavy analytical queries to a read replica, a read-only copy of the database. In Rationale for a Dedicated Reports Service we saw that G M S keeps one shared database instead, so treat this as a future option. Remember, measure first, then index and offload. Next, we will look at read replicas in more detail.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Now that we know the common pitfalls, we follow a disciplined roadmap to improve performance without guessing."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "First, measure. The database's slow query log records queries that take too long, and the explain feature shows exactly how the database plans to run each one. Then we might add a composite index, an index built on several columns at once, like a phone book sorted by last name and then first name. That is a quick win that can turn a slow search into an instant one."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Next, we move aggregation into sequel and use streaming for stability. As traffic grows, a further step is moving heavy analytical queries to a read replica, a read-only copy of the database. In Rationale for a Dedicated Reports Service we saw that G M S keeps one shared database instead, so treat this as a future option. Remember, measure first, then index and offload. Next, we will look at read replicas in more detail."
+          }
+        ]
+      }
+    ]
+  }
+}

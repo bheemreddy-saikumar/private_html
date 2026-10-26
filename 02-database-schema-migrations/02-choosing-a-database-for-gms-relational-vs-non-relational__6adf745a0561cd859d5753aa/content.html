@@ -1,0 +1,427 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Choosing a Database for GMS: Relational vs Non-Relational</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Choosing a Database for GMS: Relational vs Non-Relational</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Choosing a Database for GMS: Relational vs Non-Relational</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Core Architectural Question</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Data guarantees dictate storage choice, not technology preference.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#64748b"></path></marker><marker id="arrow-primary" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5"></path></marker></defs><rect x="60" y="70" width="200" height="180" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><rect x="120" y="105" width="80" height="46" rx="6" fill="#a7f3d0" stroke="#10b981" stroke-width="2"></rect><rect x="110" y="115" width="80" height="46" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"></rect><line x1="122" y1="130" x2="162" y2="130" stroke="#10b981" stroke-width="3" stroke-linecap="round"></line><line x1="122" y1="142" x2="150" y2="142" stroke="#10b981" stroke-width="3" stroke-linecap="round"></line><circle cx="174" cy="144" r="8" fill="#10b981"></circle><path d="M171 144 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"></path><text x="160" y="215" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Atomicity</text><rect x="310" y="70" width="200" height="180" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><rect x="330" y="118" width="56" height="32" rx="16" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect><rect x="424" y="110" width="56" height="48" rx="6" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect><line x1="386" y1="134" x2="416" y2="134" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></line><text x="410" y="215" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Integrity</text><rect x="560" y="70" width="200" height="180" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><circle cx="660" cy="134" r="28" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle><circle cx="660" cy="128" r="8" fill="none" stroke="#f59e0b" stroke-width="2.5"></circle><rect x="656" y="136" width="8" height="11" rx="2" fill="#f59e0b"></rect><text x="660" y="215" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Uniqueness</text><path d="M160 250 v30 q0 50 170 65" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></path><line x1="410" y1="250" x2="410" y2="340" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line><path d="M660 250 v30 q0 50 -170 65" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></path><path d="M280 370 v60 a130 20 0 0 0 260 0 v-60 Z" fill="#f1f5f9" stroke="#0f172a" stroke-width="3"></path><ellipse cx="410" cy="370" rx="130" ry="20" fill="#ffffff" stroke="#0f172a" stroke-width="3"></ellipse><text x="410" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Storage Engine</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Atomic Financial Guarantees</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="110" y="100" width="600" height="320" rx="16" fill="#f8fafc" stroke="#10b981" stroke-width="3"><animate attributeName="stroke-opacity" values="1;0.5;1" dur="3s" repeatCount="indefinite"></animate></rect><rect x="260" y="78" width="300" height="44" rx="22" fill="#10b981"></rect><text x="410" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Atomic Transaction</text><line x1="290" y1="220" x2="335" y2="220" stroke="#10b981" stroke-width="3"></line><line x1="465" y1="220" x2="525" y2="220" stroke="#10b981" stroke-width="3"></line><rect x="150" y="190" width="140" height="60" rx="30" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect><text x="220" y="228" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Member</text><rect x="345" y="182" width="120" height="68" rx="10" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"></rect><rect x="335" y="190" width="120" height="68" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2.5"></rect><text x="395" y="231" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Invoice</text><rect x="535" y="182" width="120" height="68" rx="10" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"></rect><rect x="525" y="190" width="120" height="68" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2.5"></rect><text x="585" y="231" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Payment</text><circle cx="300" cy="340" r="16" fill="#10b981"></circle><path d="M292 340 l6 6 l12 -12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path><text x="330" y="348" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Committed as one unit</text><text x="410" y="475" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Zero partial writes</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-2" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Requirements dictate storage choice, never personal preference.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6adf745a0561cd859d5753aa/g5/images/s1-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;the core architectural question</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Defining Our Requirements</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Operational guardrails must guarantee atomic transactions and data integrity.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="key-arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+      <path d="M 0 1 L 7 4 L 0 7 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="70" y="415" width="680" height="20" rx="10" fill="#0f172a"></rect>
+  <rect x="90" y="445" width="640" height="6" rx="3" fill="#cbd5e1"></rect>
+
+  
+  <rect x="70" y="95" width="200" height="295" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="2.5"></rect>
+  <text x="170" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#10b981">Atomic Writes</text>
+  
+  <rect x="95" y="180" width="150" height="36" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></rect>
+  <rect x="95" y="228" width="150" height="36" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></rect>
+  <rect x="95" y="276" width="150" height="36" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></rect>
+  
+  
+  <circle cx="170" cy="350" r="18" fill="#10b981"></circle>
+  <path d="M162 350 L168 356 L178 344" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  
+  <rect x="310" y="95" width="200" height="295" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+  <text x="410" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Foreign Keys</text>
+  
+  <rect x="335" y="190" width="150" height="42" rx="21" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <rect x="335" y="280" width="150" height="42" rx="21" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  
+  
+  <line x1="410" y1="234" x2="410" y2="274" stroke="#4f46e5" stroke-width="3" marker-end="url(#key-arrow)"></line>
+  <circle cx="410" cy="350" r="18" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></circle>
+  <path d="M405 350 A 5 5 0 0 1 415 350 V 356 H 405 Z" fill="#4f46e5"></path>
+  <circle cx="410" cy="347" r="3" fill="#ffffff"></circle>
+
+  
+  <rect x="550" y="95" width="200" height="295" rx="16" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"></rect>
+  <text x="650" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Relational Joins</text>
+  
+  
+  <rect x="575" y="185" width="65" height="135" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"></rect>
+  <rect x="660" y="185" width="65" height="135" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"></rect>
+  <line x1="575" y1="215" x2="640" y2="215" stroke="#cbd5e1" stroke-width="1.5"></line>
+  <line x1="660" y1="215" x2="725" y2="215" stroke="#cbd5e1" stroke-width="1.5"></line>
+  
+  
+  <path d="M640 245 C 650 245, 650 275, 660 275" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"></path>
+  <circle cx="640" cy="245" r="4" fill="#f59e0b"></circle>
+  <circle cx="660" cy="275" r="4" fill="#f59e0b"></circle>
+
+  <circle cx="650" cy="350" r="18" fill="#f1f5f9" stroke="#0f172a" stroke-width="2"></circle>
+  <path d="M643 346 Q 650 340 657 346 T 657 354" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"></path>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">ACID &amp; Referential Integrity</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path></marker><marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path></marker></defs><rect x="60" y="65" width="700" height="390" rx="24" fill="#ffffff" stroke="#10b981" stroke-width="2.5" stroke-dasharray="10 6"><animate attributeName="stroke-dashoffset" from="0" to="-32" dur="4s" repeatCount="indefinite"></animate></rect><rect x="270" y="44" width="280" height="42" rx="21" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect><text x="410" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Atomic Transaction</text><rect x="110" y="150" width="210" height="70" rx="35" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect><text x="215" y="193" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">Member</text><line x1="320" y1="185" x2="488" y2="185" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></line><rect x="500" y="150" width="210" height="70" rx="14" fill="#f8fafc" stroke="#0f172a" stroke-width="2"></rect><text x="605" y="193" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Invoice</text><path d="M 570 220 L 570 255 L 230 255 L 230 288" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"></path><path d="M 640 220 L 640 288" fill="none" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"></path><rect x="125" y="300" width="210" height="70" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2"></rect><text x="230" y="343" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Line Items</text><rect x="515" y="300" width="210" height="70" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2.5"></rect><text x="620" y="343" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Payment</text><rect x="280" y="405" width="260" height="36" rx="18" fill="#10b981"></rect><text x="410" y="430" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Commit or Rollback</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Operational Checklist</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <rect x="90" y="35" width="640" height="446" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="90" y="35" width="640" height="66" rx="16" fill="#f8fafc"></rect>
+  <rect x="90" y="75" width="640" height="26" fill="#f8fafc"></rect>
+  <line x1="90" y1="101" x2="730" y2="101" stroke="#cbd5e1" stroke-width="1.5"></line>
+  <text x="125" y="74" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Storage Decision Checklist</text>
+  <rect x="575" y="52" width="125" height="34" rx="17" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="637" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Required</text>
+  <rect x="115" y="118" width="590" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <circle cx="150" cy="146" r="14" fill="#10b981"></circle>
+  <path d="M 144 146 l 4 4 l 8 -8" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="182" y="153" font-family="Inter, sans-serif" font-size="21" font-weight="600" fill="#0f172a">Multi-Record Transactions</text>
+  <rect x="115" y="188" width="590" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <circle cx="150" cy="216" r="14" fill="#10b981"></circle>
+  <path d="M 144 216 l 4 4 l 8 -8" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="182" y="223" font-family="Inter, sans-serif" font-size="21" font-weight="600" fill="#0f172a">Foreign Key Integrity</text>
+  <rect x="115" y="258" width="590" height="56" rx="10" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <circle cx="150" cy="286" r="14" fill="#10b981"></circle>
+  <path d="M 144 286 l 4 4 l 8 -8" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="182" y="293" font-family="Inter, sans-serif" font-size="21" font-weight="600" fill="#0f172a">Relational Joins</text>
+  <rect x="115" y="328" width="590" height="56" rx="10" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <circle cx="150" cy="356" r="14" fill="#10b981"></circle>
+  <path d="M 144 356 l 4 4 l 8 -8" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="182" y="363" font-family="Inter, sans-serif" font-size="21" font-weight="600" fill="#0f172a">Versioned Migrations</text>
+  <rect x="115" y="398" width="590" height="56" rx="10" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <circle cx="150" cy="426" r="14" fill="#10b981"></circle>
+  <path d="M 144 426 l 4 4 l 8 -8" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="182" y="433" font-family="Inter, sans-serif" font-size="21" font-weight="600" fill="#0f172a">Async Task Queue</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;defining our requirements</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Comparing Paradigms and Risks</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Score database options against operational needs, not hype.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  
+  <rect x="35" y="60" width="174" height="400" rx="16" fill="#ffffff" stroke="#10b981" stroke-width="3"></rect>
+  <g transform="translate(122, 140)">
+    <path d="M -36 -20 v 38 a 36 13 0 0 0 72 0 v -38" fill="#f1f5f9" stroke="#0f172a" stroke-width="2.5"></path>
+    <ellipse cx="0" cy="-20" rx="36" ry="13" fill="#e2e8f0" stroke="#0f172a" stroke-width="2.5"></ellipse>
+    <ellipse cx="0" cy="0" rx="36" ry="13" fill="none" stroke="#0f172a" stroke-width="2" stroke-dasharray="4 3"></ellipse>
+    <circle cx="28" cy="22" r="14" fill="#10b981"></circle>
+    <path d="M 23 22 l 3.5 3.5 l 7 -7" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></path>
+  </g>
+  <text x="122" y="242" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Relational</text>
+  <rect x="47" y="290" width="150" height="42" rx="21" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="122" y="318" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#059669">ACID Fit</text>
+
+  
+  <rect x="227" y="60" width="174" height="400" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <g transform="translate(314, 140)">
+    <rect x="-28" y="-32" width="56" height="64" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"></rect>
+    <text x="0" y="9" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#f59e0b">{ }</text>
+    <circle cx="24" cy="24" r="14" fill="#ef4444"></circle>
+    <line x1="24" y1="16" x2="24" y2="24" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"></line>
+    <circle cx="24" cy="30" r="1.5" fill="#ffffff"></circle>
+  </g>
+  <text x="314" y="242" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Document</text>
+  <rect x="239" y="290" width="150" height="42" rx="21" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="314" y="318" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#dc2626">Audit Risk</text>
+
+  
+  <rect x="419" y="60" width="174" height="400" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <g transform="translate(506, 140)">
+    <rect x="-38" y="-16" width="34" height="32" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"></rect>
+    <text x="-21" y="7" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#475569">K</text>
+    <line x1="0" y1="0" x2="6" y2="0" stroke="#94a3b8" stroke-width="2"></line>
+    <rect x="8" y="-16" width="34" height="32" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"></rect>
+    <text x="25" y="7" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#475569">V</text>
+  </g>
+  <text x="506" y="242" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Key-Value</text>
+  <rect x="431" y="290" width="150" height="42" rx="21" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="506" y="318" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">No Joins</text>
+
+  
+  <rect x="611" y="60" width="174" height="400" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <g transform="translate(698, 140)">
+    <rect x="-32" y="-26" width="64" height="52" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"></rect>
+    <line x1="-32" y1="-9" x2="32" y2="-9" stroke="#64748b" stroke-width="2"></line>
+    <line x1="-11" y1="-26" x2="-11" y2="26" stroke="#cbd5e1" stroke-width="1.5"></line>
+    <line x1="11" y1="-26" x2="11" y2="26" stroke="#cbd5e1" stroke-width="1.5"></line>
+  </g>
+  <text x="698" y="242" text-anchor="middle" font-family="Inter, sans-serif" font-size="21" font-weight="700" fill="#0f172a">Wide-Column</text>
+  <rect x="623" y="290" width="150" height="42" rx="21" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="698" y="318" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">Overkill</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Non-Relational Pitfalls</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="55" width="350" height="410" rx="20" fill="#ffffff" stroke="#f59e0b" stroke-width="3"></rect>
+  <rect x="50" y="55" width="350" height="60" rx="20" fill="#fef3c7"></rect>
+  <rect x="50" y="95" width="350" height="20" fill="#fef3c7"></rect>
+  <text x="80" y="95" font-family="monospace" font-size="22" font-weight="700" fill="#92400e">member.json</text>
+
+  
+  <rect x="80" y="145" width="290" height="110" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="95" y="170" width="160" height="42" rx="8" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="110" y="198" font-family="monospace" font-size="20" font-weight="700" fill="#ef4444">plan: $49</text>
+
+  
+  <rect x="80" y="285" width="290" height="135" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="95" y="340" width="230" height="44" rx="8" fill="#fee2e2" stroke="#ef4444" stroke-dasharray="6 4" stroke-width="2"></rect>
+  <text x="110" y="370" font-family="monospace" font-size="20" font-weight="700" fill="#ef4444">invoices: [...]</text>
+
+  
+  <path d="M 260 191 L 440 160" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow)"></path>
+  
+  <rect x="450" y="85" width="320" height="150" rx="16" fill="#fef2f2" stroke="#ef4444" stroke-width="2"></rect>
+  
+  <rect x="475" y="115" width="40" height="50" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="490" y="110" width="40" height="50" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="505" y="105" width="40" height="50" rx="6" fill="#ffffff" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="475" y="200" font-family="Inter, sans-serif" font-size="21" font-weight="700" fill="#991b1b">10,000 copies to update</text>
+
+  
+  <path d="M 330 362 L 440 362" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow)"></path>
+  
+  <rect x="450" y="290" width="320" height="145" rx="16" fill="#fef2f2" stroke="#ef4444" stroke-dasharray="8 6" stroke-width="2"></rect>
+  
+  <line x1="475" y1="330" x2="515" y2="330" stroke="#ef4444" stroke-width="3"></line>
+  <line x1="490" y1="320" x2="500" y2="340" stroke="#ef4444" stroke-width="3"></line>
+  <text x="475" y="385" font-family="Inter, sans-serif" font-size="21" font-weight="700" fill="#991b1b">Orphaned on delete</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Requirements Scorecard</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <rect x="425" y="45" width="170" height="430" rx="16" fill="#f0fdf4" stroke="#10b981" stroke-width="2"></rect>
+  <rect x="615" y="45" width="170" height="430" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+
+  <text x="510" y="95" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#10b981">Relational</text>
+  <text x="700" y="82" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Non-<tspan x="700" dy="24">Relational</tspan></text>
+
+  <text x="70" y="168" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">ACID Transactions</text>
+  <line x1="60" y1="200" x2="395" y2="200" stroke="#e2e8f0" stroke-width="1.5"></line>
+
+  <text x="70" y="248" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Foreign Keys</text>
+  <line x1="60" y1="280" x2="395" y2="280" stroke="#e2e8f0" stroke-width="1.5"></line>
+
+  <text x="70" y="328" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Unique Constraints</text>
+  <line x1="60" y1="360" x2="395" y2="360" stroke="#e2e8f0" stroke-width="1.5"></line>
+
+  <text x="70" y="408" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Relational Joins</text>
+
+  <circle cx="510" cy="160" r="18" fill="#10b981"></circle>
+  <path d="M502 160 l 6 6 l 12 -12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="700" cy="160" r="18" fill="#fee2e2"></circle>
+  <path d="M693 153 l 14 14 M707 153 l -14 14" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></path>
+
+  <circle cx="510" cy="240" r="18" fill="#10b981"></circle>
+  <path d="M502 240 l 6 6 l 12 -12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="700" cy="240" r="18" fill="#fee2e2"></circle>
+  <path d="M693 233 l 14 14 M707 233 l -14 14" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></path>
+
+  <circle cx="510" cy="320" r="18" fill="#10b981"></circle>
+  <path d="M502 320 l 6 6 l 12 -12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="700" cy="320" r="18" fill="#fee2e2"></circle>
+  <path d="M693 313 l 14 14 M707 313 l -14 14" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></path>
+
+  <circle cx="510" cy="400" r="18" fill="#10b981"></circle>
+  <path d="M502 400 l 6 6 l 12 -12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="700" cy="400" r="18" fill="#fee2e2"></circle>
+  <path d="M693 393 l 14 14 M707 393 l -14 14" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></path>
+</svg></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;comparing paradigms and risks</span><span>concept brief</span></div></div></section><section id="section-4" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s4-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 4</p><h2 data-el-id="s4-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The Decision and Implementation</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Relational core for integrity, paired with Redis for async workers.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="70" y="210" width="180" height="100" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="160" y="268" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">GMS App</text>
+
+  
+  <path d="M 250 240 C 340 240, 370 170, 460 170" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></path>
+  <path d="M 250 280 C 340 280, 370 350, 460 350" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></path>
+
+  
+  <g transform="translate(470, 80)">
+    <rect x="0" y="25" width="280" height="135" rx="20" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"></rect>
+    
+    <ellipse cx="140" cy="25" rx="140" ry="22" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></ellipse>
+    <text x="140" y="85" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#4f46e5">MySQL 8.0</text>
+    <text x="140" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">System of Record</text>
+  </g>
+
+  
+  <g transform="translate(470, 290)">
+    <rect x="0" y="0" width="280" height="135" rx="18" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"></rect>
+    <text x="140" y="58" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#f59e0b">Redis 7</text>
+    <text x="140" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">Message Broker</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-1"><div data-el-id="s4-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">System of Record</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <linearGradient id="cylinderGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0f172a"></stop>
+      <stop offset="60%" stop-color="#1e293b"></stop>
+      <stop offset="100%" stop-color="#0f172a"></stop>
+    </linearGradient>
+  </defs>
+
+  
+  <path d="M 255 270 C 330 270, 330 108, 390 108" fill="none" stroke="#cbd5e1" stroke-width="2"></path>
+  <path d="M 255 270 C 330 270, 330 184, 390 184" fill="none" stroke="#cbd5e1" stroke-width="2"></path>
+  <path d="M 255 270 L 390 260" fill="none" stroke="#cbd5e1" stroke-width="2"></path>
+  <path d="M 255 270 C 330 270, 330 336, 390 336" fill="none" stroke="#cbd5e1" stroke-width="2"></path>
+  <path d="M 255 270 C 330 270, 330 412, 390 412" fill="none" stroke="#cbd5e1" stroke-width="2"></path>
+
+  
+  <g>
+    <path d="M 105 180 v 160 a 75 24 0 0 0 150 0 v -160 Z" fill="url(#cylinderGrad)"></path>
+    <ellipse cx="180" cy="340" rx="75" ry="24" fill="#0f172a"></ellipse>
+    <path d="M 105 235 a 75 24 0 0 0 150 0" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="4 4"></path>
+    <path d="M 105 290 a 75 24 0 0 0 150 0" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="4 4"></path>
+    <ellipse cx="180" cy="180" rx="75" ry="24" fill="#334155" stroke="#475569" stroke-width="2"></ellipse>
+    <text x="180" y="272" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#ffffff">MySQL</text>
+  </g>
+
+  
+  <rect x="390" y="80" width="360" height="56" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="414" cy="108" r="6" fill="#10b981"></circle>
+  <text x="434" y="116" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Transactions</text>
+  <rect x="640" y="93" width="86" height="30" rx="6" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"></rect>
+  <text x="683" y="115" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#10b981">ACID</text>
+
+  
+  <rect x="390" y="156" width="360" height="56" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="414" cy="184" r="6" fill="#4f46e5"></circle>
+  <text x="434" y="192" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Foreign Keys</text>
+
+  
+  <rect x="390" y="232" width="360" height="56" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="414" cy="260" r="6" fill="#4f46e5"></circle>
+  <text x="434" y="268" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Unique Constraints</text>
+
+  
+  <rect x="390" y="308" width="360" height="56" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="414" cy="336" r="6" fill="#4f46e5"></circle>
+  <text x="434" y="344" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Native Joins</text>
+
+  
+  <rect x="390" y="384" width="360" height="56" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="414" cy="412" r="6" fill="#f59e0b"></circle>
+  <text x="434" y="420" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Migrations</text>
+  <rect x="620" y="397" width="106" height="30" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="673" y="419" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">dbmate</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-2"><div data-el-id="s4-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Polyglot Persistence</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s4-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-yaml"><span class="cl" data-line="1">services:</span>
+<span class="cl" data-line="2">  gms-db:</span>
+<span class="cl" data-line="3">    image: mysql:8.0</span>
+<span class="cl" data-line="4">    ports:</span>
+<span class="cl" data-line="5">      - "3307:3306"</span>
+<span class="cl" data-line="6">  gms-redis:</span>
+<span class="cl" data-line="7">    image: redis:7-alpine</span>
+<span class="cl" data-line="8">    ports:</span>
+<span class="cl" data-line="9">      - "6379:6379"</span></code></pre></div></div></div></div><div class="scene-footer"><span>4 &nbsp;the decision and implementation</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">The Core Architectural Question</p><p class="text-slate-500 text-sm mt-0.5">Data guarantees dictate storage choice, not technology preference.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">Defining Our Requirements</p><p class="text-slate-500 text-sm mt-0.5">Operational guardrails must guarantee atomic transactions and data integrity.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">Comparing Paradigms and Risks</p><p class="text-slate-500 text-sm mt-0.5">Score database options against operational needs, not hype.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span><div><p class="font-bold text-slate-900 leading-tight">The Decision and Implementation</p><p class="text-slate-500 text-sm mt-0.5">Relational core for integrity, paired with Redis for async workers.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>

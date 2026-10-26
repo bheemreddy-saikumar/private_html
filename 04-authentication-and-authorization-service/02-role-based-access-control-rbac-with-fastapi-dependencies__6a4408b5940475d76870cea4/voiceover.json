@@ -1,0 +1,108 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a4408b5940475d76870cea4",
+  "topic_name": "Role-Based Access Control (RBAC) with FastAPI Dependencies",
+  "topic_track": "theory",
+  "content_version": 7,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408b5940475d76870cea4/g5/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4408b5940475d76870cea4/g7/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 7,
+  "voiceover_data": {
+    "topic_name": "Role-Based Access Control (RBAC) with FastAPI Dependencies",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-introduction-to-rbac",
+        "section_number": 1,
+        "title": "Introduction to RBAC",
+        "narration": "In our last lesson, we saw how JWTs let us verify identity and unpack claims statelessly. Now, we put those claims to work by guarding our routes with Role-Based Access Control in FastAPI. In multi-tenant systems, like our gym platform, it's crucial to ensure users can only perform actions fitting their position. Role-Based Access Control, or RBAC, is the pattern for this. Instead of assigning permissions per user, we assign permissions to roles, like SuperAdmin or GymManager, and then assign users to those roles. This simplifies management. Changing responsibilities just means updating a user's role, not reconfiguring many permissions. Now, while J W T authentication verifies *who* a user is, authorization determines *what* they can do. In FastAPI, this happens at the edge of the request, using a special dependency. This check acts like a security gatekeeper before your request even hits the database or service logic. The check access function we'll use is a dependency factory. It returns a callable that FastAPI then executes. You configure it by telling it which roles are allowed. If the authenticated user's role doesn't match, it immediately raises an H T T P four zero three Forbidden error, which is a standard web code indicating insufficient permissions.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "In our last lesson, we saw how JWTs let us verify identity and unpack claims statelessly. Now, we put those claims to work by guarding our routes with Role-Based Access Control in FastAPI."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In multi-tenant systems, like our gym platform, it's crucial to ensure users can only perform actions fitting their position. Role-Based Access Control, or RBAC, is the pattern for this. Instead of assigning permissions per user, we assign permissions to roles, like SuperAdmin or GymManager, and then assign users to those roles. This simplifies management. Changing responsibilities just means updating a user's role, not reconfiguring many permissions."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Now, while J W T authentication verifies *who* a user is, authorization determines *what* they can do. In FastAPI, this happens at the edge of the request, using a special dependency. This check acts like a security gatekeeper before your request even hits the database or service logic."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "The check access function we'll use is a dependency factory. It returns a callable that FastAPI then executes. You configure it by telling it which roles are allowed. If the authenticated user's role doesn't match, it immediately raises an H T T P four zero three Forbidden error, which is a standard web code indicating insufficient permissions."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-applying-rbac-in-fastapi",
+        "section_number": 2,
+        "title": "Applying RBAC in FastAPI",
+        "narration": "So, JWTs give us authenticated user identity. Now, let's see how we apply RBAC to protect our FastAPI endpoints by defining access rules right in the route signatures. We apply this dependency to sensitive admin APIs. By injecting depends check access with roles equals, we declare the security requirements directly in the function signature. For instance, creating new admin users is restricted only to users with the SuperAdmin role, as shown here in this conceptual code. For other resources, like location data, the access requirements might be broader. Here, both SuperAdmin and GymOwner roles are permitted to update location details, like operating hours. This declarative approach makes endpoint security visible at a glance. The data flow is clear: a request comes in, authentication identifies the user, our check access dependency verifies their role against the allowed list using claims from the J W T, and only then does the A P I logic execute. This fail-fast approach protects your system's state.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "So, JWTs give us authenticated user identity. Now, let's see how we apply RBAC to protect our FastAPI endpoints by defining access rules right in the route signatures."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "We apply this dependency to sensitive admin APIs. By injecting depends check access with roles equals, we declare the security requirements directly in the function signature. For instance, creating new admin users is restricted only to users with the SuperAdmin role, as shown here in this conceptual code."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "For other resources, like location data, the access requirements might be broader. Here, both SuperAdmin and GymOwner roles are permitted to update location details, like operating hours. This declarative approach makes endpoint security visible at a glance."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "The data flow is clear: a request comes in, authentication identifies the user, our check access dependency verifies their role against the allowed list using claims from the J W T, and only then does the A P I logic execute. This fail-fast approach protects your system's state."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-trade-offs-and-constraints",
+        "section_number": 3,
+        "title": "Trade-offs and Constraints",
+        "narration": "RBAC offers significant security benefits, but it also involves trade-offs, particularly when compared to more granular systems like Attribute-Based Access Control. ABAC, or Attribute-Based Access Control, grants permissions based on attributes of the user, the resource, and the environment—such as time of day or location. It is superior to RBAC in scenarios requiring dynamic, context-aware security policies rather than static role assignments. RBAC is simpler to manage and audit than ABAC. However, it's less flexible. For example, restricting a GymOwner to *only* their own gym requires additional logic in the service layer, as RBAC itself doesn't handle resource ownership. Performance-wise, R B A C checks are very fast, often an O of one operation, as role information is typically embedded in the J W T or cached. This adds negligible latency. By declaring security in depends, we achieve declarative security, reducing bugs from accidental privilege escalation. An important operational constraint: roles are session invariants. If a user's role changes in the database, their existing J W T will still reflect the old role until it expires. This is a common trade-off in distributed systems with stateless authentication. So, the key idea is that R B A C uses roles as an intermediary to decouple identity from permission, with authorization checks failing fast at the A P I edge. Now that our endpoints enforce role-based authorization at the door, the next step is ensuring the request bodies and responses flowing through those endpoints are strictly structured and validated \\u2014 bringing us to Pydantic for Data Validation and Serialization.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "RBAC offers significant security benefits, but it also involves trade-offs, particularly when compared to more granular systems like Attribute-Based Access Control."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "ABAC, or Attribute-Based Access Control, grants permissions based on attributes of the user, the resource, and the environment—such as time of day or location. It is superior to RBAC in scenarios requiring dynamic, context-aware security policies rather than static role assignments. RBAC is simpler to manage and audit than ABAC. However, it's less flexible. For example, restricting a GymOwner to *only* their own gym requires additional logic in the service layer, as RBAC itself doesn't handle resource ownership."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Performance-wise, R B A C checks are very fast, often an O of one operation, as role information is typically embedded in the J W T or cached. This adds negligible latency. By declaring security in depends, we achieve declarative security, reducing bugs from accidental privilege escalation."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "An important operational constraint: roles are session invariants. If a user's role changes in the database, their existing J W T will still reflect the old role until it expires. This is a common trade-off in distributed systems with stateless authentication."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "So, the key idea is that R B A C uses roles as an intermediary to decouple identity from permission, with authorization checks failing fast at the A P I edge. Now that our endpoints enforce role-based authorization at the door, the next step is ensuring the request bodies and responses flowing through those endpoints are strictly structured and validated \\u2014 bringing us to Pydantic for Data Validation and Serialization."
+          }
+        ]
+      }
+    ]
+  }
+}

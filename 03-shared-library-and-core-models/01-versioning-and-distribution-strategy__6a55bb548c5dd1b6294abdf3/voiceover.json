@@ -1,0 +1,131 @@
+{
+  "skill_id": "6a55b84f4eac614f602a2293",
+  "skill_name": "Shared Library and Core Models",
+  "topic_id": "6a55bb548c5dd1b6294abdf3",
+  "topic_name": "Versioning and Distribution Strategy",
+  "topic_track": "project",
+  "content_version": 14,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a55bb548c5dd1b6294abdf3/g10/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a55bb548c5dd1b6294abdf3/g14/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 14,
+  "voiceover_data": {
+    "topic_name": "Versioning and Distribution Strategy",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-why-not-standard-versioning",
+        "section_number": 1,
+        "title": "Why Not Standard Versioning?",
+        "narration": "Now that our shared repository layout and base container image are established, the next question is how updates to the G M S shared library actually reach all seven services without triggering runtime breakages. We'll examine the distribution strategy that keeps our Gym Management System consistent. In many projects, you'd use Semantic Versioning, or SemVer, to manage library updates. This involves tagging releases like one point two point three and publishing them to a private registry. Services then explicitly \"pin\" to specific versions they need, controlling their own upgrade schedules. This approach offers flexibility for independent deployments. However, GMS deliberately avoids this path. We prioritize absolute consistency across the entire system over the flexibility of independent service upgrades. This means we don't use standard SemVer with version pinning for our core shared library. So the key idea is: GMS prioritizes fleet-wide consistency over independent service upgrade flexibility.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that our shared repository layout and base container image are established, the next question is how updates to the G M S shared library actually reach all seven services without triggering runtime breakages."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "We'll examine the distribution strategy that keeps our Gym Management System consistent. In many projects, you'd use Semantic Versioning, or SemVer, to manage library updates. This involves tagging releases like one point two point three and publishing them to a private registry. Services then explicitly \"pin\" to specific versions they need, controlling their own upgrade schedules. This approach offers flexibility for independent deployments."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "However, GMS deliberately avoids this path. We prioritize absolute consistency across the entire system over the flexibility of independent service upgrades. This means we don't use standard SemVer with version pinning for our core shared library. So the key idea is: GMS prioritizes fleet-wide consistency over independent service upgrade flexibility."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-gms-source-level-coupling-model",
+        "section_number": 2,
+        "title": "The GMS Source-Level Coupling Model",
+        "narration": "Instead of publishing versioned packages, GMS employs a monorepo strategy for its shared code. Let's explore how this source-level coupling ensures all services use the exact same version of the library at any given time. The core of our strategy is source-level coupling, often seen in monorepo models. Here, every single Git commit represents a fully consistent snapshot of the entire system. Every service, worker, and the shared library itself are all tied to that one commit. This contrasts with the \"Registry Model,\" where services can independently choose different versions, leading to version skew. Version skew means parts of your system might interpret data, like a user's status, differently, causing inconsistencies. GMS eliminates this risk entirely by ensuring all code always originates from the same commit. So the key idea is: GMS eliminates version skew by tying all code to a single Git commit.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Instead of publishing versioned packages, GMS employs a monorepo strategy for its shared code. Let's explore how this source-level coupling ensures all services use the exact same version of the library at any given time."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "The core of our strategy is source-level coupling, often seen in monorepo models. Here, every single Git commit represents a fully consistent snapshot of the entire system. Every service, worker, and the shared library itself are all tied to that one commit."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "This contrasts with the \"Registry Model,\" where services can independently choose different versions, leading to version skew. Version skew means parts of your system might interpret data, like a user's status, differently, causing inconsistencies. GMS eliminates this risk entirely by ensuring all code always originates from the same commit. So the key idea is: GMS eliminates version skew by tying all code to a single Git commit."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-implementation-static-versioning-and-distributio",
+        "section_number": 3,
+        "title": "Implementation: Static Versioning and Distribution",
+        "narration": "Let's look at how this source-level coupling is implemented across three key areas: the shared library's setup file, service dependencies, and the distribution mechanism. First, the shared library's version number is static, often set to one point zero. This isn't the real version. The true version is the Git Commit SHA. When a developer checks out a specific commit, they are guaranteed to get the version of the G M S shared library compatible with all other services at that exact moment. Second, each service lists the shared library as a dependency without pinning a version. By leaving the version out, we instruct pip to use whatever version is available in the build environment. This automatically pulls in the correct shared logic during a system rebuild. Finally, we distribute the G M S shared library not via a registry, but by baking it into our shared base image, which copies the shared source and installs it in editable mode. The editable install flag links directly to the source, meaning any service built from the shared base image is always using the live, shared code from that specific commit. So the key idea is: the shared base image bakes in the shared code from the exact commit, using an editable install.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Let's look at how this source-level coupling is implemented across three key areas: the shared library's setup file, service dependencies, and the distribution mechanism."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "First, the shared library's version number is static, often set to one point zero. This isn't the real version. The true version is the Git Commit SHA. When a developer checks out a specific commit, they are guaranteed to get the version of the G M S shared library compatible with all other services at that exact moment."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "Second, each service lists the shared library as a dependency without pinning a version. By leaving the version out, we instruct pip to use whatever version is available in the build environment. This automatically pulls in the correct shared logic during a system rebuild."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Finally, we distribute the G M S shared library not via a registry, but by baking it into our shared base image, which copies the shared source and installs it in editable mode."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "The editable install flag links directly to the source, meaning any service built from the shared base image is always using the live, shared code from that specific commit. So the key idea is: the shared base image bakes in the shared code from the exact commit, using an editable install."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-the-trade-offs-and-when-to-re-evaluate",
+        "section_number": 4,
+        "title": "The Trade-offs and When to Re-evaluate",
+        "narration": "This strategy offers significant benefits for GMS, but it's a conscious trade-off. Let's examine what we gain, what we sacrifice, and when we might consider changing this approach. What we gain is zero version skew. For a system like GMS, data consistency is paramount. Forcing all services to use the same shared library version makes it impossible for different parts of the system to disagree on shared models or logic, preventing financial discrepancies and ensuring operational integrity. What we sacrifice is independent upgrade flexibility. If we make a breaking change in the G M S shared library, we must coordinate a rebuild and redeploy of the entire fleet. It's a single, synchronized release event for the whole system. This model is ideal for smaller teams owning the whole stack, like ours. We'd only consider switching from this source-based model if our team scaled significantly, requiring independent release cadences, or if the shared library became so large and volatile that older versions needed to be explicitly pinned for stability. For GMS now, this monorepo-from-source approach works very well, keeping our C I and C D lean and our services aligned. Now that we see how the G M S shared library is wired and distributed across the fleet without version skew, we turn to the primary payload it carries: object-relational mapping and common data models. So the key idea is: This source-based model is the right fit for GMS's current scale and team structure.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "This strategy offers significant benefits for GMS, but it's a conscious trade-off. Let's examine what we gain, what we sacrifice, and when we might consider changing this approach."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "What we gain is zero version skew. For a system like GMS, data consistency is paramount. Forcing all services to use the same shared library version makes it impossible for different parts of the system to disagree on shared models or logic, preventing financial discrepancies and ensuring operational integrity."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "What we sacrifice is independent upgrade flexibility. If we make a breaking change in the G M S shared library, we must coordinate a rebuild and redeploy of the entire fleet. It's a single, synchronized release event for the whole system. This model is ideal for smaller teams owning the whole stack, like ours."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "We'd only consider switching from this source-based model if our team scaled significantly, requiring independent release cadences, or if the shared library became so large and volatile that older versions needed to be explicitly pinned for stability."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "For GMS now, this monorepo-from-source approach works very well, keeping our C I and C D lean and our services aligned. Now that we see how the G M S shared library is wired and distributed across the fleet without version skew, we turn to the primary payload it carries: object-relational mapping and common data models. So the key idea is: This source-based model is the right fit for GMS's current scale and team structure."
+          }
+        ]
+      }
+    ]
+  }
+}

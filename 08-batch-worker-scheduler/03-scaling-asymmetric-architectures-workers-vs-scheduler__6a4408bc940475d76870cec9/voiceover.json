@@ -1,0 +1,93 @@
+{
+  "skill_id": "6a4408b2e15b997d713c4b8f",
+  "skill_name": "Batch Worker & Scheduler",
+  "topic_id": "6a4408bc940475d76870cec9",
+  "topic_name": "Scaling Asymmetric Architectures (Workers vs. Scheduler)",
+  "topic_track": "project",
+  "content_version": 7,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4408bc940475d76870cec9/g5/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4408bc940475d76870cec9/g7/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 7,
+  "voiceover_data": {
+    "topic_name": "Scaling Asymmetric Architectures (Workers vs. Scheduler)",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-the-scheduler-worker-split",
+        "section_number": 1,
+        "title": "The Scheduler-Worker Split",
+        "narration": "Now that our batch tasks are on their own dedicated queue, we face an asymmetric operational reality: our scheduler and worker fleet scale under completely different rules. Our system uses one central scheduler, Celery Beat, to trigger tasks on a fixed rhythm. It only sends signals, so its needs are small and stable; in G M S it does not even touch the database. We run exactly one copy, because a second scheduler would send every trigger twice. This recalls the producer, broker, and worker triangle, where sending a task is separate from running it. Workers, however, do the heavy lifting. Because they pull from the queue, you can in principle add as many as you need; G M S today runs a single batch worker that handles one task at a time. Every worker you add opens its own set of connections to the one shared MySQL database, so adding too many risks running that database out of connections. This asymmetry means we treat each side with different scaling strategies, and remembering this balance is vital for stability. So the key idea is that we must independently tune our light scheduler and heavy worker fleet to protect our database connections.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Now that our batch tasks are on their own dedicated queue, we face an asymmetric operational reality: our scheduler and worker fleet scale under completely different rules."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "Our system uses one central scheduler, Celery Beat, to trigger tasks on a fixed rhythm. It only sends signals, so its needs are small and stable; in G M S it does not even touch the database. We run exactly one copy, because a second scheduler would send every trigger twice. This recalls the producer, broker, and worker triangle, where sending a task is separate from running it."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Workers, however, do the heavy lifting. Because they pull from the queue, you can in principle add as many as you need; G M S today runs a single batch worker that handles one task at a time. Every worker you add opens its own set of connections to the one shared MySQL database, so adding too many risks running that database out of connections."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "This asymmetry means we treat each side with different scaling strategies, and remembering this balance is vital for stability. So the key idea is that we must independently tune our light scheduler and heavy worker fleet to protect our database connections."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-scaling-trade-offs-and-pressure",
+        "section_number": 2,
+        "title": "Scaling Trade-offs and Pressure",
+        "narration": "As we scale these workers, we must navigate the technical trade-offs that arise when shifting from light A P I requests to heavy batch processing. When processing thousands of items, a worker must avoid memory spikes that could crash it, usually by working in smaller, manageable chunks. The G M S no-show job still loads every matching booking at once, which is fine at today's volume. Another common technique is fair dispatch, where a worker only takes a new job once it is idle, so busy workers cannot hoard tasks while others sit empty. G M S does not tune this today, because its single batch worker runs one task at a time. So the key idea is that fair dispatch and chunking prevent bottlenecks before they happen.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "As we scale these workers, we must navigate the technical trade-offs that arise when shifting from light A P I requests to heavy batch processing."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "When processing thousands of items, a worker must avoid memory spikes that could crash it, usually by working in smaller, manageable chunks. The G M S no-show job still loads every matching booking at once, which is fine at today's volume."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Another common technique is fair dispatch, where a worker only takes a new job once it is idle, so busy workers cannot hoard tasks while others sit empty. G M S does not tune this today, because its single batch worker runs one task at a time. So the key idea is that fair dispatch and chunking prevent bottlenecks before they happen."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-the-stale-task-problem",
+        "section_number": 3,
+        "title": "The Stale Task Problem",
+        "narration": "Even with perfect scaling, long-running batch jobs can encounter the stale task problem, where a job takes longer to finish than the time between scheduled triggers. To stop two copies of the same job running at once and corrupting data, scaled-out systems often use a distributed lock, a shared digital padlock that makes the second copy wait its turn. G M S has no lock today: its single worker runs one task at a time, so a second trigger simply waits in the queue, and a done flag on each booking stops a member being credited twice. A memory anchor: one scheduler, many workers, one guard against duplicates. So the key idea is that once several workers run, a lock or a done flag must stop the same job running twice. Now that we know how workers and the scheduler scale differently, we next need to guarantee tasks are not lost if a worker crashes mid execution, leading directly into task acknowledgement semantics.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Even with perfect scaling, long-running batch jobs can encounter the stale task problem, where a job takes longer to finish than the time between scheduled triggers."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "To stop two copies of the same job running at once and corrupting data, scaled-out systems often use a distributed lock, a shared digital padlock that makes the second copy wait its turn. G M S has no lock today: its single worker runs one task at a time, so a second trigger simply waits in the queue, and a done flag on each booking stops a member being credited twice."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "A memory anchor: one scheduler, many workers, one guard against duplicates. So the key idea is that once several workers run, a lock or a done flag must stop the same job running twice. Now that we know how workers and the scheduler scale differently, we next need to guarantee tasks are not lost if a worker crashes mid execution, leading directly into task acknowledgement semantics."
+          }
+        ]
+      }
+    ]
+  }
+}

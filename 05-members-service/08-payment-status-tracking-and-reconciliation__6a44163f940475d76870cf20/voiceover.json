@@ -1,0 +1,146 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8b",
+  "skill_name": "Members Service",
+  "topic_id": "6a44163f940475d76870cf20",
+  "topic_name": "Payment Status Tracking and Reconciliation",
+  "topic_track": "project",
+  "content_version": 10,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a44163f940475d76870cf20/g6/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a44163f940475d76870cf20/g10/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 10,
+  "voiceover_data": {
+    "topic_name": "Payment Status Tracking and Reconciliation",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-ledger-vs-gateway-the-architecture-of-truth",
+        "section_number": 1,
+        "title": "Ledger vs. Gateway: The Architecture of Truth",
+        "narration": "We've locked in our invoice totals. Now, we need to track what actually happens when we try to collect that money through our payment gateway. In this section, we separate two sources of truth: our internal ledger and the external payment gateway. In our Members Service, payment status tracking is the critical link between our internal financial ledger and the external reality of a member's bank account. This isn't a simple paid-or-unpaid toggle; it is a complex state machine that accounts for bank delays and failed transactions. We keep our data consistent by treating the payment attempts table as the definitive record of every single transaction attempt. So, while an invoice shows what a member owes, the payment attempts table shows what has *actually* happened in the Payrix gateway. It takes its input from invoices, sends payments to Payrix through background tasks, and updates the member's profile when a payment changes their status.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "We've locked in our invoice totals. Now, we need to track what actually happens when we try to collect that money through our payment gateway."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In this section, we separate two sources of truth: our internal ledger and the external payment gateway. In our Members Service, payment status tracking is the critical link between our internal financial ledger and the external reality of a member's bank account. This isn't a simple paid-or-unpaid toggle; it is a complex state machine that accounts for bank delays and failed transactions."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "We keep our data consistent by treating the payment attempts table as the definitive record of every single transaction attempt. So, while an invoice shows what a member owes, the payment attempts table shows what has *actually* happened in the Payrix gateway."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "It takes its input from invoices, sends payments to Payrix through background tasks, and updates the member's profile when a payment changes their status."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-the-payment-status-lifecycle",
+        "section_number": 2,
+        "title": "The Payment Status Lifecycle",
+        "narration": "We keep a fixed list of payment statuses that mirrors the gateway's own lifecycle. Let's walk through the distinct phases of a payment's lifecycle, from initiation to settlement or failure. When a payment is first created, it gets a QUEUED status. We don't process payments synchronously; instead, we offload them to Celery tasks. This keeps our A P I responsive. It's a key design choice to handle those slow external gateway calls asynchronously, just as we planned in our system architecture. The \"success\" path involves several stages: Pending, where the transaction is submitted; Approved, where funds are authorized; Captured, where funds are moving; and Settled, our final confirmation that money is in the merchant's account. This mirrors the formal transition rules we defined for entity lifecycles, similar to member lifecycles. For failures, we have Failed or Returned statuses for issues like NSF or card declines. Additionally, Forgiven is a manual administrative action where a manager decides not to collect a failed payment, preventing retries. This manual override, known as Payment Forgiveness, stops automated retry jobs. So the key idea: payment statuses form a state machine that tracks each payment from the moment it's queued to settlement, failure, or manual forgiveness.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "We keep a fixed list of payment statuses that mirrors the gateway's own lifecycle. Let's walk through the distinct phases of a payment's lifecycle, from initiation to settlement or failure."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "When a payment is first created, it gets a QUEUED status. We don't process payments synchronously; instead, we offload them to Celery tasks. This keeps our A P I responsive. It's a key design choice to handle those slow external gateway calls asynchronously, just as we planned in our system architecture."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "The \"success\" path involves several stages: Pending, where the transaction is submitted; Approved, where funds are authorized; Captured, where funds are moving; and Settled, our final confirmation that money is in the merchant's account. This mirrors the formal transition rules we defined for entity lifecycles, similar to member lifecycles."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "For failures, we have Failed or Returned statuses for issues like NSF or card declines. Additionally, Forgiven is a manual administrative action where a manager decides not to collect a failed payment, preventing retries. This manual override, known as Payment Forgiveness, stops automated retry jobs."
+          },
+          {
+            "el_id": "s2-block-4",
+            "type": "block",
+            "text": "So the key idea: payment statuses form a state machine that tracks each payment from the moment it's queued to settlement, failure, or manual forgiveness."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-processing-updates-and-reconciliation",
+        "section_number": 3,
+        "title": "Processing Updates and Reconciliation",
+        "narration": "To keep our database in sync with the payment gateway, we avoid constant polling by using a webhook pattern. This lets us process updates efficiently and perform crucial reconciliation checks. We use webhooks: Payrix calls us whenever a transaction changes, instead of us asking again and again. When an alert comes in, we first check it against a strict schema, then find the matching payment attempt using its transaction ID. This is where reconciliation happens: we compare the transaction amount from the gateway against our stored amount to ensure no discrepancies occurred during transmission. If they match, we update the record's state. This process verifies that the gateway's report matches our database record down to the penny before updating our ledger. Handling retries without causing double charges is tricky. Before retrying, we check that no other retry is already running. And instead of overwriting the original failed attempt, we save each retry as a *new* attempt that points back to the original. This builds a complete audit trail of every attempt, which we call Linked Transactions. So, the key idea here is that creating new, linked transaction records for retries ensures a full history of every payment and prevents double-charging.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "To keep our database in sync with the payment gateway, we avoid constant polling by using a webhook pattern. This lets us process updates efficiently and perform crucial reconciliation checks."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "We use webhooks: Payrix calls us whenever a transaction changes, instead of us asking again and again. When an alert comes in, we first check it against a strict schema, then find the matching payment attempt using its transaction ID."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "This is where reconciliation happens: we compare the transaction amount from the gateway against our stored amount to ensure no discrepancies occurred during transmission. If they match, we update the record's state. This process verifies that the gateway's report matches our database record down to the penny before updating our ledger."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "Handling retries without causing double charges is tricky. Before retrying, we check that no other retry is already running. And instead of overwriting the original failed attempt, we save each retry as a *new* attempt that points back to the original."
+          },
+          {
+            "el_id": "s3-block-4",
+            "type": "block",
+            "text": "This builds a complete audit trail of every attempt, which we call Linked Transactions. So, the key idea here is that creating new, linked transaction records for retries ensures a full history of every payment and prevents double-charging."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-error-handling-and-ledger-synchronization",
+        "section_number": 4,
+        "title": "Error Handling and Ledger Synchronization",
+        "narration": "Payments are production-critical. If they fail, the business loses revenue or members are overcharged. We employ several layers of operational safety to prevent issues and maintain accurate accounting. Every request to and response from Payrix, our payment gateway, is saved in a raw gateway log. This gives us the exact message sent and received, which is very helpful for debugging if a reconciliation fails. This log is the first place we look when troubleshooting. For refunds, we ensure integrity by tracking how much has already been refunded and blocking any refund that would exceed the original amount paid. This prevents over-refunding, maintaining accurate financial records and trust with our members. When a payment reaches a final state, like Settled, or paid in cash, we write the matching entries into our accounting ledger. This makes sure our internal accounting ledger stays perfectly synchronized with the gateway's status. This is critical for downstream services like Plans and Classes, because a failed reconciliation can directly impact a member's ability to book things. So, the main point is that robust reconciliation and ledger synchronization are vital for accurate accounting and the integrity of downstream services.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "Payments are production-critical. If they fail, the business loses revenue or members are overcharged. We employ several layers of operational safety to prevent issues and maintain accurate accounting."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "Every request to and response from Payrix, our payment gateway, is saved in a raw gateway log. This gives us the exact message sent and received, which is very helpful for debugging if a reconciliation fails. This log is the first place we look when troubleshooting."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "For refunds, we ensure integrity by tracking how much has already been refunded and blocking any refund that would exceed the original amount paid. This prevents over-refunding, maintaining accurate financial records and trust with our members."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "When a payment reaches a final state, like Settled, or paid in cash, we write the matching entries into our accounting ledger. This makes sure our internal accounting ledger stays perfectly synchronized with the gateway's status."
+          },
+          {
+            "el_id": "s4-block-4",
+            "type": "block",
+            "text": "This is critical for downstream services like Plans and Classes, because a failed reconciliation can directly impact a member's ability to book things. So, the main point is that robust reconciliation and ledger synchronization are vital for accurate accounting and the integrity of downstream services."
+          }
+        ]
+      }
+    ]
+  }
+}

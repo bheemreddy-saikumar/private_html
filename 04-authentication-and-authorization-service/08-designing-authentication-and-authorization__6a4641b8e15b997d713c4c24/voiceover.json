@@ -1,0 +1,169 @@
+{
+  "skill_id": "6a4408b0e15b997d713c4b8a",
+  "skill_name": "Authentication and Authorization Service",
+  "topic_id": "6a4641b8e15b997d713c4c24",
+  "topic_name": "Designing Authentication and Authorization",
+  "topic_track": "project",
+  "content_version": 19,
+  "html_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4641b8e15b997d713c4c24/g14/index.html",
+  "preview_url": "https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/preview/topics/6a4641b8e15b997d713c4c24/g19/preview/index.html",
+  "published_html_url": null,
+  "published_preview_url": null,
+  "published_content_version": 19,
+  "voiceover_data": {
+    "topic_name": "Designing Authentication and Authorization",
+    "skill_name": null,
+    "voice_over": [
+      {
+        "section_id": "section-01-authentication-vs-authorization",
+        "section_number": 1,
+        "title": "Authentication vs. Authorization",
+        "narration": "Let's formalize the architectural boundary between proving identity and granting access. We'll start by clearly distinguishing authentication from authorization. In this project, we treat Authentication and Authorization as two distinct but overlapping gates. Now, if you're new to security, it's easy to mix them up. Think of it this way: authentication is the 'Who are you?' phase, like showing your driver's license to a bouncer. Authorization, on the other hand, is the 'What can you do?' phase, like that bouncer checking if your wristband grants access to the VIP area. First, let's dive into Authentication, which is all about proving identity. In GMS, identity is established during login and then maintained via tokens. We never store raw passwords; instead, we use bcrypt, a hashing algorithm, to secure them. And here's the thing: it's a one-way process, so you can't reverse a hash to get the original password. bcrypt is deliberately slow. That acts as a speed bump, making hashing expensive to prevent brute-force attacks. Once authenticated, the server issues two J W Ts: a short-lived Access Token and a long-lived Refresh Token. These tokens contain a header, a payload with details like the user's ID and when the token expires, and a signature to ensure tamper-proofing. So, the key idea is: authentication confirms identity, authorization defines what you can do.",
+        "segments": [
+          {
+            "el_id": "s1-title",
+            "type": "title",
+            "text": "Let's formalize the architectural boundary between proving identity and granting access. We'll start by clearly distinguishing authentication from authorization."
+          },
+          {
+            "el_id": "s1-block-1",
+            "type": "block",
+            "text": "In this project, we treat Authentication and Authorization as two distinct but overlapping gates. Now, if you're new to security, it's easy to mix them up."
+          },
+          {
+            "el_id": "s1-block-2",
+            "type": "block",
+            "text": "Think of it this way: authentication is the 'Who are you?' phase, like showing your driver's license to a bouncer. Authorization, on the other hand, is the 'What can you do?' phase, like that bouncer checking if your wristband grants access to the VIP area."
+          },
+          {
+            "el_id": "s1-block-3",
+            "type": "block",
+            "text": "First, let's dive into Authentication, which is all about proving identity. In GMS, identity is established during login and then maintained via tokens. We never store raw passwords; instead, we use bcrypt, a hashing algorithm, to secure them. And here's the thing: it's a one-way process, so you can't reverse a hash to get the original password."
+          },
+          {
+            "el_id": "s1-block-4",
+            "type": "block",
+            "text": "bcrypt is deliberately slow. That acts as a speed bump, making hashing expensive to prevent brute-force attacks. Once authenticated, the server issues two J W Ts: a short-lived Access Token and a long-lived Refresh Token. These tokens contain a header, a payload with details like the user's ID and when the token expires, and a signature to ensure tamper-proofing. So, the key idea is: authentication confirms identity, authorization defines what you can do."
+          }
+        ]
+      },
+      {
+        "section_id": "section-02-authorization-defining-permissions",
+        "section_number": 2,
+        "title": "Authorization - Defining Permissions",
+        "narration": "Now that we've established how users prove their identity, let's explore how we control what they can do. This section covers authorization and permission management. Just because we know who you are doesn't mean you can perform any action. This is where Authorization kicks in. We employ Role-Based Access Control, or RBAC. In RBAC, permissions are assigned to roles, like Admin, Manager, or Trainer, and then users are assigned to those roles. This approach centralizes permission checks. Instead of scattering 'is this user an admin?' checks throughout our code, GMS uses a centralized gatekeeper. It's the shared access check, which verifies if the user's role matches the required roles for a specific A P I endpoint. This adheres to the principle of assigning permissions to operational roles rather than hardcoding user-level checks. GMS is also a multi-tenant application, meaning data for different gyms resides in the same database. Our location check keeps each gym's data separate. This ensures a manager at Gym A cannot access data from Gym B. It validates that the location ID in an A P I request matches the user's assigned locations. So, the key idea is: RBAC and tenant checks define what users can do.",
+        "segments": [
+          {
+            "el_id": "s2-title",
+            "type": "title",
+            "text": "Now that we've established how users prove their identity, let's explore how we control what they can do. This section covers authorization and permission management."
+          },
+          {
+            "el_id": "s2-block-1",
+            "type": "block",
+            "text": "Just because we know who you are doesn't mean you can perform any action. This is where Authorization kicks in. We employ Role-Based Access Control, or RBAC. In RBAC, permissions are assigned to roles, like Admin, Manager, or Trainer, and then users are assigned to those roles. This approach centralizes permission checks."
+          },
+          {
+            "el_id": "s2-block-2",
+            "type": "block",
+            "text": "Instead of scattering 'is this user an admin?' checks throughout our code, GMS uses a centralized gatekeeper. It's the shared access check, which verifies if the user's role matches the required roles for a specific A P I endpoint. This adheres to the principle of assigning permissions to operational roles rather than hardcoding user-level checks."
+          },
+          {
+            "el_id": "s2-block-3",
+            "type": "block",
+            "text": "GMS is also a multi-tenant application, meaning data for different gyms resides in the same database. Our location check keeps each gym's data separate. This ensures a manager at Gym A cannot access data from Gym B."
+          },
+          {
+            "el_id": "s2-block-4",
+            "type": "block",
+            "text": "It validates that the location ID in an A P I request matches the user's assigned locations. So, the key idea is: RBAC and tenant checks define what users can do."
+          }
+        ]
+      },
+      {
+        "section_id": "section-03-design-decisions-and-trade-offs",
+        "section_number": 3,
+        "title": "Design Decisions and Trade-offs",
+        "narration": "Let's examine the specific design choices made in our authentication and authorization system, focusing on the trade-offs between security and performance. We prioritized security over performance. A key decision was how to handle role changes. Most systems trust the role claim within a J W T, meaning a demoted user might retain admin access until their token expires. GMS, however, re-fetches the user and their role from the database on *every single request*. This adds a few milliseconds of latency but ensures that if a user is demoted or deleted, their access is revoked instantly. This approach provides immediate revocation, which is a crucial security measure. We also implemented an impersonator claim in the token. This claim allows us to maintain an audit trail, tracking the real staff member performing actions, even when they're impersonating another user. While this enhances security and auditability, it introduces a slight performance overhead on each request. So, the key idea is: Security often involves performance trade-offs, like real-time data checks.",
+        "segments": [
+          {
+            "el_id": "s3-title",
+            "type": "title",
+            "text": "Let's examine the specific design choices made in our authentication and authorization system, focusing on the trade-offs between security and performance."
+          },
+          {
+            "el_id": "s3-block-1",
+            "type": "block",
+            "text": "We prioritized security over performance. A key decision was how to handle role changes. Most systems trust the role claim within a J W T, meaning a demoted user might retain admin access until their token expires. GMS, however, re-fetches the user and their role from the database on *every single request*."
+          },
+          {
+            "el_id": "s3-block-2",
+            "type": "block",
+            "text": "This adds a few milliseconds of latency but ensures that if a user is demoted or deleted, their access is revoked instantly. This approach provides immediate revocation, which is a crucial security measure. We also implemented an impersonator claim in the token."
+          },
+          {
+            "el_id": "s3-block-3",
+            "type": "block",
+            "text": "This claim allows us to maintain an audit trail, tracking the real staff member performing actions, even when they're impersonating another user. While this enhances security and auditability, it introduces a slight performance overhead on each request. So, the key idea is: Security often involves performance trade-offs, like real-time data checks."
+          }
+        ]
+      },
+      {
+        "section_id": "section-04-honest-gaps-and-missing-features",
+        "section_number": 4,
+        "title": "Honest Gaps and Missing Features",
+        "narration": "While our system is robust, it's important to acknowledge its limitations. This section covers the security features we haven't yet implemented. This system is robust for a mid-stage project, but it isn't \"bank grade\" yet. Several features are missing. Firstly, we lack token revocation. Once a token is issued, we can't remotely kill it unless we change the user's status in the database. This means a compromised token remains valid until it expires. Secondly, there's no refresh token rotation. If a refresh token is stolen, an attacker can continuously generate new access tokens. We also don't have Multi-Factor Authentication, relying solely on passwords. Finally, there's no rate limiting built into the authentication service itself, meaning a script could attempt many logins per second without automatic blocking. These are significant gaps that would need to be addressed for higher security requirements. So, the key idea is: No security system is perfect; acknowledge and plan for limitations.",
+        "segments": [
+          {
+            "el_id": "s4-title",
+            "type": "title",
+            "text": "While our system is robust, it's important to acknowledge its limitations. This section covers the security features we haven't yet implemented."
+          },
+          {
+            "el_id": "s4-block-1",
+            "type": "block",
+            "text": "This system is robust for a mid-stage project, but it isn't \"bank grade\" yet. Several features are missing. Firstly, we lack token revocation. Once a token is issued, we can't remotely kill it unless we change the user's status in the database. This means a compromised token remains valid until it expires."
+          },
+          {
+            "el_id": "s4-block-2",
+            "type": "block",
+            "text": "Secondly, there's no refresh token rotation. If a refresh token is stolen, an attacker can continuously generate new access tokens. We also don't have Multi-Factor Authentication, relying solely on passwords. Finally, there's no rate limiting built into the authentication service itself, meaning a script could attempt many logins per second without automatic blocking."
+          },
+          {
+            "el_id": "s4-block-3",
+            "type": "block",
+            "text": "These are significant gaps that would need to be addressed for higher security requirements. So, the key idea is: No security system is perfect; acknowledge and plan for limitations."
+          }
+        ]
+      },
+      {
+        "section_id": "section-05-the-auth-flow-in-action",
+        "section_number": 5,
+        "title": "The Auth Flow in Action",
+        "narration": "To solidify our understanding, let's walk through the complete authentication and authorization flow, from login to an authorized A P I call, as depicted in the diagram. The diagram traces a request from the client through authentication and authorization. First, the client sends login credentials, like email and password, to the Auth Service. The service fetches the user from the database, hashes the provided password using bcrypt, and compares it to the stored hash. If they match, the service issues both an Access Token and a Refresh Token back to the client. Next, for an authorized A P I call, the client sends the Access Token with the request. The Auth Service decodes and verifies the J W T signature. Crucially, it then fetches the *current* user and role from the database to ensure the user is still active and their role hasn't changed. This is that real-time check we discussed. Then, the check access and check location access functions verify permissions and tenant isolation. Only if all checks pass is the request forwarded to query member data and return a 200 OK response. By separating the identity check from the permission check, we ensure security even with real-time role changes. Building on these design decisions, we'll now implement the RBAC models and permission gates in the next topic.",
+        "segments": [
+          {
+            "el_id": "s5-title",
+            "type": "title",
+            "text": "To solidify our understanding, let's walk through the complete authentication and authorization flow, from login to an authorized A P I call, as depicted in the diagram."
+          },
+          {
+            "el_id": "s5-block-1",
+            "type": "block",
+            "text": "The diagram traces a request from the client through authentication and authorization. First, the client sends login credentials, like email and password, to the Auth Service. The service fetches the user from the database, hashes the provided password using bcrypt, and compares it to the stored hash. If they match, the service issues both an Access Token and a Refresh Token back to the client."
+          },
+          {
+            "el_id": "s5-block-2",
+            "type": "block",
+            "text": "Next, for an authorized A P I call, the client sends the Access Token with the request. The Auth Service decodes and verifies the J W T signature. Crucially, it then fetches the *current* user and role from the database to ensure the user is still active and their role hasn't changed. This is that real-time check we discussed."
+          },
+          {
+            "el_id": "s5-block-3",
+            "type": "block",
+            "text": "Then, the check access and check location access functions verify permissions and tenant isolation. Only if all checks pass is the request forwarded to query member data and return a 200 OK response. By separating the identity check from the permission check, we ensure security even with real-time role changes. Building on these design decisions, we'll now implement the RBAC models and permission gates in the next topic."
+          }
+        ]
+      }
+    ]
+  }
+}

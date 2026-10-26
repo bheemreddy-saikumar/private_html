@@ -1,0 +1,472 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Role-Based Access Control (RBAC) Implementation</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><style>
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; margin: 0; }
+.bento-card { background: #ffffff; border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 600px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.scene { }
+.scene + .scene { margin-top: 1.25rem; }
+.scene-title { text-align: left; }
+.scene-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; font-size: 0.7rem; letter-spacing: 0.05em; color: #94a3b8; }
+.scene-art svg { width: 100%; height: auto; max-height: 520px; }
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.active { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .bento-card { min-height: auto; padding: 1.25rem !important; border-radius: 1rem !important; }
+  section { margin-bottom: 1.5rem !important; }
+  section [class*="max-h-["], section [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+}
+</style><style>/* mobile-fix-injected */@media (max-width:768px){.bento-card{min-height:auto !important;padding:1.25rem !important;border-radius:1rem !important;}section{margin-bottom:1.5rem !important;}section [class*='max-h-['], section [style*='max-height']{max-height:none !important;overflow:visible !important;}section [class*='rounded-[3rem]']{padding:1.5rem !important;border-radius:1.5rem !important;}[class*='grid-cols-']{grid-template-columns:1fr !important;}[class*='md:flex-row'],[class*='lg:flex-row']{flex-wrap:wrap !important;}html,body{max-width:100% !important;overflow-x:hidden !important;}img,svg,video,canvas{max-width:100% !important;height:auto !important;}pre{max-width:100% !important;overflow-x:auto !important;}table{display:block !important;max-width:100% !important;overflow-x:auto !important;}[class*='w-[']{max-width:100% !important;}}</style><style>/* interactive-focus-injected */
+/* ---- Recede the non-highlighted elements ------------------------------- */
+/* Colour-agnostic opacity so every element recedes by the SAME amount
+   regardless of its own colours. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot) {
+    transition: opacity .4s ease, filter .4s ease, transform .4s ease, box-shadow .4s ease;
+    opacity: .42; filter: brightness(.85) saturate(.88);
+}
+
+/* ---- Primary spotlight ------------------------------------------------- */
+/* A spring "pop-in" when the highlight lands, then a breathing accent ring. */
+section.slide-active.il-dim [data-el-id].il-spot {
+    opacity: 1 !important; filter: brightness(1.08) saturate(1.12) !important;
+    border-radius: 16px; position: relative; z-index: 30;
+    box-shadow:
+        0 0 0 2px rgba(99,102,241,.6),
+        0 0 0 6px rgba(99,102,241,.14),
+        0 18px 40px -14px rgba(15,23,42,.45),
+        0 0 28px 4px rgba(99,102,241,.3);
+    animation: ilSpotIn .5s cubic-bezier(.34,1.56,.64,1) both,
+               ilSpotPulse 2.4s ease-in-out .5s infinite;
+}
+/* Titles sit flush-left, so the ring hugs the first letter — give it room. */
+section.slide-active.il-dim [data-el-id$="-title"].il-spot { padding-left: 14px; }
+/* Slide columns use overflow-hidden to fit one screen, which clips the ring.
+   Reveal overflow ONLY on the ancestor actually holding the spotlit element. */
+section.slide-active.il-dim [class*="overflow-hidden"]:has(.il-spot) { overflow: visible !important; }
+
+@keyframes ilSpotIn {
+    0%   { transform: scale(.99); }
+    60%  { transform: scale(1.045); }
+    100% { transform: scale(1.03); }
+}
+@keyframes ilSpotPulse {
+    0%, 100% {
+        transform: scale(1.03);
+        box-shadow:
+            0 0 0 2px rgba(99,102,241,.55),
+            0 0 0 6px rgba(99,102,241,.12),
+            0 18px 40px -14px rgba(15,23,42,.45),
+            0 0 26px 4px rgba(99,102,241,.26);
+    }
+    50% {
+        transform: scale(1.038);
+        box-shadow:
+            0 0 0 3px rgba(99,102,241,.82),
+            0 0 0 11px rgba(99,102,241,.1),
+            0 24px 50px -14px rgba(15,23,42,.5),
+            0 0 46px 12px rgba(99,102,241,.5);
+    }
+}
+
+/* ---- Progressive reveal ------------------------------------------------ */
+/* Elements not yet narrated are not on screen, so the learner cannot read the
+   whole slide in two seconds and then wait 90s for the narrator to catch up.
+   Gated on `il-reveal`, which the player sets on a section only once it has
+   successfully computed a reveal set — if that JS never runs, nothing hides. */
+section.slide-active.il-reveal [data-el-id] {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+section.slide-active.il-reveal [data-el-id]:not(.il-shown) {
+    opacity: 0 !important;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+/* ---- Visual co-highlight (subordinate to the spotlight) ---------------- */
+/* While a BLOCK is spotlit, the slide's visual is receded to .42 — a highlight
+   inside it would be invisible. Lift the visual back up, but WITHOUT the ring or
+   pulse, so it stays clearly secondary to the element being narrated. */
+section.slide-active.il-dim [data-el-id]:not(.il-spot):has(.il-covis) {
+    opacity: .97; filter: none;
+}
+.il-covis { transition: all .3s ease; }
+
+/* Mermaid node — accent the shape's stroke and give it a soft glow. */
+section.slide-active g.node.il-covis > rect,
+section.slide-active g.node.il-covis > path,
+section.slide-active g.node.il-covis > polygon,
+section.slide-active g.node.il-covis > circle,
+section.slide-active g.node.il-covis > ellipse {
+    stroke: rgb(99,102,241) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 6px rgba(99,102,241,.6));
+}
+
+/* Code line — a left accent bar plus a faint wash across the full line. */
+section.slide-active .cl.il-covis {
+    display: inline-block;
+    width: 100%;
+    background: rgba(99,102,241,.26);
+    box-shadow: inset 3px 0 0 0 rgb(99,102,241);
+    border-radius: 2px;
+}
+
+/* Table row — tint every cell so the whole row reads as one unit. */
+section.slide-active tr.il-covis > td,
+section.slide-active tr.il-covis > th {
+    background: rgba(99,102,241,.18) !important;
+    box-shadow: inset 0 -1px 0 0 rgba(99,102,241,.45);
+}
+</style></head><body><main class="pt-16 pb-0 max-w-6xl mx-auto px-6"><div class="text-center mb-24"><span class="text-indigo-600 font-semibold tracking-widest uppercase text-xs">Deep Work Module</span><h1 class="text-4xl md:text-6xl font-extrabold mt-3 mb-6 tracking-tight bg-clip-text text-transparent" style="background-image: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);">Role-Based Access Control (RBAC) Implementation</h1><p class="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto leading-relaxed">Role-Based Access Control (RBAC) Implementation</p></div><section id="section-1" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s1-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 1</p><h2 data-el-id="s1-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">Implementing RBAC in Our Auth Service</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">RBAC enforces roles and location boundaries.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arr-gray" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#cbd5e1"></path></marker><marker id="arr-indigo" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path></marker></defs><rect x="60" y="140" width="190" height="240" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect><text x="155" y="195" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Authentication</text><circle cx="155" cy="270" r="32" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"></circle><circle cx="155" cy="260" r="12" fill="#94a3b8"></circle><path d="M 135 292 a 20 20 0 0 1 40 0 Z" fill="#94a3b8"></path><line x1="250" y1="260" x2="310" y2="260" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arr-gray)"></line><rect x="320" y="115" width="290" height="290" rx="18" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect><text x="465" y="170" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#0f172a">RBAC</text><rect x="365" y="205" width="200" height="52" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect><text x="465" y="238" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">Role</text><rect x="365" y="280" width="200" height="52" rx="12" fill="#d1fae5" stroke="#10b981" stroke-width="2"></rect><text x="465" y="313" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#047857">Location</text><line x1="610" y1="260" x2="665" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-indigo)"></line><rect x="675" y="215" width="90" height="90" rx="16" fill="#4f46e5"></rect><text x="720" y="268" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#ffffff">API</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-1"><div data-el-id="s1-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Secondary Security Layer</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#cbd5e1"></path>
+    </marker>
+    <marker id="arrow-primary" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="35" y="190" width="90" height="140" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="80" cy="236" r="22" fill="#4f46e5"></circle>
+  <circle cx="80" cy="230" r="8" fill="#ffffff"></circle>
+  <path d="M 68 248 a 12 9 0 0 1 24 0" fill="#ffffff"></path>
+  <text x="80" y="296" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">User</text>
+
+  
+  <line x1="125" y1="260" x2="157" y2="260" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow-muted)"></line>
+
+  
+  <rect x="165" y="140" width="165" height="240" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="188" y="165" width="120" height="32" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="248" y="187" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Layer 1</text>
+  <text x="248" y="246" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">AuthN</text>
+  <text x="248" y="292" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Identity</text>
+
+  
+  <line x1="330" y1="260" x2="367" y2="260" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow-muted)"></line>
+
+  
+  <rect x="375" y="110" width="220" height="300" rx="18" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <rect x="387" y="134" width="196" height="36" rx="18" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5"></rect>
+  <text x="485" y="159" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">Secondary Layer</text>
+  <text x="485" y="222" text-anchor="middle" font-family="Inter, sans-serif" font-size="34" font-weight="800" fill="#0f172a">RBAC</text>
+
+  
+  <rect x="410" y="250" width="150" height="40" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="485" y="277" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">RoleEnum</text>
+  <text x="485" y="344" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">AuthZ Policy</text>
+
+  
+  <line x1="595" y1="260" x2="642" y2="260" stroke="#4f46e5" stroke-width="3" marker-end="url(#arrow-primary)"></line>
+
+  
+  <rect x="650" y="140" width="135" height="240" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <path d="M718 175 L736 183 V202 C736 215 718 225 718 225 C718 225 700 215 700 202 V183 Z" fill="#e2e8f0" stroke="#64748b" stroke-width="2"></path>
+  <text x="718" y="305" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Protected</text>
+  <text x="718" y="338" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#64748b">Services</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s1-block-2"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s1-block-2" class="content-block py-4"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Two-Stage Security</p><ul class="space-y-3"><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">Authentication confirms identity</span></li><li class="flex items-start text-slate-800 text-lg md:text-xl leading-relaxed"><span class="text-indigo-500 mr-3 flex-shrink-0">›</span><span class="min-w-0">RBAC permits specific actions</span></li></ul></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s1-block-2-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4412db940475d76870cf0c/drafts/102f4bad587643fca038a9034641c810/images/s1-block-2-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene-footer"><span>1 &nbsp;implementing rbac in our auth service</span><span>concept brief</span></div></div></section><section id="section-2" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s2-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 2</p><h2 data-el-id="s2-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">RBAC Model and Role Definitions</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Hierarchical role tiers define API access boundaries.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <rect x="90" y="60" width="640" height="400" rx="24" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="120" y="88" width="180" height="38" rx="8" fill="#e2e8f0"></rect>
+  <text x="210" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#475569">_WITH_KIOSK</text>
+  <text x="690" y="114" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">+ Kiosks</text>
+
+  <rect x="140" y="150" width="540" height="280" rx="18" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="170" y="176" width="200" height="38" rx="8" fill="#e2e8f0"></rect>
+  <text x="270" y="202" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#475569">_WITH_MEMBER</text>
+  <text x="640" y="202" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#64748b">+ Members</text>
+
+  <rect x="190" y="240" width="440" height="160" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5">
+    <animate attributeName="stroke-opacity" values="1;0.65;1" dur="4s" repeatCount="indefinite"></animate>
+  </rect>
+  <rect x="224" y="268" width="110" height="40" rx="8" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.5"></rect>
+  <text x="279" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">_STD</text>
+
+  <rect x="354" y="268" width="140" height="40" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect>
+  <text x="424" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">RoleEnum</text>
+
+  <text x="410" y="358" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="500" fill="#475569">Administrative Core</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-1"><div data-el-id="s2-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Tiered Role Groups</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><rect x="50" y="45" width="720" height="430" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"></rect><text x="80" y="98" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">_WITH_KIOSK</text><rect x="560" y="68" width="175" height="44" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect><text x="647" y="97" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">+ KIOSK</text><rect x="80" y="135" width="660" height="315" rx="14" fill="#ffffff" stroke="#818cf8" stroke-width="2"></rect><text x="110" y="188" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">_WITH_MEMBER</text><rect x="535" y="158" width="175" height="44" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect><text x="622" y="187" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">+ MEMBER</text><rect x="110" y="225" width="600" height="200" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"></rect><text x="140" y="280" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#4f46e5">_STD</text><rect x="135" y="325" width="125" height="48" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect><text x="197" y="356" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">OWNER</text><rect x="275" y="325" width="135" height="48" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect><text x="342" y="356" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">MANAGER</text><rect x="425" y="325" width="125" height="48" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect><text x="487" y="356" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">COACH</text><rect x="565" y="325" width="125" height="48" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"></rect><text x="627" y="356" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#92400e">STAFF</text></svg></div></div></div></div></div><div class="scene" data-scene-for="s2-block-2"><div data-el-id="s2-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">RoleEnum Integer Mappings</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s2-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <rect x="90" y="50" width="640" height="420" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+
+  <rect x="320" y="74" width="180" height="42" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="410" y="103" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#b45309">RoleEnum</text>
+
+  
+  <g transform="translate(130, 144)">
+    <rect width="260" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="34" cy="28" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+    <text x="34" y="35" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">1</text>
+    <text x="74" y="36" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">OWNER</text>
+  </g>
+  <g transform="translate(430, 144)">
+    <rect width="260" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="34" cy="28" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+    <text x="34" y="35" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">2</text>
+    <text x="74" y="36" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">USER</text>
+  </g>
+
+  
+  <g transform="translate(130, 220)">
+    <rect width="260" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="34" cy="28" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+    <text x="34" y="35" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">3</text>
+    <text x="74" y="36" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">COACH</text>
+  </g>
+  <g transform="translate(430, 220)">
+    <rect width="260" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="34" cy="28" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+    <text x="34" y="35" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">4</text>
+    <text x="74" y="36" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">MANAGER</text>
+  </g>
+
+  
+  <g transform="translate(130, 296)">
+    <rect width="260" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="34" cy="28" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+    <text x="34" y="35" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">5</text>
+    <text x="74" y="36" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">STAFF</text>
+  </g>
+  <g transform="translate(430, 296)">
+    <rect width="260" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="34" cy="28" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+    <text x="34" y="35" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">6</text>
+    <text x="74" y="36" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">MEMBER</text>
+  </g>
+
+  
+  <g transform="translate(280, 372)">
+    <rect width="260" height="56" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+    <circle cx="34" cy="28" r="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+    <text x="34" y="35" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700" fill="#b45309">7</text>
+    <text x="74" y="36" font-family="monospace" font-size="22" font-weight="700" fill="#0f172a">KIOSK</text>
+  </g>
+</svg></div></div></div></div></div><div class="scene-footer"><span>2 &nbsp;rbac model and role definitions</span><span>concept brief</span></div></div></section><section id="section-3" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s3-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 3</p><h2 data-el-id="s3-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">The `check_access` Decorator Flow</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Four sequential gates validate every protected request.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block"><defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path></marker><marker id="arr-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path></marker></defs><rect x="40" y="80" width="580" height="360" rx="20" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2" stroke-dasharray="6 6"></rect><text x="70" y="126" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">check_access</text><rect x="64" y="160" width="115" height="240" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><circle cx="121" cy="225" r="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></circle><text x="121" y="233" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">1</text><text x="121" y="320" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Token</text><rect x="203" y="160" width="115" height="240" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><circle cx="260" cy="225" r="24" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></circle><text x="260" y="233" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#4f46e5">2</text><text x="260" y="320" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">User</text><rect x="342" y="160" width="115" height="240" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><circle cx="399" cy="225" r="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle><text x="399" y="233" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#f59e0b">3</text><text x="399" y="320" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Role</text><rect x="481" y="160" width="115" height="240" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect><circle cx="538" cy="225" r="24" fill="#d1fae5" stroke="#10b981" stroke-width="2"></circle><text x="538" y="233" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#10b981">4</text><text x="538" y="320" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">Location</text><line x1="620" y1="260" x2="662" y2="260" stroke="#10b981" stroke-width="3" marker-end="url(#arr-green)"></line><rect x="670" y="180" width="116" height="160" rx="16" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect><circle cx="728" cy="235" r="22" fill="#10b981"></circle><path d="M720 235 L726 241 L737 230" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"></path><text x="728" y="295" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#047857">Handler</text><circle cy="260" r="6" fill="#4f46e5"><animate attributeName="cx" values="40;121;260;399;538;728" dur="3s" repeatCount="indefinite"></animate></circle></svg></div></div></div></div></div><div class="scene" data-scene-for="s3-block-1"><div data-el-id="s3-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">check_access Pipeline</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s3-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">def check_access(roles=None, return_role=False, return_user_id=False):</span>
+<span class="cl" data-line="2">    def decorate(fn):</span>
+<span class="cl" data-line="3">        @wraps(fn)</span>
+<span class="cl" data-line="4">        def decorated(*args, **kwargs):</span>
+<span class="cl" data-line="5">            # 1. Identity Validation (Authentication)</span>
+<span class="cl" data-line="6">            token_payload = _check_access_token()</span>
+<span class="cl" data-line="7">            </span>
+<span class="cl" data-line="8">            # 2. Database Integrity Check</span>
+<span class="cl" data-line="9">            user = _check_user(int(token_payload['user_id']))</span>
+<span class="cl" data-line="10">            </span>
+<span class="cl" data-line="11">            # 3. RBAC Validation (The Role Check)</span>
+<span class="cl" data-line="12">            _check_roles(user, roles)</span>
+<span class="cl" data-line="13">            </span>
+<span class="cl" data-line="14">            # 4. Contextual Validation (Multi-tenancy/Location Check)</span>
+<span class="cl" data-line="15">            _check_location_access(user)</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s3-block-2"><div data-el-id="s3-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">RBAC Role Validation</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s3-block-2-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">def _check_roles(user: User, roles: List[RoleEnum]) -&gt; None:</span>
+<span class="cl" data-line="2">        # ... normalize roles to a list ...</span>
+<span class="cl" data-line="3">        # Note: The actual role comparison logic might need adjustment</span>
+<span class="cl" data-line="4">        # to correctly map string role names to the RoleEnum integers.</span>
+<span class="cl" data-line="5">        # Example of potential mapping:</span>
+<span class="cl" data-line="6">        # allowed_role_integers = {r.value for r in RoleEnum if r.name in roles}</span>
+<span class="cl" data-line="7">        # if user.role.value not in allowed_role_integers:</span>
+<span class="cl" data-line="8">        #     raise ApiForbidden(description="You do not have the proper role to access this resource")</span>
+<span class="cl" data-line="9">        </span>
+<span class="cl" data-line="10">        # Original logic for reference:</span>
+<span class="cl" data-line="11">        if len(set(roles).intersection([user.role.name.upper()])) == 0:</span>
+<span class="cl" data-line="12">            raise ApiForbidden(description="You do not have the proper role to access this resource")</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s3-block-3"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s3-block-3" class="content-block py-6"><div class="border-l-4 border-indigo-500 pl-5"><p class="text-xl md:text-2xl font-semibold text-slate-900 leading-snug">Contextual RBAC prevents IDOR by binding access to assigned locations.</p></div></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s3-block-3-v1" class="w-full flex items-center justify-center" style="max-height:560px;"><img src="https://ap-south1-content-altgan-1-dev.s3.ap-south-1.amazonaws.com/html/topics/6a4412db940475d76870cf0c/drafts/102f4bad587643fca038a9034641c810/images/s3-block-3-v1.jpg" alt="" loading="lazy" class="rounded-lg w-auto max-w-full object-contain" style="max-height:560px;"/></div></div></div></div></div><div class="scene-footer"><span>3 &nbsp;the `check_access` decorator flow</span><span>concept brief</span></div></div></section><section id="section-4" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s4-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 4</p><h2 data-el-id="s4-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">FastAPI Integration and Design Choices</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">FastAPI route guards with automatic audit logging.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="140" width="210" height="250" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="74" y="166" width="48" height="48" rx="10" fill="#c7d2fe"></rect>
+  <path d="M98 178 v24 M86 190 h24" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"></path>
+  <text x="74" y="260" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Route Guard</text>
+  <rect x="74" y="296" width="162" height="36" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="155" y="321" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#4f46e5">Depends</text>
+
+  
+  <line x1="262" y1="265" x2="302" y2="265" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="306" y="140" width="210" height="250" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="330" y="166" width="48" height="48" rx="10" fill="#fef3c7"></rect>
+  <circle cx="354" cy="190" r="12" fill="none" stroke="#f59e0b" stroke-width="3"></circle>
+  <text x="330" y="260" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">RBAC Check</text>
+  <rect x="330" y="296" width="162" height="36" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="411" y="321" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#f59e0b">Roles</text>
+
+  
+  <line x1="518" y1="265" x2="558" y2="265" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"></line>
+
+  
+  <rect x="562" y="140" width="210" height="250" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <rect x="586" y="166" width="48" height="48" rx="10" fill="#e2e8f0"></rect>
+  <rect x="598" y="178" width="24" height="24" rx="4" fill="none" stroke="#64748b" stroke-width="3"></rect>
+  <text x="586" y="260" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Audit Log</text>
+  <rect x="586" y="296" width="162" height="36" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="667" y="321" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Trail</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-1"><div data-el-id="s4-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Route Protection with Depends</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><pre data-el-id="s4-block-1-v1" class="p-4 overflow-x-auto overflow-y-auto rounded-xl bg-slate-900 text-slate-100 text-sm font-mono leading-relaxed" style="max-height:320px;"><code class="language-python"><span class="cl" data-line="1">_ROLES = ["OWNER", "STAFF", "MANAGER", "COACH"] </span>
+<span class="cl" data-line="2"></span>
+<span class="cl" data-line="3">@plans_private_api.post("/locations/{location_id}/plans")</span>
+<span class="cl" data-line="4">def create_plan(</span>
+<span class="cl" data-line="5">    location_id: int, </span>
+<span class="cl" data-line="6">    body: CreatePlanRequest, </span>
+<span class="cl" data-line="7">    _=Depends(check_access(roles=_ROLES)) # Authorization is enforced here</span>
+<span class="cl" data-line="8">):</span>
+<span class="cl" data-line="9">    return create_new_plan(location_id, body)</span></code></pre></div></div></div></div><div class="scene" data-scene-for="s4-block-2"><div data-el-id="s4-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">RBAC vs PBAC</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s4-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="rbac-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="50" y="60" width="330" height="400" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="215" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#64748b">PBAC</text>
+  <text x="215" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#94a3b8">Granular Flags</text>
+
+  
+  <rect x="85" y="185" width="260" height="42" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="215" y="213" text-anchor="middle" font-family="monospace" font-size="20" fill="#64748b">can_create_plan</text>
+
+  <rect x="85" y="240" width="260" height="42" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="215" y="268" text-anchor="middle" font-family="monospace" font-size="20" fill="#64748b">can_edit_user</text>
+
+  <rect x="85" y="295" width="260" height="42" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="215" y="323" text-anchor="middle" font-family="monospace" font-size="20" fill="#64748b">can_view_metrics</text>
+
+  <rect x="85" y="380" width="260" height="48" rx="24" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"></rect>
+  <text x="215" y="411" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#ef4444">High Complexity</text>
+
+  
+  <rect x="440" y="60" width="330" height="400" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="3"></rect>
+  <text x="605" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#4f46e5">RBAC</text>
+  <text x="605" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Chosen Design</text>
+
+  
+  <rect x="495" y="195" width="220" height="52" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="605" y="228" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">Role: COACH</text>
+
+  <line x1="605" y1="247" x2="605" y2="290" stroke="#4f46e5" stroke-width="3" marker-end="url(#rbac-arrow)"></line>
+
+  
+  <rect x="495" y="292" width="220" height="52" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"></rect>
+  <text x="605" y="325" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#4f46e5">Access Verified</text>
+
+  <rect x="475" y="380" width="260" height="48" rx="24" fill="#dcfce7" stroke="#10b981" stroke-width="1.5"></rect>
+  <text x="605" y="411" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#10b981">Simple &amp; Stable</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s4-block-3"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><div data-el-id="s4-block-3" class="content-block py-4"><p class="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight">Automatic Audit Trail</p></div></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="w-full p-8 rounded-2xl bg-slate-50"><div class="text-xl font-bold text-slate-800 mb-5">Automatic Audit Trail</div><ol class="list-none m-0 p-0"><li class="flex items-start gap-4 mb-4"><span class="shrink-0 w-9 h-9 rounded-full bg-indigo-600 text-white text-base font-bold flex items-center justify-center">1</span><span class="text-lg text-slate-700 leading-relaxed pt-1">Triggered on non-GET mutations</span></li><li class="flex items-start gap-4 mb-4"><span class="shrink-0 w-9 h-9 rounded-full bg-indigo-600 text-white text-base font-bold flex items-center justify-center">2</span><span class="text-lg text-slate-700 leading-relaxed pt-1">Persists actor, payload, &amp; response</span></li></ol></div></div></div></div><div class="scene-footer"><span>4 &nbsp;fastapi integration and design choices</span><span>concept brief</span></div></div></section><section id="section-5" class="mb-12 reveal"><div class="bento-card p-8 md:p-12 flex flex-col justify-center min-h-[600px]"><div class="scene scene-title" data-scene-for="s5-title"><div class="flex flex-col md:flex-row gap-6 items-center"><div class="w-full md:w-2/5 flex flex-col justify-center"><p class="text-xs font-semibold tracking-widest uppercase text-indigo-600 mb-2">Section 5</p><h2 data-el-id="s5-title" class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">RBAC Best Practices Recap</h2><p class="text-lg md:text-2xl text-slate-600 max-w-2xl font-medium">Three core practices ensure reliable, leak-proof authorization.</p></div><div class="w-full md:w-3/5 flex-shrink-0 rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:540px;overflow:auto;"><div class="scene-visual-item" style="width:100%;align-self:stretch"><div class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <line x1="160" y1="410" x2="660" y2="410" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"></line>
+  <circle cx="160" cy="410" r="5" fill="#f59e0b"></circle>
+  <circle cx="410" cy="410" r="5" fill="#10b981"></circle>
+  <circle cx="660" cy="410" r="5" fill="#ef4444"></circle>
+
+  
+  <rect x="50" y="110" width="220" height="250" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="160" cy="180" r="34" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></circle>
+  <path d="M148 174 L160 164 L172 174 V190 C172 198 160 204 160 204 C160 204 148 198 148 190 Z" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5" stroke-linejoin="round"></path>
+  <polyline points="155 183 159 187 166 179" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+  <text x="160" y="270" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Explicit<tspan x="160" dy="1.25em">Roles</tspan></text>
+
+  
+  <rect x="300" y="110" width="220" height="250" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="410" cy="180" r="34" fill="#d1fae5" stroke="#10b981" stroke-width="2"></circle>
+  <path d="M410 166 C402 166 396 172 396 180 C396 190 410 204 410 204 C410 204 424 190 424 180 C424 172 418 166 410 166 Z" fill="#d1fae5" stroke="#10b981" stroke-width="2.5"></path>
+  <circle cx="410" cy="180" r="4" fill="#10b981"></circle>
+  <text x="410" y="270" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Path<tspan x="410" dy="1.25em">Coupling</tspan></text>
+
+  
+  <rect x="550" y="110" width="220" height="250" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <circle cx="660" cy="180" r="34" fill="#fee2e2" stroke="#ef4444" stroke-width="2"></circle>
+  <polygon points="650 164 670 164 680 174 680 194 670 204 650 204 640 194 640 174" fill="#fee2e2" stroke="#ef4444" stroke-width="2.5" stroke-linejoin="round"></polygon>
+  <line x1="660" y1="174" x2="660" y2="188" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"></line>
+  <circle cx="660" cy="195" r="2" fill="#ef4444"></circle>
+  <text x="660" y="270" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Uniform<tspan x="660" dy="1.25em">Errors</tspan></text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s5-block-1"><div data-el-id="s5-block-1" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Production Guardrails</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s5-block-1-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arr-indigo" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="120" y="46" width="580" height="66" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="410" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#0f172a">
+    POST /locations/<tspan fill="#10b981" font-weight="700">101</tspan>/plans
+  </text>
+
+  
+  <path d="M 260 112 L 260 145 L 228 145 L 228 170" fill="none" stroke="#4f46e5" stroke-width="3" marker-end="url(#arr-indigo)"></path>
+
+  
+  <path d="M 480 112 L 480 145 L 592 145 L 592 170" fill="none" stroke="#10b981" stroke-width="3" marker-end="url(#arr-green)"></path>
+
+  
+  <rect x="60" y="178" width="335" height="280" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="228" y="226" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Explicit Roles</text>
+
+  
+  <rect x="80" y="252" width="295" height="74" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+  <text x="228" y="281" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#b45309">_STD</text>
+  <text x="228" y="309" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#b45309">[ADMIN, COACH]</text>
+
+  <text x="228" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" fill="#64748b">Prevents over-exposure</text>
+
+  
+  <rect x="425" y="178" width="335" height="280" rx="16" fill="#f8fafc" stroke="#10b981" stroke-width="2"></rect>
+  <text x="592" y="226" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Tenant Isolation</text>
+
+  <rect x="445" y="252" width="295" height="74" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="2"></rect>
+  <text x="592" y="296" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#047857">location_id = 101</text>
+
+  <text x="592" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="#0f172a">_check_location_access</text>
+</svg></div></div></div></div></div><div class="scene" data-scene-for="s5-block-2"><div data-el-id="s5-block-2" class="content-block w-full flex flex-col items-stretch"><p class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-3">Standardized Error Handling</p><div class="w-full rounded-xl bg-slate-50 p-3 flex flex-col items-stretch justify-center" style="max-height:600px;overflow:auto;"><div class="scene-visual-item mb-4" style="width:100%;align-self:stretch"><div data-el-id="s5-block-2-v1" class="scene-art" style="width:100%;max-height:520px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 820 520" preserveAspectRatio="xMidYMid meet" width="100%" style="height:auto;max-height:520px;display:block">
+  <defs>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5"></path>
+    </marker>
+  </defs>
+
+  
+  <rect x="40" y="140" width="240" height="240" rx="16" fill="#ffffff" stroke="#ef4444" stroke-width="2"></rect>
+  <text x="160" y="180" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#ef4444">Custom Exceptions</text>
+  
+  <rect x="60" y="210" width="200" height="54" rx="10" fill="#fee2e2"></rect>
+  <text x="160" y="244" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#ef4444">ApiForbidden</text>
+  
+  <rect x="60" y="284" width="200" height="54" rx="10" fill="#fee2e2"></rect>
+  <text x="160" y="318" text-anchor="middle" font-family="monospace" font-size="20" font-weight="600" fill="#ef4444">ApiUnauthorized</text>
+
+  
+  <line x1="280" y1="260" x2="326" y2="260" stroke="#ef4444" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-red)">
+    <animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.8s" repeatCount="indefinite"></animate>
+  </line>
+
+  
+  <rect x="330" y="170" width="140" height="180" rx="16" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"></rect>
+  <text x="400" y="245" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Global</text>
+  <text x="400" y="278" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Handler</text>
+
+  
+  <line x1="470" y1="260" x2="506" y2="260" stroke="#4f46e5" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-indigo)">
+    <animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.8s" repeatCount="indefinite"></animate>
+  </line>
+
+  
+  <rect x="510" y="140" width="274" height="240" rx="16" fill="#ffffff" stroke="#4f46e5" stroke-width="2"></rect>
+  <rect x="522" y="152" width="250" height="38" rx="8" fill="#e0e7ff"></rect>
+  <text x="647" y="178" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#4f46e5">JSON Response</text>
+
+  <rect x="522" y="204" width="250" height="156" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"></rect>
+  <text x="538" y="254" font-family="monospace" font-size="20" fill="#0f172a">"status": 403</text>
+  <text x="538" y="296" font-family="monospace" font-size="20" fill="#ef4444">"detail": "Denied"</text>
+</svg></div></div></div></div></div><div class="scene-footer"><span>5 &nbsp;rbac best practices recap</span><span>concept brief</span></div></div></section></main><div class="max-w-5xl mx-auto px-6 mb-24 reveal"><span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Recap</span><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 mb-6">Key Takeaways</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">1</span><div><p class="font-bold text-slate-900 leading-tight">Implementing RBAC in Our Auth Service</p><p class="text-slate-500 text-sm mt-0.5">RBAC enforces roles and location boundaries.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">2</span><div><p class="font-bold text-slate-900 leading-tight">RBAC Model and Role Definitions</p><p class="text-slate-500 text-sm mt-0.5">Hierarchical role tiers define API access boundaries.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">3</span><div><p class="font-bold text-slate-900 leading-tight">The `check_access` Decorator Flow</p><p class="text-slate-500 text-sm mt-0.5">Four sequential gates validate every protected request.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">4</span><div><p class="font-bold text-slate-900 leading-tight">FastAPI Integration and Design Choices</p><p class="text-slate-500 text-sm mt-0.5">FastAPI route guards with automatic audit logging.</p></div></div><div class="bento-card p-4 flex items-start gap-3" style="min-height:auto;justify-content:flex-start"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">5</span><div><p class="font-bold text-slate-900 leading-tight">RBAC Best Practices Recap</p><p class="text-slate-500 text-sm mt-0.5">Three core practices ensure reliable, leak-proof authorization.</p></div></div></div></div><footer class="py-8 text-center text-slate-500 text-sm"><p>Generated by Altgan</p></footer>
+<script>
+(function(){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('active'); }); }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body></html>
